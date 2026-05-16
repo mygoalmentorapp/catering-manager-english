@@ -35,12 +35,12 @@ export const appRouter = router({
   // Returns same response regardless of email status — no leak of email existence.
   signup: router({
     checkAlert: publicProcedure
-      .input(z.object({ email: z.string().email() }))
+      .input(z.object({ email: z.string().email(), lang: z.enum(["he", "en"]).default("he") }))
       .mutation(async ({ input }) => {
         // Await the handler so it completes before the response is sent.
         // The client doesn't care about the result — we always return { ok: true }.
         try {
-          await handleSignupAlert(input.email);
+          await handleSignupAlert(input.email, input.lang);
         } catch (err) {
           console.error("[signup-alert] handleSignupAlert error:", err);
         }

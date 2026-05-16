@@ -22,10 +22,24 @@ import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL as SUPABASE_URL_RESOLVED, SUPABASE_SERVICE_ROLE_KEY as SUPABASE_SERVICE_ROLE_KEY_RESOLVED } from './supabase-config';
 
 const FROM_EMAIL = "support@cateringmanager.app";
-const FROM_NAME = "Catering Manager Pro";
+type Lang = "he" | "en";
 
-// Deep link scheme for the app
-const APP_SCHEME = "manusen20260411205951";
+const ALERT_I18N = {
+  he: {
+    fromName: "ניהול קייטרינג פרו",
+    appScheme: "manus20260411205951",
+    subject: () => `ניסיון הרשמה לחשבון הקיים שלך [${Date.now().toString(36)}]`,
+  },
+  en: {
+    fromName: "Catering Manager Pro",
+    appScheme: "manusen20260411205951",
+    subject: () => `Signup attempt for your existing account [${Date.now().toString(36)}]`,
+  },
+} as const;
+
+// Keep backward compat defaults
+const FROM_NAME = ALERT_I18N.he.fromName;
+const APP_SCHEME = ALERT_I18N.he.appScheme;
 
 /**
  * Read env vars lazily so dotenv/config has time to populate them.
@@ -138,7 +152,7 @@ async function isEmailVerified(email: string): Promise<boolean> {
 /**
  * Send a security alert email to a verified user who attempted to re-register.
  */
-async function sendAlertEmail(email: string): Promise<boolean> {
+async function sendAlertEmail(email: string, lang: Lang = "he"): Promise<boolean> {
   const { resendApiKey } = getEnv();
   if (!resendApiKey) {
     console.error(`[signup-alert] [${new Date().toISOString()}] Missing Resend API key`);
@@ -146,11 +160,32 @@ async function sendAlertEmail(email: string): Promise<boolean> {
   }
 
   const resend = new Resend(resendApiKey);
-  const loginUrl = `${APP_SCHEME}://?screen=login`;
+  const t = ALERT_I18N[lang];
+  const loginUrl = `${t.appScheme}://?screen=login`;
+  const dir = lang === "he" ? "rtl" : "ltr";
+  const htmlLang = lang === "he" ? "he" : "en";
+
+  const copy = lang === "he" ? {
+    title: "ניסיון הרשמה לחשבון הקיים שלך",
+    greeting: "שלום,",
+    body: "קיבלנו ניסיון הרשמה חדש עם כתובת המייל הזו, אבל יש לך כבר חשבון פעיל באפליקציה.",
+    ifYou: `<strong>אם זה היית אתה</strong> — היכנס דרך מסך ההתחברות. שכחת סיסמה? לחץ על "שכחתי סיסמה".`,
+    ifNot: `<strong>אם זה לא היית אתה</strong> — אפשר להתעלם מהמייל. לא בוצעה שום פעולה בחשבונך.`,
+    cta: "כניסה לחשבון",
+    footer: "הודעה זו נשלחה אוטומטית מאפליקציית ניהול קייטרינג פרו",
+  } : {
+    title: "Signup attempt for your existing account",
+    greeting: "Hello,",
+    body: "We received a new signup attempt with this email address, but you already have an active account.",
+    ifYou: `<strong>If this was you</strong> — sign in through the login screen. Forgot your password? Tap \"Forgot password\".`,
+    ifNot: `<strong>If this was not you</strong> — you can ignore this email. No action was taken on your account.`,
+    cta: "Sign in to your account",
+    footer: "This message was sent automatically from Catering Manager Pro",
+  };
 
   const htmlContent = `
 <!DOCTYPE html>
-<html dir="rtl" lang="he">
+<html dir="${dir}" lang="${htmlLang}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -160,7 +195,7 @@ async function sendAlertEmail(email: string): Promise<boolean> {
       background-color: #f5f5f5;
       margin: 0;
       padding: 0;
-      direction: rtl;
+      direction: ${dir};
     }
     .container {
       max-width: 520px;
@@ -230,21 +265,21 @@ async function sendAlertEmail(email: string): Promise<boolean> {
       </div>
     </div>
     
-    <h1>Sign up attempt for your existing account</h1>
+    <h1>${copy.title}</h1>
     
-    <p>Hello,</p>
-    <p>We received a new sign up attempt with this email address, but you already have an active account in the app.</p>
+    <p>${copy.greeting}</p>
+    <p>${copy.body}</p>
     
-    <p><strong>If this was you</strong> — Sign in through the login screen. Forgot your password? Tap "Forgot password".</p>
+    <p>${copy.ifYou}</p>
     
-    <p><strong>If this was not you</strong> — You can ignore this email. No action was taken on your account.</p>
+    <p>${copy.ifNot}</p>
     
     <hr class="divider">
     
-    <a href="${loginUrl}" class="cta-button">Sign in to account</a>
+    <a href="${loginUrl}" class="cta-button">${copy.cta}</a>
     
     <div class="footer">
-      <p>This message was sent automatically from Catering Manager Pro</p>
+      <p>${copy.footer}</p>
     </div>
   </div>
 </body>
@@ -253,9 +288,9 @@ async function sendAlertEmail(email: string): Promise<boolean> {
 
   try {
     const result = await resend.emails.send({
-      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+      from: `${t.fromName} <${FROM_EMAIL}>`,
       to: email.trim(),
-      subject: `Registration attempt for your existing account [${Date.now().toString(36)}]`,
+      subject: t.subject(),
       headers: {
         "X-Entity-Ref-ID": `signup-alert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       },
@@ -285,7 +320,7 @@ async function sendAlertEmail(email: string): Promise<boolean> {
  * Logs every attempt to console and DB (with hashed email).
  * NEVER returns any information about email existence to the caller.
  */
-export async function handleSignupAlert(email: string): Promise<void> {
+export async function handleSignupAlert(email: string, lang: Lang = "he"): Promise<void> {
   const emailHash = hashEmail(email);
   const ts = new Date().toISOString();
 
@@ -300,7 +335,7 @@ export async function handleSignupAlert(email: string): Promise<void> {
       console.log(
         `[signup-alert] [${ts}] Email is verified, sending alert | email_hash: ${emailHash.substring(0, 12)}...`,
       );
-      const sent = await sendAlertEmail(email);
+      const sent = await sendAlertEmail(email, lang);
       const status = sent ? "success" : "failed";
       console.log(
         `[signup-alert] [${ts}] Alert result: ${status} | email_hash: ${emailHash.substring(0, 12)}...`,

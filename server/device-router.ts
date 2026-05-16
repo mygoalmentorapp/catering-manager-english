@@ -23,8 +23,39 @@ import { Resend } from "resend";
 import { SUPABASE_URL as SUPABASE_URL_RESOLVED, SUPABASE_SERVICE_ROLE_KEY as SUPABASE_SERVICE_ROLE_KEY_RESOLVED } from './supabase-config';
 
 const FROM_EMAIL = "support@cateringmanager.app";
-const FROM_NAME = "Catering Manager Pro";
-const APP_SCHEME = "manusen20260411205951";
+
+type Lang = "he" | "en";
+
+const I18N = {
+  he: {
+    fromName: "ניהול קייטרינג פרו",
+    appScheme: "manus20260411205951",
+    verifySubject: (code: string) => `קוד אימות: ${code} [${Date.now().toString(36)}]`,
+    transferSubject: () => `החשבון שלך עבר למכשיר חדש [${Date.now().toString(36)}]`,
+    rateLimitMsg: "יותר מדי בקשות. נסה שוב בעוד שעה.",
+    codeSentMsg: "קוד אימות נשלח למייל שלך.",
+    expiredMsg: "הקוד פג תוקף. שלח קוד חדש.",
+    tooManyAttemptsMsg: "יותר מדי ניסיונות שגויים. שלח קוד חדש.",
+    wrongCodeMsg: (left: number) => `קוד שגוי. נותרו ${left} ניסיונות.`,
+    successMsg: "המכשיר אומת בהצלחה!",
+  },
+  en: {
+    fromName: "Catering Manager Pro",
+    appScheme: "manusen20260411205951",
+    verifySubject: (code: string) => `Verification code: ${code} [${Date.now().toString(36)}]`,
+    transferSubject: () => `Your account was moved to a new device [${Date.now().toString(36)}]`,
+    rateLimitMsg: "Too many requests. Try again in an hour.",
+    codeSentMsg: "A verification code was sent to your email.",
+    expiredMsg: "The code has expired. Request a new one.",
+    tooManyAttemptsMsg: "Too many incorrect attempts. Request a new code.",
+    wrongCodeMsg: (left: number) => `Incorrect code. ${left} attempts remaining.`,
+    successMsg: "Device verified successfully!",
+  },
+} as const;
+
+// Keep backward compat defaults
+const FROM_NAME = I18N.he.fromName;
+const APP_SCHEME = I18N.he.appScheme;
 
 /**
  * Send a Supabase Realtime Broadcast to kick the old device.
@@ -96,7 +127,7 @@ async function getUserEmail(userId: string): Promise<string> {
   if (error || !data?.user?.email) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Unable to retrieve the email address",
+      message: "לא ניתן לאחזר את כתובת המייל",
     });
   }
   return data.user.email;
@@ -232,6 +263,7 @@ export const deviceRouter = router({
     .input(
       z.object({
         deviceUuid: z.string().min(1),
+        lang: z.enum(["he", "en"]).default("he"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -249,11 +281,13 @@ export const deviceRouter = router({
         .eq("user_id", userId)
         .gte("created_at", oneHourAgo);
 
+      const t = I18N[input.lang];
+
       if (recentCodes && recentCodes.length >= 5) {
         return {
           success: false,
           limitReached: true,
-          message: "Too many requests. Please try again in an hour.",
+          message: t.rateLimitMsg,
         };
       }
 
@@ -286,7 +320,7 @@ export const deviceRouter = router({
 
       // Send verification code via Resend
       try {
-        await sendVerificationCodeEmail(email, code);
+        await sendVerificationCodeEmail(email, code, input.lang);
         console.log(`[device-verify] Verification code sent to ${email.substring(0, 3)}***`);
       } catch (emailErr) {
         console.error("[device-verify] Email send error:", emailErr);
@@ -297,7 +331,7 @@ export const deviceRouter = router({
       return {
         success: true,
         limitReached: false,
-        message: "A verification code was sent to your email.",
+        message: t.codeSentMsg,
       };
     }),
 
@@ -314,11 +348,13 @@ export const deviceRouter = router({
       z.object({
         deviceUuid: z.string().min(1),
         code: z.string().length(6),
+        lang: z.enum(["he", "en"]).default("he"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = getUserId(ctx);
       const admin = getAdminClient();
+      const t = I18N[input.lang];
 
       // Find the latest unused, non-expired code for this user
       const { data: transferCode } = await admin
@@ -337,7 +373,7 @@ export const deviceRouter = router({
           expired: true,
           tooManyAttempts: false,
           attemptsLeft: 0,
-          message: "Code expired. Please send a new code.",
+          message: t.expiredMsg,
         };
       }
 
@@ -352,7 +388,7 @@ export const deviceRouter = router({
           expired: false,
           tooManyAttempts: true,
           attemptsLeft: 0,
-          message: "Too many incorrect attempts. Please send a new code.",
+          message: t.tooManyAttemptsMsg,
         };
       }
 
@@ -369,7 +405,7 @@ export const deviceRouter = router({
           expired: false,
           tooManyAttempts: newAttempts >= 5,
           attemptsLeft: 5 - newAttempts,
-          message: `Incorrect code. ${5 - newAttempts} attempts remaining.`,
+          message: t.wrongCodeMsg(5 - newAttempts),
         };
       }
 
@@ -440,7 +476,7 @@ export const deviceRouter = router({
       // 7. Send confirmation email (non-blocking)
       try {
         const email = await getUserEmail(userId);
-        await sendTransferConfirmationEmail(email);
+        await sendTransferConfirmationEmail(email, input.lang);
         console.log(`[device-verify] Transfer confirmation sent to ${email.substring(0, 3)}***`);
       } catch (confirmErr) {
         console.error("[device-verify] Confirmation email error:", confirmErr);
@@ -451,23 +487,40 @@ export const deviceRouter = router({
         expired: false,
         tooManyAttempts: false,
         attemptsLeft: 5,
-        message: "Device verified successfully!",
+        message: t.successMsg,
       };
     }),
 });
 
 // ============ EMAIL HELPERS ============
 
-async function sendVerificationCodeEmail(email: string, code: string): Promise<void> {
+async function sendVerificationCodeEmail(email: string, code: string, lang: Lang = "he"): Promise<void> {
   const resendApiKey = process.env.RESEND_API_KEY ?? "";
   if (!resendApiKey) {
     throw new Error("Missing RESEND_API_KEY");
   }
   const resend = new Resend(resendApiKey);
+  const t = I18N[lang];
+  const dir = lang === "he" ? "rtl" : "ltr";
+  const htmlLang = lang === "he" ? "he" : "en";
+
+  const copy = lang === "he" ? {
+    title: "קוד אימות למכשיר חדש",
+    greeting: "שלום,",
+    body: "קיבלנו בקשה להעביר את חשבונך למכשיר חדש. הנה קוד האימות שלך:",
+    warning: "הקוד תקף ל-15 דקות בלבד. אם לא ביקשת העברה, התעלם מהודעה זו.",
+    footer: `הודעה זו נשלחה אוטומטית מאפליקציית ${t.fromName}`,
+  } : {
+    title: "Verification code for new device",
+    greeting: "Hello,",
+    body: "We received a request to transfer your account to a new device. Here is your verification code:",
+    warning: "The code is valid for 15 minutes only. If you did not request a transfer, ignore this message.",
+    footer: `This message was sent automatically from ${t.fromName}`,
+  };
 
   const htmlContent = `
 <!DOCTYPE html>
-<html dir="rtl" lang="he">
+<html dir="${dir}" lang="${htmlLang}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -477,7 +530,7 @@ async function sendVerificationCodeEmail(email: string, code: string): Promise<v
       background-color: #f5f5f5;
       margin: 0;
       padding: 0;
-      direction: rtl;
+      direction: ${dir};
     }
     .container {
       max-width: 520px;
@@ -552,16 +605,16 @@ async function sendVerificationCodeEmail(email: string, code: string): Promise<v
         <span style="font-size: 32px;">&#128272;</span>
       </div>
     </div>
-    <h1>Verification code for new device</h1>
-    <p>Hello,</p>
-    <p>We received a request to transfer your account to a new device. Here is your verification code:</p>
+    <h1>${copy.title}</h1>
+    <p>${copy.greeting}</p>
+    <p>${copy.body}</p>
     <div class="code-box">
       <span class="code">${code}</span>
     </div>
-    <p class="warning">The code is valid for 15 minutes only. If you did not request a transfer, ignore this message.</p>
+    <p class="warning">${copy.warning}</p>
     <hr class="divider">
     <div class="footer">
-      <p>This message was sent automatically from ${FROM_NAME}</p>
+      <p>${copy.footer}</p>
     </div>
   </div>
 </body>
@@ -569,9 +622,9 @@ async function sendVerificationCodeEmail(email: string, code: string): Promise<v
   `.trim();
 
   const result = await resend.emails.send({
-    from: `${FROM_NAME} <${FROM_EMAIL}>`,
+    from: `${t.fromName} <${FROM_EMAIL}>`,
     to: email.trim(),
-    subject: `Verification code: ${code} [${Date.now().toString(36)}]`,
+    subject: t.verifySubject(code),
     headers: {
       "X-Entity-Ref-ID": `device-verify-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     },
@@ -583,16 +636,20 @@ async function sendVerificationCodeEmail(email: string, code: string): Promise<v
   }
 }
 
-async function sendTransferConfirmationEmail(email: string): Promise<void> {
+async function sendTransferConfirmationEmail(email: string, lang: Lang = "he"): Promise<void> {
   const resendApiKey = process.env.RESEND_API_KEY ?? "";
   if (!resendApiKey) {
     console.warn("[device-verify] Missing RESEND_API_KEY, skipping confirmation email");
     return;
   }
   const resend = new Resend(resendApiKey);
+  const t = I18N[lang];
+  const dir = lang === "he" ? "rtl" : "ltr";
+  const htmlLang = lang === "he" ? "he" : "en";
+  const locale = lang === "he" ? "he-IL" : "en-US";
 
   const now = new Date();
-  const dateStr = now.toLocaleDateString("en-US", {
+  const dateStr = now.toLocaleDateString(locale, {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -600,9 +657,25 @@ async function sendTransferConfirmationEmail(email: string): Promise<void> {
     minute: "2-digit",
   });
 
+  const copy = lang === "he" ? {
+    title: "החשבון עבר למכשיר חדש",
+    greeting: "שלום,",
+    body: "החשבון שלך הועבר בהצלחה למכשיר חדש.",
+    dateLabel: "תאריך:",
+    warning: "אם לא ביצעת את ההעברה הזו, מישהו אחר עשוי להשתמש בחשבונך. שנה את הסיסמה שלך מיד.",
+    footer: `הודעה זו נשלחה אוטומטית מאפליקציית ${t.fromName}`,
+  } : {
+    title: "Your account was moved to a new device",
+    greeting: "Hello,",
+    body: "Your account has been successfully transferred to a new device.",
+    dateLabel: "Date:",
+    warning: "If you did not perform this transfer, someone else may be using your account. Change your password immediately.",
+    footer: `This message was sent automatically from ${t.fromName}`,
+  };
+
   const htmlContent = `
 <!DOCTYPE html>
-<html dir="rtl" lang="he">
+<html dir="${dir}" lang="${htmlLang}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -612,7 +685,7 @@ async function sendTransferConfirmationEmail(email: string): Promise<void> {
       background-color: #f5f5f5;
       margin: 0;
       padding: 0;
-      direction: rtl;
+      direction: ${dir};
     }
     .container {
       max-width: 520px;
@@ -697,19 +770,19 @@ async function sendTransferConfirmationEmail(email: string): Promise<void> {
         <span style="font-size: 32px;">&#9989;</span>
       </div>
     </div>
-    <h1>Account transferred to new device</h1>
-    <p>Hello,</p>
-    <p>Your account was successfully transferred to a new device.</p>
+    <h1>${copy.title}</h1>
+    <p>${copy.greeting}</p>
+    <p>${copy.body}</p>
     <div class="info-box">
       <div class="info-row">
-        <span class="info-label">Date:</span>
+        <span class="info-label">${copy.dateLabel}</span>
         <span class="info-value">${dateStr}</span>
       </div>
     </div>
-    <p class="warning">If you did not make this transfer, someone else may be using your account. Change your password immediately.</p>
+    <p class="warning">${copy.warning}</p>
     <hr class="divider">
     <div class="footer">
-      <p>This message was sent automatically from ${FROM_NAME}</p>
+      <p>${copy.footer}</p>
     </div>
   </div>
 </body>
@@ -717,9 +790,9 @@ async function sendTransferConfirmationEmail(email: string): Promise<void> {
   `.trim();
 
   const result = await resend.emails.send({
-    from: `${FROM_NAME} <${FROM_EMAIL}>`,
+    from: `${t.fromName} <${FROM_EMAIL}>`,
     to: email.trim(),
-    subject: `Your account was moved to a new device [${Date.now().toString(36)}]`,
+    subject: t.transferSubject(),
     headers: {
       "X-Entity-Ref-ID": `device-transfer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     },

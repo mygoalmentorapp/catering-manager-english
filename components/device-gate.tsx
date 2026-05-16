@@ -82,7 +82,8 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
 
     try {
       const result = await requestCodeMutation.mutateAsync({
-        deviceUuid });
+        deviceUuid,
+        lang: "en" });
 
       if (result.success) {
         setVerifyStep("code_sent");
@@ -116,7 +117,8 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
     try {
       const result = await verifyCodeMutation.mutateAsync({
         deviceUuid,
-        code });
+        code,
+        lang: "en" });
 
       if (result.success) {
         if (Platform.OS !== "web") {

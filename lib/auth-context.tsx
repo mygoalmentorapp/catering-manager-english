@@ -456,7 +456,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetch(PRODUCTION_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ json: { email: alertEmail } }),
+        body: JSON.stringify({ json: { email: alertEmail, lang: "en" } }),
         signal: controller.signal })
         .catch(() => {}) // Silently swallow any error
         .finally(() => clearTimeout(timeoutId));
