@@ -233,16 +233,18 @@ const s = StyleSheet.create({
   primaryButton: {
     backgroundColor: DS_COLORS.accent,
     borderRadius: DS_RADIUS.md,
-    paddingVertical: DS_SPACING.lg,
+    paddingVertical: DS_SPACING.xl,
+    paddingHorizontal: DS_SPACING.xxxl,
     alignItems: "center",
     justifyContent: "center",
     marginTop: DS_SPACING.sm,
+    alignSelf: "stretch",
     ...DS_SHADOW.button },
   buttonDisabled: {
     opacity: 0.7 },
   primaryButtonText: {
     color: DS_COLORS.white,
-    fontSize: DS_FONT.body,
+    fontSize: DS_FONT.body + 2,
     fontWeight: DS_WEIGHT.bold },
   footer: {
     flexDirection: "row",
