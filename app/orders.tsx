@@ -1331,7 +1331,7 @@ function _make_s() { return StyleSheet.create({
     height: 24,
     borderRadius: DS_RADIUS.sm,
     borderWidth: 2,
-    borderColor: DS_COLORS.border,
+    borderColor: DS_COLORS.textSecondary,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: DS_COLORS.inputBg,

@@ -89,7 +89,13 @@ function ShoppingListCard({
           <View style={ls.cardInfo}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6}}>
               <Text style={ls.cardNames} numberOfLines={2}>
-                {item.orderNames.join(", ")}
+                {(() => {
+                  const linkedOrders = orders.filter((o) => item.orderIds.includes(o.id));
+                  if (linkedOrders.length > 0) {
+                    return linkedOrders.map((o) => o.customerName).join(", ");
+                  }
+                  return item.orderNames.join(", ");
+                })()}
               </Text>
               {isLocked && (
                 <View style={ls.lockedBadge}>
