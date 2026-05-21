@@ -147,6 +147,16 @@ export function AppGate({ children }: { children: React.ReactNode }) {
         markInitialRedirectDone();
         return;
       }
+      // FIX: If Supabase session exists but bridge hasn't failed yet,
+      // it means bridge is still in progress (fire-and-forget after SIGNED_IN).
+      // Don't redirect to login — wait for bridge to either succeed
+      // (isAuthenticated→true) or fail (bridgeFailed→true).
+      // Without this check, after login the guard would immediately redirect
+      // back to /auth/login because isAuthenticated is still false during bridging.
+      if (session?.user && !bridgeFailed) {
+        markInitialRedirectDone();
+        return;
+      }
       if (!currentRoute.startsWith("auth") && !currentRoute.startsWith("oauth") && currentRoute !== "confirm") {
         if (hasRegisteredBefore || deepLinkLoginHint) {
           if (deepLinkLoginHint && !hasRegisteredBefore) {
@@ -244,6 +254,14 @@ export function AppGate({ children }: { children: React.ReactNode }) {
         onLogout={authSignOut}
       />
     );
+  }
+
+  // ============ BRIDGE IN PROGRESS GATE ============
+  // Supabase session exists but bridge hasn't completed or failed yet.
+  // Show splash while waiting for bridge to complete.
+  // This prevents a flash of the login screen during the bridge window.
+  if (!isAuthenticated && session?.user && !bridgeFailed) {
+    return <DataLoadingSplash onMinTimeComplete={noopSplashCallback} />;
   }
 
   // After authentication, wrap with DeviceProvider + DeviceGate
