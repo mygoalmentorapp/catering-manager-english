@@ -170,21 +170,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Auto-retry once after 3s delay (server may have been waking up)
-      if (!bridgeAutoRetriedRef.current && session?.access_token) {
+      // FIX: Use the `accessToken` parameter (from the caller) instead of `session` from closure.
+      // `performBridge` has useCallback([], []) so `session` inside is always stale (initial null).
+      // The accessToken parameter is the fresh token passed by onAuthStateChange/retryBridge.
+      if (!bridgeAutoRetriedRef.current && accessToken) {
         bridgeAutoRetriedRef.current = true;
         console.log("[Auth] Scheduling auto-retry bridge in 3s...");
         if (mountedRef.current) setBridgeRetrying(true);
         setTimeout(async () => {
           if (!mountedRef.current) return;
-          // Re-check that session still exists (user might have signed out)
-          const currentSession = session;
-          if (!currentSession?.access_token) {
-            console.warn("[Auth] Auto-retry cancelled — no session");
+          // Check if user signed out during the delay
+          if (signingOutRef.current) {
+            console.warn("[Auth] Auto-retry cancelled — sign out in progress");
             if (mountedRef.current) setBridgeRetrying(false);
             return;
           }
           console.log("[Auth] Auto-retrying bridge...");
-          const retryResult = await performBridge(currentSession.access_token);
+          const retryResult = await performBridge(accessToken);
           if (!mountedRef.current) return;
           if (!retryResult) {
             // Auto-retry also failed — show BridgeRetryScreen
@@ -277,6 +279,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (signingOutRef.current && event !== "SIGNED_OUT") {
         console.log("[Auth] Ignoring event during signOut:", event);
         return;
+      }
+
+      // FIX: Protect session state from being cleared while bridge is in progress or has failed.
+      // If Supabase fires an event with null session (e.g., failed token refresh) while we're
+      // still bridging or showing BridgeRetryScreen, clearing session would cause AppGate to
+      // redirect to login (because session?.user becomes null → BridgeRetryScreen condition fails).
+      // Only allow session to be cleared on explicit SIGNED_OUT events.
+      if (!newSession?.user && event !== "SIGNED_OUT") {
+        // Session is null but it's not a sign-out — check if bridge is active
+        if (bridgingRef.current || bridgeFailedRef.current) {
+          console.log("[Auth] Ignoring null session during bridge (event:", event, ")");
+          return;
+        }
       }
 
       setSession(newSession);
