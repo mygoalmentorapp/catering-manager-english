@@ -227,8 +227,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        const currentSession = sessionResult.data?.session;
+        let currentSession = sessionResult.data?.session;
         console.log("[Auth] Session found:", !!currentSession);
+
+        // FIX: If getSession() returns null, it might be because Supabase's internal
+        // auto-refresh already ran and failed (e.g., after warm restart where JS context
+        // was killed but AsyncStorage still has the refresh token). In this case,
+        // explicitly try refreshSession() which reads the refresh token from storage
+        // and attempts a fresh exchange. This fixes the bug where opening the app after
+        // some time shows DataLoadingSplash then redirects to login, but force-closing
+        // and reopening works fine (cold start re-reads storage cleanly).
+        if (!currentSession?.user) {
+          console.log("[Auth] No session from getSession — trying explicit refreshSession...");
+          try {
+            const refreshResult = await raceTimeout(
+              supabase.auth.refreshSession(),
+              6000
+            );
+            if (refreshResult?.data?.session?.user) {
+              currentSession = refreshResult.data.session;
+              console.log("[Auth] refreshSession succeeded — session restored");
+            } else {
+              console.log("[Auth] refreshSession also returned no session");
+            }
+          } catch (refreshErr) {
+            console.warn("[Auth] refreshSession error:", refreshErr);
+          }
+        }
 
         if (currentSession?.user) {
           setSession(currentSession);
