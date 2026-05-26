@@ -7,6 +7,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // Note: HAS_REGISTERED_KEY is duplicated here to avoid circular import
 // (auth-context → app-gate → session-gate → auth-context)
 const HAS_REGISTERED_KEY = "has_registered_before";
+// Supabase stores its session under this key in AsyncStorage.
+// Used as a last-resort fallback when getSession()/refreshSession() both return null
+// due to Supabase's internal memory being cleared by a failed auto-refresh.
+const SUPABASE_STORAGE_KEY = "sb-szcukdxkbrezhgotwsqd-auth-token";
 import { getDeviceId } from "@/lib/device-id";
 import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
@@ -258,6 +262,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
+        // FALLBACK: If both getSession() and refreshSession() returned null,
+        // it's likely because startAutoRefresh() already ran and cleared Supabase's
+        // internal memory (race condition on warm restart after 1-2h in background).
+        // Read directly from AsyncStorage where Supabase persists the refresh_token,
+        // and use setSession() to force Supabase to re-hydrate and refresh.
+        if (!currentSession?.user && Platform.OS !== "web") {
+          console.log("[Auth] Attempting AsyncStorage fallback for session recovery...");
+          try {
+            const raw = await AsyncStorage.getItem(SUPABASE_STORAGE_KEY);
+            if (raw) {
+              const stored = JSON.parse(raw);
+              const accessToken = stored?.access_token;
+              const refreshToken = stored?.refresh_token;
+
+              if (accessToken && refreshToken) {
+                console.log("[Auth] Found tokens in AsyncStorage — calling setSession()...");
+                const setResult = await raceTimeout(
+                  supabase.auth.setSession({
+                    access_token: accessToken,
+                    refresh_token: refreshToken,
+                  }),
+                  8000
+                );
+                if (setResult?.data?.session?.user) {
+                  currentSession = setResult.data.session;
+                  console.log("[Auth] AsyncStorage fallback succeeded — session restored via setSession");
+                } else {
+                  console.log("[Auth] AsyncStorage fallback: setSession returned no valid session");
+                }
+              } else {
+                console.log("[Auth] AsyncStorage fallback: no tokens found in stored data");
+              }
+            } else {
+              console.log("[Auth] AsyncStorage fallback: no stored session data found");
+            }
+          } catch (storageErr) {
+            console.warn("[Auth] AsyncStorage fallback failed:", storageErr);
+          }
+        }
+
         if (currentSession?.user) {
           setSession(currentSession);
           setUser(currentSession.user);
@@ -412,14 +456,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // After ~1 hour the access token expires. We explicitly start/stop the
   // auto-refresh cycle when the app transitions between foreground/background
   // so the token is refreshed immediately upon returning to the foreground.
+  //
+  // FIX: Do NOT call startAutoRefresh() on mount — it causes a race condition.
+  // When the app reopens after 1-2h, startAutoRefresh fires immediately, tries to
+  // refresh the expired access_token, fails (network/timing), and clears Supabase's
+  // internal session memory BEFORE initAuth can call getSession().
+  // Instead, we only start auto-refresh AFTER initAuth has finished (2s delay on foreground).
   useEffect(() => {
-    // Start auto-refresh immediately (app is already active on mount)
-    supabase.auth.startAutoRefresh();
+    // Delayed initial start — give initAuth time to complete first
+    const initialTimer = setTimeout(() => {
+      if (!initAuthRunningRef.current) {
+        console.log("[Auth] Initial delayed startAutoRefresh (initAuth done)");
+        supabase.auth.startAutoRefresh();
+      } else {
+        // initAuth still running — wait a bit more
+        const retryTimer = setTimeout(() => {
+          console.log("[Auth] Retry startAutoRefresh after initAuth");
+          supabase.auth.startAutoRefresh();
+        }, 3000);
+        return () => clearTimeout(retryTimer);
+      }
+    }, 2000);
 
     const appStateSubscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
-        console.log("[Auth] App foregrounded — starting auto-refresh");
-        supabase.auth.startAutoRefresh();
+        // Delay startAutoRefresh on foreground to let initAuth run first
+        // This prevents the race condition where auto-refresh clears the session
+        // from Supabase's internal memory before initAuth can read it.
+        setTimeout(() => {
+          if (!initAuthRunningRef.current) {
+            console.log("[Auth] App foregrounded — starting auto-refresh (delayed)");
+            supabase.auth.startAutoRefresh();
+          } else {
+            console.log("[Auth] App foregrounded — deferring auto-refresh (initAuth still running)");
+            // Will be started after initAuth completes via the initial timer logic
+          }
+        }, 2000);
       } else {
         console.log("[Auth] App backgrounded — stopping auto-refresh");
         supabase.auth.stopAutoRefresh();
@@ -427,6 +499,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      clearTimeout(initialTimer);
       appStateSubscription.remove();
     };
   }, []);
