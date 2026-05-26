@@ -72,6 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signingOutRef = useRef(false);
   // Track whether auto-retry after first bridge failure has been attempted (max 1)
   const bridgeAutoRetriedRef = useRef(false);
+  // Track whether initAuth is still running — prevents safety timeout from firing prematurely
+  const initAuthRunningRef = useRef(true);
 
   // Bridge retry state — exposed to UI for BridgeRetryScreen
   const [bridgeFailed, setBridgeFailed] = useState(false);
@@ -210,6 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     mountedRef.current = true;
 
     const initAuth = async () => {
+      initAuthRunningRef.current = true;
       try {
         console.log("[Auth] initAuth starting...");
 
@@ -284,6 +287,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         console.warn("[Auth] Init error:", err);
       } finally {
+        initAuthRunningRef.current = false;
         if (mountedRef.current) {
           console.log("[Auth] isLoading → false");
           setIsLoading(false);
@@ -306,17 +310,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // FIX: Protect session state from being cleared while bridge is in progress or has failed.
-      // If Supabase fires an event with null session (e.g., failed token refresh) while we're
-      // still bridging or showing BridgeRetryScreen, clearing session would cause AppGate to
-      // redirect to login (because session?.user becomes null → BridgeRetryScreen condition fails).
-      // Only allow session to be cleared on explicit SIGNED_OUT events.
+      // FIX: Protect session state from being cleared by non-SIGNED_OUT events.
+      // Supabase can fire TOKEN_REFRESHED or INITIAL_SESSION with null session when:
+      // - Token refresh fails (network glitch, server timeout)
+      // - App returns from background and auto-refresh fires before session is loaded
+      // - Internal Supabase race conditions
+      // In all these cases, clearing the session would redirect to login incorrectly.
+      // Only SIGNED_OUT should clear the session — everything else should preserve it.
       if (!newSession?.user && event !== "SIGNED_OUT") {
-        // Session is null but it's not a sign-out — check if bridge is active
-        if (bridgingRef.current || bridgeFailedRef.current) {
-          console.log("[Auth] Ignoring null session during bridge (event:", event, ")");
-          return;
-        }
+        console.log("[Auth] Ignoring null session event (not SIGNED_OUT):", event);
+        return;
       }
 
       setSession(newSession);
@@ -428,16 +431,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Safety net: if isLoading is still true after 8 seconds, force it to false.
+  // Safety net: if isLoading is still true after 15 seconds, force it to false.
   // This guarantees the spinner never stays forever, even if everything else fails.
+  // Increased from 8s to 15s because initAuth can take up to 12s in worst case:
+  // getSession timeout (6s) + refreshSession timeout (6s) + buffer.
+  // Also checks initAuthRunningRef to avoid firing while initAuth is still actively running.
   useEffect(() => {
     if (!isLoading) return;
     const timer = setTimeout(() => {
       if (mountedRef.current && isLoading) {
-        console.warn("[Auth] Safety timeout — forcing isLoading to false after 8s");
-        setIsLoading(false);
+        if (initAuthRunningRef.current) {
+          console.log("[Auth] Safety timeout — initAuth still running, waiting 5s more...");
+          // Give initAuth 5 more seconds to finish
+          setTimeout(() => {
+            if (mountedRef.current && isLoading) {
+              console.warn("[Auth] Extended safety timeout — forcing isLoading to false after 20s");
+              setIsLoading(false);
+            }
+          }, 5000);
+        } else {
+          console.warn("[Auth] Safety timeout — forcing isLoading to false after 15s");
+          setIsLoading(false);
+        }
       }
-    }, 8000);
+    }, 15000);
     return () => clearTimeout(timer);
   }, [isLoading]);
 
