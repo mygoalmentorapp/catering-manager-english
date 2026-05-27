@@ -15,6 +15,7 @@ import { getDeviceId } from "@/lib/device-id";
 import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
 import { bridgeToken } from "@/lib/_core/api";
+import { setAuthFlag, clearAuthFlag, getAuthFlag } from "@/lib/_core/auth-flag";
 
 // ============ TYPES ============
 
@@ -305,6 +306,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (currentSession?.user) {
           setSession(currentSession);
           setUser(currentSession.user);
+          await setAuthFlag(); // Persist auth flag on successful session restore
           const p = await fetchProfile(currentSession.user.id);
           if (mountedRef.current) {
             setProfile(p);
@@ -361,8 +363,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // - Internal Supabase race conditions
       // In all these cases, clearing the session would redirect to login incorrectly.
       // Only SIGNED_OUT should clear the session — everything else should preserve it.
+      //
+      // PERSISTENT AUTH FLAG: Even if the above check somehow fails, we verify against
+      // a persistent flag in AsyncStorage. If the user was previously authenticated and
+      // hasn't explicitly signed out, we refuse to clear the session.
       if (!newSession?.user && event !== "SIGNED_OUT") {
-        console.log("[Auth] Ignoring null session event (not SIGNED_OUT):", event);
+        const flagIsSet = await getAuthFlag();
+        if (flagIsSet) {
+          console.log("[Auth] Ignoring null session — auth flag says user is logged in. Event:", event);
+        } else {
+          console.log("[Auth] Ignoring null session event (not SIGNED_OUT, no flag):", event);
+        }
         return;
       }
 
@@ -382,6 +393,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (event === "SIGNED_OUT") {
         setProfile(null);
+        clearAuthFlag().catch(() => {}); // Clear auth flag on explicit sign-out
         // Reset bridge readiness on sign out so next login must re-bridge
         if (Platform.OS !== "web") {
           setIsBridgeReady(false);
@@ -393,6 +405,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // even on devices where the user never went through the signup flow.
       if (event === "SIGNED_IN") {
         AsyncStorage.setItem(HAS_REGISTERED_KEY, "true").catch(() => {});
+        setAuthFlag().catch(() => {}); // Persist auth flag on sign-in
         // Reset bridge auto-retry counter for this fresh login attempt
         bridgeAutoRetriedRef.current = false;
         if (mountedRef.current) {
@@ -637,6 +650,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     // Immediately mark as signing out to prevent race conditions
     signingOutRef.current = true;
+
+    // Clear persistent auth flag FIRST — before any other cleanup
+    await clearAuthFlag();
 
     // IMMEDIATELY clear React state so UI updates instantly.
     // This ensures the user sees the login screen right away,
