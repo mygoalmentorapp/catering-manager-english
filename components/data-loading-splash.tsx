@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { View, Text, StyleSheet, Image, Animated, Platform } from "react-native";
+import { View, Text, StyleSheet, Image, Animated, Platform, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DS_COLORS, DS_FONT, DS_WEIGHT } from "@/lib/design-system";
+import { DebugLogViewer } from "@/components/debug-log-viewer";
 
 /**
  * All motivational/marketing phrases.
@@ -10,18 +11,18 @@ import { DS_COLORS, DS_FONT, DS_WEIGHT } from "@/lib/design-system";
  * cycling through them across sessions.
  */
 const ALL_PHRASES = [
-  "Enter your products quickly and easily",
-  "See your profit on every order",
-  "Create an order for the customer in one click",
-  "Generate an accurate shopping list — without forgetting anything",
-  "Send a professional price quote to the customer",
-  "Your entire business — in one place",
-  "Save time, earn more",
-  "Manage your menu, orders, and shopping easily",
-  "Generate professional documents with one click",
-  "Plan your shopping smartly",
-  "Control costs and prices easily",
-  "Everything organized, all in one place",
+  "הזן את המוצרים שלך בקלות ובמהירות",
+  "ראה את הרווח שלך על כל הזמנה",
+  "צור הזמנה מול הלקוח בלחיצה אחת",
+  "הפק רשימת קניות מדויקת — בלי לשכוח שום דבר",
+  "כל העסק שלך — במקום אחד",
+  "חסוך זמן, הרוויח יותר",
+  "נהל את התפריט, ההזמנות והקניות בקלות",
+  "הפק מסמכים מקצועיים בלחיצת כפתור",
+  "תכנן את הקניות שלך בצורה חכמה",
+  "שלוט בעלויות ובמחירים בקלות",
+  "הכל מסודר, הכל במקום אחד",
+  "בלי לשכוח כלום בלי לקנות מיותר",
 ];
 
 const PHRASE_DURATION = 3000; // 3 seconds per phrase
@@ -46,6 +47,7 @@ export function DataLoadingSplash({ onMinTimeComplete }: DataLoadingSplashProps)
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const minTimeCalledRef = useRef(false);
   const mountedRef = useRef(true);
+  const [showDebugLogs, setShowDebugLogs] = useState(false);
 
   // Pick phrases on mount
   useEffect(() => {
@@ -97,7 +99,8 @@ export function DataLoadingSplash({ onMinTimeComplete }: DataLoadingSplashProps)
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 400,
-      useNativeDriver: true }).start();
+      useNativeDriver: true,
+    }).start();
 
     // After 3 seconds, transition to phrase 2
     const timer1 = setTimeout(() => {
@@ -106,7 +109,8 @@ export function DataLoadingSplash({ onMinTimeComplete }: DataLoadingSplashProps)
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 300,
-        useNativeDriver: true }).start(() => {
+        useNativeDriver: true,
+      }).start(() => {
         if (!mountedRef.current) return;
         // Switch to phrase 2
         setCurrentPhraseIdx(1);
@@ -114,7 +118,8 @@ export function DataLoadingSplash({ onMinTimeComplete }: DataLoadingSplashProps)
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 400,
-          useNativeDriver: true }).start();
+          useNativeDriver: true,
+        }).start();
       });
     }, PHRASE_DURATION);
 
@@ -138,14 +143,15 @@ export function DataLoadingSplash({ onMinTimeComplete }: DataLoadingSplashProps)
     return (
       <SafeAreaView style={s.container} edges={["top", "bottom", "left", "right"]}>
         <View style={s.content}>
-          <View style={s.logoWrap}>
+          <Pressable onLongPress={() => setShowDebugLogs(true)} delayLongPress={3000} style={s.logoWrap}>
             <Image
               source={require("@/assets/images/icon.png")}
               style={s.logo}
               resizeMode="contain"
             />
-          </View>
+          </Pressable>
         </View>
+        <DebugLogViewer visible={showDebugLogs} onClose={() => setShowDebugLogs(false)} />
       </SafeAreaView>
     );
   }
@@ -153,14 +159,14 @@ export function DataLoadingSplash({ onMinTimeComplete }: DataLoadingSplashProps)
   return (
     <SafeAreaView style={s.container} edges={["top", "bottom", "left", "right"]}>
       <View style={s.content}>
-        {/* Logo — always show app icon */}
-        <View style={s.logoWrap}>
+        {/* Logo — always show app icon, long-press 3s opens debug logs */}
+        <Pressable onLongPress={() => setShowDebugLogs(true)} delayLongPress={3000} style={s.logoWrap}>
           <Image
             source={require("@/assets/images/icon.png")}
             style={s.logo}
             resizeMode="contain"
           />
-        </View>
+        </Pressable>
 
         {/* Rotating phrase */}
         <View style={s.bannerWrap}>
@@ -174,6 +180,7 @@ export function DataLoadingSplash({ onMinTimeComplete }: DataLoadingSplashProps)
           <LoadingDots />
         </View>
       </View>
+      <DebugLogViewer visible={showDebugLogs} onClose={() => setShowDebugLogs(false)} />
     </SafeAreaView>
   );
 }

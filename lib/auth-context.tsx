@@ -16,6 +16,7 @@ import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
 import { bridgeToken } from "@/lib/_core/api";
 import { setAuthFlag, clearAuthFlag, getAuthFlag } from "@/lib/_core/auth-flag";
+import { debugLog } from "@/lib/_core/debug-logger";
 
 // ============ TYPES ============
 
@@ -219,7 +220,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initAuth = async () => {
       initAuthRunningRef.current = true;
       try {
-        console.log("[Auth] initAuth starting...");
+        debugLog("Auth", "initAuth starting...");
 
         // Race getSession against a 6s timeout — SecureStore/AsyncStorage can hang
         const sessionResult = await raceTimeout(
@@ -230,13 +231,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mountedRef.current) return;
 
         if (!sessionResult) {
-          console.warn("[Auth] getSession timed out — treating as no session");
+          debugLog("Auth", "getSession timed out — treating as no session");
           setIsLoading(false);
           return;
         }
 
         let currentSession = sessionResult.data?.session;
-        console.log("[Auth] Session found:", !!currentSession);
+        debugLog("Auth", "Session found:", !!currentSession);
 
         // FIX: If getSession() returns null, it might be because Supabase's internal
         // auto-refresh already ran and failed (e.g., after warm restart where JS context
@@ -246,7 +247,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // some time shows DataLoadingSplash then redirects to login, but force-closing
         // and reopening works fine (cold start re-reads storage cleanly).
         if (!currentSession?.user) {
-          console.log("[Auth] No session from getSession — trying explicit refreshSession...");
+          debugLog("Auth", "No session from getSession — trying explicit refreshSession...");
           try {
             const refreshResult = await raceTimeout(
               supabase.auth.refreshSession(),
@@ -254,12 +255,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             );
             if (refreshResult?.data?.session?.user) {
               currentSession = refreshResult.data.session;
-              console.log("[Auth] refreshSession succeeded — session restored");
+              debugLog("Auth", "refreshSession succeeded — session restored");
             } else {
-              console.log("[Auth] refreshSession also returned no session");
+              debugLog("Auth", "refreshSession also returned no session");
             }
           } catch (refreshErr) {
-            console.warn("[Auth] refreshSession error:", refreshErr);
+            debugLog("Auth", "refreshSession error:", refreshErr);
           }
         }
 
@@ -269,7 +270,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Read directly from AsyncStorage where Supabase persists the refresh_token,
         // and use setSession() to force Supabase to re-hydrate and refresh.
         if (!currentSession?.user && Platform.OS !== "web") {
-          console.log("[Auth] Attempting AsyncStorage fallback for session recovery...");
+          debugLog("Auth", "Attempting AsyncStorage fallback for session recovery...");
           try {
             const raw = await AsyncStorage.getItem(SUPABASE_STORAGE_KEY);
             if (raw) {
@@ -278,7 +279,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const refreshToken = stored?.refresh_token;
 
               if (accessToken && refreshToken) {
-                console.log("[Auth] Found tokens in AsyncStorage — calling setSession()...");
+                debugLog("Auth", "Found tokens in AsyncStorage — calling setSession()...");
                 const setResult = await raceTimeout(
                   supabase.auth.setSession({
                     access_token: accessToken,
@@ -288,18 +289,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 );
                 if (setResult?.data?.session?.user) {
                   currentSession = setResult.data.session;
-                  console.log("[Auth] AsyncStorage fallback succeeded — session restored via setSession");
+                  debugLog("Auth", "AsyncStorage fallback succeeded — session restored via setSession");
                 } else {
-                  console.log("[Auth] AsyncStorage fallback: setSession returned no valid session");
+                  debugLog("Auth", "AsyncStorage fallback: setSession returned no valid session");
                 }
               } else {
-                console.log("[Auth] AsyncStorage fallback: no tokens found in stored data");
+                debugLog("Auth", "AsyncStorage fallback: no tokens found in stored data");
               }
             } else {
-              console.log("[Auth] AsyncStorage fallback: no stored session data found");
+              debugLog("Auth", "AsyncStorage fallback: no stored session data found");
             }
           } catch (storageErr) {
-            console.warn("[Auth] AsyncStorage fallback failed:", storageErr);
+            debugLog("Auth", "AsyncStorage fallback failed:", storageErr);
           }
         }
 
@@ -310,7 +311,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const p = await fetchProfile(currentSession.user.id);
           if (mountedRef.current) {
             setProfile(p);
-            console.log("[Auth] Profile loaded:", !!p);
+            debugLog("Auth", "Profile loaded:", !!p);
           }
 
           // Ensure custom JWT exists in SecureStore for tRPC auth.
@@ -319,23 +320,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (Platform.OS !== "web") {
             const existingToken = await Auth.getSessionToken();
             if (existingToken) {
-              console.log("[Auth] Custom JWT already exists in SecureStore");
+              debugLog("Auth", "Custom JWT already exists in SecureStore");
               if (mountedRef.current) setIsBridgeReady(true);
             } else {
-              console.log("[Auth] No custom JWT found — bridging on init...");
+              debugLog("Auth", "No custom JWT found — bridging on init...");
               await performBridge(currentSession.access_token);
               // performBridge sets isBridgeReady on success
             }
           }
         } else {
-          console.log("[Auth] No session found");
+          debugLog("Auth", "No session found");
         }
       } catch (err) {
-        console.warn("[Auth] Init error:", err);
+        debugLog("Auth", "Init error:", err);
       } finally {
         initAuthRunningRef.current = false;
         if (mountedRef.current) {
-          console.log("[Auth] isLoading → false");
+          debugLog("Auth", "isLoading → false");
           setIsLoading(false);
         }
       }
