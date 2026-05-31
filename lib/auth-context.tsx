@@ -333,7 +333,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   currentSession = setResult.data.session;
                   debugLog("Auth", "AsyncStorage fallback succeeded — session restored via setSession");
                 } else {
-                  debugLog("Auth", "AsyncStorage fallback: setSession returned no valid session");
+                  // Log error details (no secrets) to help diagnose failures
+                  const setError = setResult?.error;
+                  if (setError) {
+                    debugLog("Auth", "AsyncStorage fallback: setSession error", {
+                      name: setError.name,
+                      message: setError.message,
+                      status: (setError as any).status,
+                    });
+                  } else {
+                    debugLog("Auth", "AsyncStorage fallback: setSession returned no valid session (no error object)");
+                  }
                 }
               } else {
                 debugLog("Auth", "AsyncStorage fallback: no tokens found in stored data");
@@ -609,6 +619,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === "SIGNED_OUT") {
         setProfile(null);
         clearAuthFlag().catch(() => {}); // Clear auth flag on explicit sign-out
+        // Clear event session ref so stale session cannot be re-used
+        latestAuthEventSessionRef.current = null;
         // Reset bridge readiness on sign out so next login must re-bridge
         if (Platform.OS !== "web") {
           setIsBridgeReady(false);
@@ -875,6 +887,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     // Immediately mark as signing out to prevent race conditions
     signingOutRef.current = true;
+    // Clear stale event session ref to prevent re-use after logout
+    latestAuthEventSessionRef.current = null;
 
     // Clear persistent auth flag FIRST — before any other cleanup
     await clearAuthFlag();
