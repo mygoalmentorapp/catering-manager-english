@@ -64,9 +64,25 @@ function raceTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   ]).finally(() => clearTimeout(timer));
 }
 
+// ============ MODULE-LEVEL SESSION CACHE ============
+// These variables survive AuthProvider remounts within the same JS process.
+// When React remounts AuthProvider (e.g., due to state changes in parent),
+// useRef values are lost but module-level variables persist.
+
+/** Cached session from the most recent successful auth event or initAuth recovery */
+let moduleSessionCache: Session | null = null;
+
+/** Flag: true if any initAuth run in this JS process successfully recovered a session */
+let sessionRecoveredInProcess = false;
+
+/** Auto-incrementing instance counter for debug logging */
+let authProviderInstanceCount = 0;
+
 // ============ PROVIDER ============
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // Instance ID for debug logging — helps identify remounts in Logcat
+  const instanceIdRef = useRef(++authProviderInstanceCount);
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -231,11 +247,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize auth state
   useEffect(() => {
     mountedRef.current = true;
+    debugLog("Auth", `AuthProvider mounted (instance: ${instanceIdRef.current})`, {
+      moduleSessionCache: !!moduleSessionCache?.user,
+      sessionRecoveredInProcess,
+    });
 
     const initAuth = async () => {
       initAuthRunningRef.current = true;
       try {
-        debugLog("Auth", "initAuth starting...");
+        debugLog("Auth", `initAuth starting... (instance: ${instanceIdRef.current})`);
 
         // FIX 1: Check auth flag BEFORE any Supabase calls.
         // If the user was previously authenticated (flag is set), enter recovery mode.
@@ -267,12 +287,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           debugLog("Auth", "Session found:", !!currentSession);
         }
 
-        // FIX: Check if TOKEN_REFRESHED already delivered a valid session while we waited.
-        // This handles the race where getSession hangs/times out but TOKEN_REFRESHED
-        // already fired with a valid session.
-        if (!currentSession?.user && latestAuthEventSessionRef.current?.user) {
-          currentSession = latestAuthEventSessionRef.current;
-          debugLog("Auth", "Using session from auth event (after getSession) — skipping fallbacks");
+        // MODULE CACHE CHECKPOINT 1: Check module cache AND instance ref.
+        // If TOKEN_REFRESHED already delivered a valid session (either in this instance
+        // or a previous one before remount), use it.
+        if (!currentSession?.user) {
+          const cachedSession = latestAuthEventSessionRef.current ?? moduleSessionCache;
+          if (cachedSession?.user) {
+            currentSession = cachedSession;
+            debugLog("Auth", "Using cached session (checkpoint 1, after getSession)", {
+              source: latestAuthEventSessionRef.current ? "instanceRef" : "moduleCache",
+            });
+          }
         }
 
         // FIX: If getSession() returns null (or timed out), it might be because Supabase's
@@ -300,10 +325,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        // FIX: Check auth event ref again before AsyncStorage fallback
-        if (!currentSession?.user && latestAuthEventSessionRef.current?.user) {
-          currentSession = latestAuthEventSessionRef.current;
-          debugLog("Auth", "Using session from auth event (before AsyncStorage fallback)");
+        // MODULE CACHE CHECKPOINT 2: Check again before AsyncStorage fallback.
+        // A TOKEN_REFRESHED event may have fired while refreshSession was timing out.
+        if (!currentSession?.user) {
+          const cachedSession = latestAuthEventSessionRef.current ?? moduleSessionCache;
+          if (cachedSession?.user) {
+            currentSession = cachedSession;
+            debugLog("Auth", "Using cached session (checkpoint 2, before AsyncStorage fallback)", {
+              source: latestAuthEventSessionRef.current ? "instanceRef" : "moduleCache",
+            });
+          }
         }
 
         // FALLBACK: If both getSession() and refreshSession() returned null,
@@ -360,6 +391,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(currentSession);
           setUser(currentSession.user);
           await setAuthFlag(); // Persist auth flag on successful session restore
+          // Update module-level cache — survives remounts
+          moduleSessionCache = currentSession;
+          sessionRecoveredInProcess = true;
           const p = await fetchProfile(currentSession.user.id);
           if (mountedRef.current) {
             setProfile(p);
@@ -381,30 +415,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
         } else {
-          // Final check: did a valid session arrive via auth event during the entire initAuth flow?
-          const eventSession = latestAuthEventSessionRef.current;
-          if (eventSession?.user) {
-            debugLog("Auth", "Not clearing auth flag — valid auth event session exists, using it");
-            // Use the session from the auth event
-            setSession(eventSession);
-            setUser(eventSession.user);
+          // MODULE CACHE CHECKPOINT 3: Final guard before clearing auth flag.
+          // Check both instance ref and module cache one last time.
+          const finalCachedSession = latestAuthEventSessionRef.current ?? moduleSessionCache;
+          if (finalCachedSession?.user) {
+            debugLog("Auth", "Using cached session (checkpoint 3, final guard)", {
+              source: latestAuthEventSessionRef.current ? "instanceRef" : "moduleCache",
+            });
+            setSession(finalCachedSession);
+            setUser(finalCachedSession.user);
             await setAuthFlag();
-            const p = await fetchProfile(eventSession.user.id);
+            moduleSessionCache = finalCachedSession;
+            sessionRecoveredInProcess = true;
+            const p = await fetchProfile(finalCachedSession.user.id);
             if (mountedRef.current) {
               setProfile(p);
-              debugLog("Auth", "Profile loaded from event session:", !!p);
+              debugLog("Auth", "Profile loaded (from cache guard):", !!p);
             }
-            // Ensure bridge is ready
             if (Platform.OS !== "web") {
               const existingToken = await Auth.getSessionToken();
               if (existingToken) {
-                debugLog("Auth", "Custom JWT already exists in SecureStore (event session path)");
                 if (mountedRef.current) setIsBridgeReady(true);
               } else {
-                debugLog("Auth", "No custom JWT found — bridging from event session...");
-                await performBridge(eventSession.access_token);
+                await performBridge(finalCachedSession.access_token);
               }
             }
+          } else if (sessionRecoveredInProcess) {
+            // GUARD: A previous initAuth run (before remount) already recovered the session.
+            // The network is still cold, so all Supabase calls timed out, but the user IS
+            // authenticated. Do NOT clear the auth flag — it would force a login redirect.
+            debugLog("Auth", "NOT clearing auth flag — sessionRecoveredInProcess is true (previous initAuth succeeded)");
           } else {
             debugLog("Auth", "No session found after all recovery attempts");
             // If auth flag was set but we couldn't recover, clear it — user truly has no session
@@ -436,9 +476,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // FIX: Capture any valid session from auth events immediately.
       // This allows initAuth to use it if getSession/refreshSession fail.
+      // Also update module-level cache so it survives AuthProvider remounts.
       if (newSession?.user) {
         latestAuthEventSessionRef.current = newSession;
-        debugLog("Auth", "Auth event session captured:", {
+        moduleSessionCache = newSession;
+        debugLog("Auth", "Auth event session captured (instance + module cache):", {
           event,
           hasUser: true,
           expiresAt: newSession.expires_at,
@@ -619,8 +661,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === "SIGNED_OUT") {
         setProfile(null);
         clearAuthFlag().catch(() => {}); // Clear auth flag on explicit sign-out
-        // Clear event session ref so stale session cannot be re-used
+        // Clear event session ref and module cache so stale session cannot be re-used
         latestAuthEventSessionRef.current = null;
+        moduleSessionCache = null;
+        sessionRecoveredInProcess = false;
         // Reset bridge readiness on sign out so next login must re-bridge
         if (Platform.OS !== "web") {
           setIsBridgeReady(false);
@@ -685,6 +729,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      debugLog("Auth", `AuthProvider unmounting (instance: ${instanceIdRef.current})`);
       mountedRef.current = false;
       subscription.unsubscribe();
     };
@@ -887,8 +932,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     // Immediately mark as signing out to prevent race conditions
     signingOutRef.current = true;
-    // Clear stale event session ref to prevent re-use after logout
+    // Clear stale event session ref and module cache to prevent re-use after logout
     latestAuthEventSessionRef.current = null;
+    moduleSessionCache = null;
+    sessionRecoveredInProcess = false;
 
     // Clear persistent auth flag FIRST — before any other cleanup
     await clearAuthFlag();
