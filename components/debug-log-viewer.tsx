@@ -10,7 +10,6 @@ import {
   Platform,
   Alert,
 } from "react-native";
-import * as Clipboard from "expo-clipboard";
 import { getDebugLogs, clearDebugLogs, getDebugLogsAsText } from "@/lib/_core/debug-logger";
 import { DS_COLORS, DS_FONT, DS_WEIGHT, DS_RADIUS, DS_SPACING } from "@/lib/design-system";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -40,18 +39,10 @@ export function DebugLogViewer({ visible, onClose }: DebugLogViewerProps) {
       return;
     }
 
-    if (Platform.OS === "web") {
-      // On web, copy to clipboard
-      await Clipboard.setStringAsync(text);
-      Alert.alert("הועתק", "הלוגים הועתקו ללוח");
-    } else {
-      try {
-        await Share.share({ message: text, title: "Auth Debug Logs" });
-      } catch {
-        // Fallback to clipboard
-        await Clipboard.setStringAsync(text);
-        Alert.alert("הועתק", "הלוגים הועתקו ללוח");
-      }
+    try {
+      await Share.share({ message: text, title: "Auth Debug Logs" });
+    } catch {
+      Alert.alert("Error", "Could not share logs");
     }
   }, []);
 
@@ -61,8 +52,11 @@ export function DebugLogViewer({ visible, onClose }: DebugLogViewerProps) {
       Alert.alert("אין לוגים", "אין לוגים להעתקה");
       return;
     }
-    await Clipboard.setStringAsync(text);
-    Alert.alert("הועתק!", "כל הלוגים הועתקו ללוח");
+    try {
+      await Share.share({ message: text, title: "Auth Debug Logs" });
+    } catch {
+      Alert.alert("Error", "Could not share logs");
+    }
   }, []);
 
   const getTagColor = (tag: string): string => {
