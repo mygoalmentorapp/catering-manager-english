@@ -11,6 +11,7 @@
 import { Platform } from "react-native";
 import { devLog, warnLog } from "./environment";
 import { vanillaTrpc } from "../trpc";
+import { APP_LANGUAGE } from "@/constants/app-identity";
 
 /**
  * tRPC caller type — used for testing override.
@@ -37,7 +38,8 @@ function getClient(): TrpcStateCaller {
     getState: { query: () => vanillaTrpc.experience.getState.query() },
     incrementCounter: { mutate: (input) => vanillaTrpc.experience.incrementCounter.mutate(input) as any },
     getCampaignStates: { query: () => vanillaTrpc.experience.getCampaignStates.query() as any },
-    upsertCampaignState: { mutate: (input) => vanillaTrpc.experience.upsertCampaignState.mutate(input) } };
+    upsertCampaignState: { mutate: (input) => vanillaTrpc.experience.upsertCampaignState.mutate(input) },
+  };
 }
 
 export const UserExperienceStateService = {
@@ -88,7 +90,9 @@ export const UserExperienceStateService = {
           last_active_at: new Date().toISOString(),
           current_app_version: appVersion,
           platform: Platform.OS,
-          language: "he" } });
+          language: APP_LANGUAGE,
+        },
+      });
       devLog("UserState", "Initialized for user");
     } catch (err) {
       console.error("[UserState] initForUser error:", err);
@@ -103,7 +107,8 @@ export const UserExperienceStateService = {
       if (!isReady && !testTrpcClient) return;
       const client = getClient();
       await client.upsertState.mutate({
-        updates: { signup_at: new Date().toISOString() } });
+        updates: { signup_at: new Date().toISOString() },
+      });
       devLog("UserState", "Recorded signup");
     } catch (err) {
       console.error("[UserState] recordSignup error:", err);
@@ -122,7 +127,9 @@ export const UserExperienceStateService = {
           last_active_at: new Date().toISOString(),
           current_app_version: appVersion,
           platform: Platform.OS,
-          language: "he" } });
+          language: APP_LANGUAGE,
+        },
+      });
       devLog("UserState", "Updated on app_open");
     } catch (err) {
       console.error("[UserState] onAppOpen error:", err);
@@ -205,7 +212,9 @@ export const UserExperienceStateService = {
       await client.upsertState.mutate({
         updates: {
           onboarding_completed: true,
-          onboarding_completed_at: new Date().toISOString() } });
+          onboarding_completed_at: new Date().toISOString(),
+        },
+      });
       devLog("UserState", "Recorded onboarding_completed");
     } catch (err) {
       console.error("[UserState] onOnboardingCompleted error:", err);
@@ -222,7 +231,9 @@ export const UserExperienceStateService = {
       await client.upsertState.mutate({
         updates: {
           feedback_submitted: true,
-          feedback_submitted_at: new Date().toISOString() } });
+          feedback_submitted_at: new Date().toISOString(),
+        },
+      });
       devLog("UserState", "Recorded feedback_submitted");
     } catch (err) {
       console.error("[UserState] onFeedbackSubmitted error:", err);
@@ -269,9 +280,11 @@ export const UserExperienceStateService = {
       const client = getClient();
       await client.upsertCampaignState.mutate({
         campaign_key: campaignKey,
-        updates });
+        updates,
+      });
       devLog("UserState", `Campaign state updated: ${campaignKey}`);
     } catch (err) {
       console.error("[UserState] upsertCampaignState error:", err);
     }
-  } };
+  },
+};

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { setOneSignalScreenTrigger } from "@/lib/onesignal-bootstrap";
 import {
   Text,
   View,
@@ -13,7 +14,8 @@ import {
   Animated,
   Modal,
   Pressable,
-  BackHandler } from "react-native";
+  BackHandler,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,7 +29,8 @@ import {
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
-  DS_SHADOW } from "@/lib/design-system";
+  DS_SHADOW,
+} from "@/lib/design-system";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 // useEditGuard removed — offline editing is seamless now
 // OfflineInfoBanner removed — smooth UX, toast on save only
@@ -67,7 +70,8 @@ function sanitizeQuantity(text: string): string {
 function PressableCard({
   children,
   onPress,
-  style }: {
+  style,
+}: {
   children: React.ReactNode;
   onPress: () => void;
   style?: any;
@@ -81,13 +85,15 @@ function PressableCard({
           Animated.timing(scaleAnim, {
             toValue: 0.97,
             duration: 80,
-            useNativeDriver: true }).start()
+            useNativeDriver: true,
+          }).start()
         }
         onPressOut={() =>
           Animated.timing(scaleAnim, {
             toValue: 1,
             duration: 150,
-            useNativeDriver: true }).start()
+            useNativeDriver: true,
+          }).start()
         }
         activeOpacity={1}
         style={style}
@@ -105,16 +111,21 @@ function UnitPickerModal({
   selectedUnit,
   onSelect,
   onClose,
-  onAddUnit }: {
+  onAddUnit,
+  onDeleteUnit,
+}: {
   visible: boolean;
   units: UnitDef[];
   selectedUnit: string;
   onSelect: (unit: string) => void;
   onClose: () => void;
   onAddUnit: (unit: UnitDef) => Promise<void>;
+  onDeleteUnit: (singular: string) => Promise<void>;
 }) {
   const { colorScheme } = useThemeContext();
   const s = React.useMemo(() => _make_s(), [DS_COLORS.accent, colorScheme]);
+
+  const DEFAULT_UNIT_SINGULARS = ["קילו", "גרם", "ליטר", 'מ"ל', "יחידה", "כוס", "כף", "קופסא"];
 
   const [newSingular, setNewSingular] = useState("");
   const [newPlural, setNewPlural] = useState("");
@@ -123,7 +134,15 @@ function UnitPickerModal({
   const handleAddUnit = async () => {
     if (!newSingular.trim()) return;
     if (!newPlural.trim()) {
-      Alert.alert("Error", "Please also enter the plural form");
+      Alert.alert("שגיאה", "יש למלא גם צורת רבים");
+      return;
+    }
+    // Check for duplicates client-side
+    const exists = units.some(
+      (u) => u.singular.trim() === newSingular.trim()
+    );
+    if (exists) {
+      Alert.alert("שגיאה", "יחידת מידה זו כבר קיימת");
       return;
     }
     setAdding(true);
@@ -133,10 +152,25 @@ function UnitPickerModal({
       setNewSingular("");
       setNewPlural("");
     } catch (e: any) {
-      Alert.alert("Error", e.message);
+      Alert.alert("שגיאה", e.message);
     } finally {
       setAdding(false);
     }
+  };
+
+  const handleDeleteUnit = (unitDef: UnitDef) => {
+    Alert.alert(
+      "מחיקת יחידת מידה",
+      `האם למחוק את "${unitDef.singular}/${unitDef.plural}"?`,
+      [
+        { text: "ביטול", style: "cancel" },
+        {
+          text: "מחיקה",
+          style: "destructive",
+          onPress: () => onDeleteUnit(unitDef.singular),
+        },
+      ]
+    );
   };
 
   return (
@@ -147,25 +181,38 @@ function UnitPickerModal({
             <TouchableOpacity onPress={onClose} style={s.headerBtn} activeOpacity={0.7}>
               <MaterialIcons name="close" size={22} color={DS_COLORS.textPrimary} />
             </TouchableOpacity>
-            <Text style={s.unitModalTitle}>Select measurement unit</Text>
+            <Text style={s.unitModalTitle}>בחירת יחידת מידה</Text>
             <View style={{ width: 40 }} />
           </View>
           <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ padding: DS_SPACING.lg }}>
-            {units.map((unitDef) => (
-              <TouchableOpacity
-                key={unitDef.singular}
-                onPress={() => { onSelect(unitDef.singular); onClose(); }}
-                style={[s.unitOption, selectedUnit === unitDef.singular && s.unitOptionSelected]}
-                activeOpacity={0.7}
-              >
-                <Text style={[s.unitOptionText, selectedUnit === unitDef.singular && s.unitOptionTextSelected]}>
-                  {unitDef.singular}/{unitDef.plural}
-                </Text>
-                {selectedUnit === unitDef.singular && (
-                  <MaterialIcons name="check" size={20} color={DS_COLORS.accent} />
-                )}
-              </TouchableOpacity>
-            ))}
+            {units.map((unitDef) => {
+              const isDefault = DEFAULT_UNIT_SINGULARS.includes(unitDef.singular);
+              return (
+                <View key={unitDef.singular} style={[s.unitOption, selectedUnit === unitDef.singular && s.unitOptionSelected, { flexDirection: "row", direction: "rtl", alignItems: "center" }]}>
+                  <TouchableOpacity
+                    onPress={() => { onSelect(unitDef.singular); onClose(); }}
+                    style={{ flex: 1 }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.unitOptionText, selectedUnit === unitDef.singular && s.unitOptionTextSelected]}>
+                      {unitDef.singular}/{unitDef.plural}
+                    </Text>
+                  </TouchableOpacity>
+                  {selectedUnit === unitDef.singular && (
+                    <MaterialIcons name="check" size={20} color={DS_COLORS.accent} />
+                  )}
+                  {!isDefault && (
+                    <TouchableOpacity
+                      onPress={() => handleDeleteUnit(unitDef)}
+                      style={s.removeBtn}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialIcons name="delete-outline" size={18} color={DS_COLORS.error} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })}
           </ScrollView>
           <View style={s.addUnitSection}>
             <View style={s.addUnitRow}>
@@ -173,18 +220,18 @@ function UnitPickerModal({
                 style={[s.addUnitInput, { flex: 1 }]}
                 value={newSingular}
                 onChangeText={setNewSingular}
-                placeholder="Singular (e.g., kg)"
+                placeholder="יחיד (למשל: קילו)"
                 placeholderTextColor={DS_COLORS.textSecondary}
-                textAlign="left"
+                textAlign="right"
                 returnKeyType="next"
               />
               <TextInput
                 style={[s.addUnitInput, { flex: 1 }]}
                 value={newPlural}
                 onChangeText={setNewPlural}
-                placeholder="Plural (e.g., kg)"
+                placeholder="רבים (למשל: קילו)"
                 placeholderTextColor={DS_COLORS.textSecondary}
-                textAlign="left"
+                textAlign="right"
                 returnKeyType="done"
                 onSubmitEditing={handleAddUnit}
               />
@@ -196,7 +243,7 @@ function UnitPickerModal({
               disabled={!newSingular.trim() || adding}
             >
               <MaterialIcons name="add" size={18} color={DS_COLORS.white} />
-              <Text style={s.addUnitBtnText}>Add</Text>
+              <Text style={s.addUnitBtnText}>הוסף</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -218,7 +265,8 @@ function CategoryManageModal({
   onAdd,
   onRename,
   onDelete,
-  onClose }: {
+  onClose,
+}: {
   visible: boolean;
   allCategories: AllCategory[];
   onAdd: (name: string) => Promise<void>;
@@ -241,7 +289,7 @@ function CategoryManageModal({
       await onAdd(newCatName.trim());
       setNewCatName("");
     } catch (e: any) {
-      Alert.alert("Error", e.message);
+      Alert.alert("שגיאה", e.message);
     } finally {
       setAdding(false);
     }
@@ -249,15 +297,16 @@ function CategoryManageModal({
 
   const handleDelete = (cat: AllCategory) => {
     if (allCategories.length <= 1) {
-      Alert.alert("Error", "At least one category must remain");
+      Alert.alert("שגיאה", "חייבת להישאר לפחות קטגוריה אחת");
       return;
     }
-    Alert.alert("Delete category", `Delete "${cat.name}"?\nAll items inside will be deleted.`, [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert("מחיקת קטגוריה", `האם למחוק את "${cat.name}"?\nכל הרכיבים שבתוכה יימחקו.`, [
+      { text: "ביטול", style: "cancel" },
       {
-        text: "Delete",
+        text: "מחיקה",
         style: "destructive",
-        onPress: () => onDelete(cat.id) },
+        onPress: () => onDelete(cat.id),
+      },
     ]);
   };
 
@@ -280,7 +329,7 @@ function CategoryManageModal({
       try {
         await onRename(editingId, trimmed);
       } catch (e: any) {
-        Alert.alert("Error", e.message);
+        Alert.alert("שגיאה", e.message);
       }
     }
     setEditingId(null);
@@ -299,7 +348,7 @@ function CategoryManageModal({
               <TouchableOpacity onPress={onClose} style={s.headerBtn} activeOpacity={0.7}>
                 <MaterialIcons name="close" size={22} color={DS_COLORS.textPrimary} />
               </TouchableOpacity>
-              <Text style={s.unitModalTitle}>Manage categories</Text>
+              <Text style={s.unitModalTitle}>ניהול קטגוריות</Text>
               <View style={{ width: 40 }} />
             </View>
             <ScrollView style={{ maxHeight: 350 }} contentContainerStyle={{ padding: DS_SPACING.lg, gap: DS_SPACING.sm }}>
@@ -311,7 +360,7 @@ function CategoryManageModal({
                       value={editingName}
                       onChangeText={setEditingName}
                       autoFocus
-                      textAlign="left"
+                      textAlign="right"
                       returnKeyType="done"
                       onSubmitEditing={finishEditing}
                       onBlur={finishEditing}
@@ -347,9 +396,9 @@ function CategoryManageModal({
                   style={s.addUnitInput}
                   value={newCatName}
                   onChangeText={setNewCatName}
-                  placeholder="Enter name for new category..."
+                  placeholder="הזן שם לקטגוריה חדשה..."
                   placeholderTextColor={DS_COLORS.textSecondary}
-                  textAlign="left"
+                  textAlign="right"
                   returnKeyType="done"
                   onSubmitEditing={handleAdd}
                 />
@@ -360,7 +409,7 @@ function CategoryManageModal({
                   disabled={!newCatName.trim() || adding}
                 >
                   <MaterialIcons name="add" size={18} color={DS_COLORS.white} />
-                  <Text style={s.addUnitBtnText}>Add</Text>
+                  <Text style={s.addUnitBtnText}>הוסף</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -375,7 +424,8 @@ function CategoryManageModal({
 function ProductDetailView({
   product,
   onClose,
-  onEdit }: {
+  onEdit,
+}: {
   product: Product;
   onClose: () => void;
   onEdit: () => void;
@@ -404,7 +454,7 @@ function ProductDetailView({
       <Text style={s.detailItemQty}>{item.quantity} {item.unit ? getUnitLabel(item.unit, item.quantity, units) : item.unit}</Text>
       <Text style={s.detailItemName}>{item.name}</Text>
       {(item.price ?? 0) > 0 && (
-        <Text style={s.detailItemPrice}>{item.price} $</Text>
+        <Text style={s.detailItemPrice}>{item.price} ₪</Text>
       )}
     </View>
   );
@@ -418,7 +468,7 @@ function ProductDetailView({
         <View style={s.header}>
           <TouchableOpacity onPress={onEdit} style={s.editHeaderBtn} activeOpacity={0.8}>
             <MaterialIcons name="edit" size={18} color={DS_COLORS.accent} />
-            <Text style={s.editHeaderBtnText}>Edit</Text>
+            <Text style={s.editHeaderBtnText}>עריכה</Text>
           </TouchableOpacity>
           <Text style={s.headerTitle} numberOfLines={1}>{product.name}</Text>
           <TouchableOpacity onPress={onClose} style={s.headerBtn} activeOpacity={0.7}>
@@ -434,33 +484,33 @@ function ProductDetailView({
               style={[s.prodTabBtn, activeTab === "customer" && s.prodTabBtnActive]}
               activeOpacity={0.8}
             >
-              <Text style={[s.prodTabBtnText, activeTab === "customer" && s.prodTabBtnTextActive]}>Customer price</Text>
+              <Text style={[s.prodTabBtnText, activeTab === "customer" && s.prodTabBtnTextActive]}>מחיר ללקוח</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setActiveTab("cost")}
               style={[s.prodTabBtn, activeTab === "cost" && s.prodTabBtnActive]}
               activeOpacity={0.8}
             >
-              <Text style={[s.prodTabBtnText, activeTab === "cost" && s.prodTabBtnTextActive]}>Price Cost</Text>
+              <Text style={[s.prodTabBtnText, activeTab === "cost" && s.prodTabBtnTextActive]}>מחיר עלות</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setActiveTab("profit")}
               style={[s.prodTabBtn, activeTab === "profit" && s.prodTabBtnActive]}
               activeOpacity={0.8}
             >
-              <Text style={[s.prodTabBtnText, activeTab === "profit" && s.prodTabBtnTextActive]}>Our profit</Text>
+              <Text style={[s.prodTabBtnText, activeTab === "profit" && s.prodTabBtnTextActive]}>ריווח שלנו</Text>
             </TouchableOpacity>
           </View>
 
           <View style={s.prodTabContentRow}>
             <View style={s.prodTabContentCell}>
               {activeTab === "customer" && (
-                <Text style={s.prodTabValueAmount}>${formatPrice(product.customerPrice ?? 0)}</Text>
+                <Text style={s.prodTabValueAmount}>₪{formatPrice(product.customerPrice ?? 0)}</Text>
               )}
             </View>
             <View style={s.prodTabContentCell}>
               {activeTab === "cost" && (
-                <Text style={s.prodTabValueAmount}>${formatPrice(finalCost)}</Text>
+                <Text style={s.prodTabValueAmount}>₪{formatPrice(finalCost)}</Text>
               )}
             </View>
             <View style={s.prodTabContentCell}>
@@ -468,7 +518,7 @@ function ProductDetailView({
                 <Text style={[
                   s.prodTabValueAmount,
                   profit < 0 && { color: DS_COLORS.error },
-                ]}>${formatPrice(profit)}</Text>
+                ]}>₪{formatPrice(profit)}</Text>
               )}
             </View>
           </View>
@@ -479,10 +529,10 @@ function ProductDetailView({
           {/* Base Ingredients */}
           <View style={s.detailCard}>
             <View style={s.detailCardHeader}>
-              <Text style={s.detailCardTitle}>{product.baseLabel || "Base ingredients"}</Text>
+              <Text style={s.detailCardTitle}>{product.baseLabel || "מרכיבי בסיס"}</Text>
             </View>
             {product.baseIngredients.length === 0 ? (
-              <Text style={s.detailEmpty}>No {product.baseLabel || "Base ingredients"}</Text>
+              <Text style={s.detailEmpty}>אין {product.baseLabel || "מרכיבי בסיס"}</Text>
             ) : (
               product.baseIngredients.map(renderDetailItem)
             )}
@@ -491,10 +541,10 @@ function ProductDetailView({
           {/* Spices */}
           <View style={s.detailCard}>
             <View style={s.detailCardHeader}>
-              <Text style={s.detailCardTitle}>{product.spiceLabel || "Spices"}</Text>
+              <Text style={s.detailCardTitle}>{product.spiceLabel || "תבלינים"}</Text>
             </View>
             {product.spices.length === 0 ? (
-              <Text style={s.detailEmpty}>No {product.spiceLabel || "Spices"}</Text>
+              <Text style={s.detailEmpty}>אין {product.spiceLabel || "תבלינים"}</Text>
             ) : (
               product.spices.map(renderDetailItem)
             )}
@@ -507,7 +557,7 @@ function ProductDetailView({
                 <Text style={s.detailCardTitle}>{cat.categoryName}</Text>
               </View>
               {cat.items.length === 0 ? (
-                <Text style={s.detailEmpty}>No items</Text>
+                <Text style={s.detailEmpty}>אין פריטים</Text>
               ) : (
                 cat.items.map(renderDetailItem)
               )}
@@ -525,9 +575,11 @@ function ProductDetailView({
 export default function ProductsScreen() {
   const { colorScheme } = useThemeContext();
   const s = React.useMemo(() => _make_s(), [DS_COLORS.accent, colorScheme]);
-
   const router = useRouter();
   const { products, deleteProduct } = useData();
+
+  // OneSignal in-app message trigger
+  useEffect(() => { setOneSignalScreenTrigger("products"); }, []);
   const { guardMutation } = useMutationGuard();
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -535,10 +587,10 @@ export default function ProductsScreen() {
 
   const handleDelete = useCallback(
     (product: Product) => {
-      Alert.alert("Delete product", "Are you sure you want to delete?", [
-        { text: "Cancel", style: "cancel" },
+      Alert.alert("מחיקת מוצר", "האם אתה בטוח שברצונך למחוק?", [
+        { text: "ביטול", style: "cancel" },
         {
-          text: "Delete",
+          text: "מחיקה",
           style: "destructive",
           onPress: async () => {
             const allowed = await guardMutation();
@@ -546,9 +598,10 @@ export default function ProductsScreen() {
             try {
               await deleteProduct(product.id);
             } catch (e: any) {
-              Alert.alert("Error", e.message);
+              Alert.alert("שגיאה", e.message);
             }
-          } },
+          },
+        },
       ]);
     },
     [deleteProduct, guardMutation]
@@ -601,7 +654,7 @@ export default function ProductsScreen() {
           <TouchableOpacity onPress={handleAdd} style={s.addBtn} activeOpacity={0.8}>
             <MaterialIcons name="add" size={22} color={DS_COLORS.white} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Products</Text>
+          <Text style={s.headerTitle}>מוצרים</Text>
           <TouchableOpacity onPress={() => router.back()} style={s.headerBtn} activeOpacity={0.7}>
             <MaterialIcons name="arrow-back" size={22} color={DS_COLORS.textPrimary} />
           </TouchableOpacity>
@@ -612,11 +665,11 @@ export default function ProductsScreen() {
             <View style={s.emptyIconCircle}>
               <MaterialIcons name="inventory-2" size={40} color={DS_COLORS.accent} />
             </View>
-            <Text style={s.emptyTitle}>No products in the system</Text>
-            <Text style={s.emptySubtitle}>Start by adding your first product</Text>
+            <Text style={s.emptyTitle}>אין מוצרים במערכת</Text>
+            <Text style={s.emptySubtitle}>התחל בהוספת המוצר הראשון שלך</Text>
             <TouchableOpacity onPress={handleAdd} style={s.emptyBtn} activeOpacity={0.8}>
               <MaterialIcons name="add" size={20} color={DS_COLORS.white} />
-              <Text style={s.emptyBtnText}>Add first product</Text>
+              <Text style={s.emptyBtnText}>הוסף מוצר ראשון</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -634,8 +687,8 @@ export default function ProductsScreen() {
                     <Text style={s.productName}>{item.name}</Text>
                     <Text style={s.productMeta}>
                       {(item.customerPrice ?? 0) > 0
-                        ? `Customer price: $${formatPrice(item.customerPrice ?? 0)}`
-                        : "Customer price: Not set"}
+                        ? `מחיר ללקוח: ₪${formatPrice(item.customerPrice ?? 0)}`
+                        : "מחיר ללקוח: לא הוגדר"}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -659,14 +712,15 @@ export default function ProductsScreen() {
 
 function ProductForm({
   product,
-  onClose }: {
+  onClose,
+}: {
   product: Product | null;
   onClose: (isNew?: boolean) => void;
 }) {
   const { colorScheme } = useThemeContext();
   const s = React.useMemo(() => _make_s(), [DS_COLORS.accent, colorScheme]);
 
-  const { addProduct, updateProduct, refreshProducts, units, addUnit, customCategories, addCustomCategory, renameCustomCategory, deleteCustomCategory, orders, products: allProducts } = useData();
+  const { addProduct, updateProduct, refreshProducts, units, addUnit, deleteUnit, customCategories, addCustomCategory, renameCustomCategory, deleteCustomCategory, orders, products: allProducts } = useData();
   const { guardMutation } = useMutationGuard();
 
   const insets = useSafeAreaInsets();
@@ -682,7 +736,8 @@ function ProductForm({
       name: sp.name,
       quantity: sp.quantity ?? 0,
       unit: sp.unit ?? "",
-      price: sp.price ?? 0 }))
+      price: sp.price ?? 0,
+    }))
   );
   const [categories, setCategories] = useState<ProductCategory[]>(
     product?.categories ?? []
@@ -704,8 +759,8 @@ function ProductForm({
     catIndex?: number;
   } | null>(null);
   // Category label names (editable via category management modal)
-  const [baseLabel, setBaseLabel] = useState(product?.baseLabel ?? "Base ingredients");
-  const [spiceLabel, setSpiceLabel] = useState(product?.spiceLabel ?? "Spices");
+  const [baseLabel, setBaseLabel] = useState(product?.baseLabel ?? "מרכיבי בסיס");
+  const [spiceLabel, setSpiceLabel] = useState(product?.spiceLabel ?? "תבלינים");
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   // Track fields with validation errors (visual red border)
   const [errorFields, setErrorFields] = useState<Set<string>>(new Set());
@@ -717,11 +772,11 @@ function ProductForm({
   const handleClose = () => {
     if (isDirty) {
       Alert.alert(
-        "Unsaved changes",
-        "You have unsaved changes. Exit without saving?",
+        "שינויים שלא נשמרו",
+        "יש שינויים שלא נשמרו. לצאת בלי לשמור?",
         [
-          { text: "Continue Edit", style: "cancel" },
-          { text: "Exit without saving", style: "destructive", onPress: () => onClose() },
+          { text: "המשך עריכה", style: "cancel" },
+          { text: "צא בלי לשמור", style: "destructive", onPress: () => onClose() },
         ]
       );
     } else {
@@ -838,7 +893,8 @@ function ProductForm({
           ...newCats.map((cc) => ({
             categoryId: cc.id,
             categoryName: cc.name,
-            items: [] as CategoryItem[] })),
+            items: [] as CategoryItem[],
+          })),
         ];
       }
       
@@ -884,18 +940,19 @@ function ProductForm({
     // Block if this is the last ingredient and product is linked to active order
     if (getTotalIngredientCount() <= 1 && isLinkedToActiveOrder) {
       Alert.alert(
-        "Unable to remove",
-        "A product with no items is considered deleted, and you cannot delete a product linked to an active order."
+        "לא ניתן להסיר",
+        "מוצר ללא פריטים נחשב למחיקת מוצר, ולא ניתן למחוק מוצר המקושר להזמנה פעילה."
       );
       return;
     }
-    const ingredientName = baseIngredients[index]?.name || "Ingredient";
-    Alert.alert("Remove ingredient", `Remove "${ingredientName}"?`, [
-      { text: "Cancel", style: "cancel" },
+    const ingredientName = baseIngredients[index]?.name || "מרכיב";
+    Alert.alert("הסרת מרכיב", `האם להסיר את "${ingredientName}"?`, [
+      { text: "ביטול", style: "cancel" },
       {
-        text: "Remove",
+        text: "הסרה",
         style: "destructive",
-        onPress: () => { setBaseIngredients(baseIngredients.filter((_, i) => i !== index)); setIsDirty(true); } },
+        onPress: () => { setBaseIngredients(baseIngredients.filter((_, i) => i !== index)); setIsDirty(true); },
+      },
     ]);
   };
 
@@ -919,18 +976,19 @@ function ProductForm({
     // Block if this is the last ingredient and product is linked to active order
     if (getTotalIngredientCount() <= 1 && isLinkedToActiveOrder) {
       Alert.alert(
-        "Unable to remove",
-        "A product with no items is considered deleted, and you cannot delete a product linked to an active order."
+        "לא ניתן להסיר",
+        "מוצר ללא פריטים נחשב למחיקת מוצר, ולא ניתן למחוק מוצר המקושר להזמנה פעילה."
       );
       return;
     }
-    const spiceName = spices[index]?.name || "Spice";
-    Alert.alert("Remove spice", `Remove "${spiceName}"?`, [
-      { text: "Cancel", style: "cancel" },
+    const spiceName = spices[index]?.name || "תבלין";
+    Alert.alert("הסרת תבלין", `האם להסיר את "${spiceName}"?`, [
+      { text: "ביטול", style: "cancel" },
       {
-        text: "Remove",
+        text: "הסרה",
         style: "destructive",
-        onPress: () => { setSpices(spices.filter((_, i) => i !== index)); setIsDirty(true); } },
+        onPress: () => { setSpices(spices.filter((_, i) => i !== index)); setIsDirty(true); },
+      },
     ]);
   };
 
@@ -940,7 +998,8 @@ function ProductForm({
     const updated = [...categories];
     updated[catIndex] = {
       ...updated[catIndex],
-      items: [...updated[catIndex].items, { id: newId, name: "", quantity: 0, unit: "", price: 0 }] };
+      items: [...updated[catIndex].items, { id: newId, name: "", quantity: 0, unit: "", price: 0 }],
+    };
     const key = `cat-${updated[catIndex].categoryId}-${newId}`;
     setQtyTexts((prev) => ({ ...prev, [key]: "" }));
     setPriceTexts((prev) => ({ ...prev, [key]: "" }));
@@ -960,25 +1019,27 @@ function ProductForm({
     // Block if this is the last ingredient and product is linked to active order
     if (getTotalIngredientCount() <= 1 && isLinkedToActiveOrder) {
       Alert.alert(
-        "Unable to remove",
-        "A product with no items is considered deleted, and you cannot delete a product linked to an active order."
+        "לא ניתן להסיר",
+        "מוצר ללא פריטים נחשב למחיקת מוצר, ולא ניתן למחוק מוצר המקושר להזמנה פעילה."
       );
       return;
     }
-    const itemName = categories[catIndex].items[itemIndex]?.name || "Item";
-    Alert.alert("Remove item", `Remove "${itemName}"?`, [
-      { text: "Cancel", style: "cancel" },
+    const itemName = categories[catIndex].items[itemIndex]?.name || "פריט";
+    Alert.alert("הסרת פריט", `האם להסיר את "${itemName}"?`, [
+      { text: "ביטול", style: "cancel" },
       {
-        text: "Remove",
+        text: "הסרה",
         style: "destructive",
         onPress: () => {
           const updated = [...categories];
           updated[catIndex] = {
             ...updated[catIndex],
-            items: updated[catIndex].items.filter((_, i) => i !== itemIndex) };
+            items: updated[catIndex].items.filter((_, i) => i !== itemIndex),
+          };
           setCategories(updated);
           setIsDirty(true);
-        } },
+        },
+      },
     ]);
   };
 
@@ -999,7 +1060,7 @@ function ProductForm({
 
     if (!name.trim()) {
       setErrorFields(new Set(["name"]));
-      Alert.alert("Error", "Please enter a product name");
+      Alert.alert("שגיאה", "יש להזין שם מוצר");
       return;
     }
 
@@ -1081,7 +1142,7 @@ function ProductForm({
     // If partial rows exist, show error and highlight fields
     if (hasPartialRows) {
       setErrorFields(newErrors);
-      Alert.alert("Error", "Not all fields are filled. Please complete the fields marked in red");
+      Alert.alert("שגיאה", "לא כל השדות מולאו. יש להשלים את השדות המסומנים באדום");
       return;
     }
 
@@ -1092,7 +1153,7 @@ function ProductForm({
 
     const totalItems = cleanedIngredients.length + cleanedSpices.length + cleanedCategories.reduce((sum, cat) => sum + cat.items.length, 0);
     if (totalItems === 0) {
-      Alert.alert("Error", "Please add at least one item in one of the categories");
+      Alert.alert("שגיאה", "יש להוסיף לפחות רכיב אחד באחת הקטגוריות");
       return;
     }
 
@@ -1100,7 +1161,7 @@ function ProductForm({
     if (!customerPriceText.trim()) {
       newErrors.add("customerPrice");
       setErrorFields((prev) => new Set([...prev, "customerPrice"]));
-      Alert.alert("Error", "Please enter a customer price");
+      Alert.alert("שגיאה", "יש להזין מחיר ללקוח");
       return;
     }
 
@@ -1114,7 +1175,7 @@ function ProductForm({
       cleanedIngredients.forEach((ing) => {
         const orig = origIngMap.get(ing.id);
         if (orig && ing.quantity !== orig.quantity && ing.price === orig.price) {
-          qtyChangedNoPriceChange.push(ing.name || "Ingredient");
+          qtyChangedNoPriceChange.push(ing.name || "מרכיב");
         }
       });
       const origSpMap = new Map<string, { quantity: number; price: number }>();
@@ -1122,7 +1183,7 @@ function ProductForm({
       cleanedSpices.forEach((sp) => {
         const orig = origSpMap.get(sp.id);
         if (orig && sp.quantity !== orig.quantity && sp.price === orig.price) {
-          qtyChangedNoPriceChange.push(sp.name || "Spice");
+          qtyChangedNoPriceChange.push(sp.name || "תבלין");
         }
       });
       (product.categories ?? []).forEach((origCat) => {
@@ -1133,7 +1194,7 @@ function ProductForm({
           matchCat.items.forEach((item) => {
             const orig = origItemMap.get(item.id);
             if (orig && item.quantity !== orig.quantity && item.price === orig.price) {
-              qtyChangedNoPriceChange.push(item.name || "Item");
+              qtyChangedNoPriceChange.push(item.name || "פריט");
             }
           });
         }
@@ -1144,13 +1205,14 @@ function ProductForm({
     const proceedAfterQtyCheck = () => {
       if (customerPrice === 0) {
         Alert.alert(
-          "Customer price 0",
-          "The product price for the customer is set to 0. Continue and save?",
+          "מחיר ללקוח 0",
+          "מחיר המוצר ללקוח הוגדר כ-0. האם להמשיך ולשמור?",
           [
-            { text: "Cancel", style: "cancel" },
+            { text: "ביטול", style: "cancel" },
             {
-              text: "Save",
-              onPress: () => doSave(cleanedIngredients, cleanedSpices, validCategories) },
+              text: "שמור",
+              onPress: () => doSave(cleanedIngredients, cleanedSpices, validCategories),
+            },
           ]
         );
         return;
@@ -1162,11 +1224,11 @@ function ProductForm({
     if (qtyChangedNoPriceChange.length > 0) {
       const names = qtyChangedNoPriceChange.join(", ");
       Alert.alert(
-        "Attention",
-        `You changed the quantity in: ${names} but did not update the price. Continue and save?`,
+        "שים לב",
+        `שינית כמות ב: ${names} אבל לא עדכנת את המחיר. האם להמשיך ולשמור?`,
         [
-          { text: "Back to editing", style: "cancel" },
-          { text: "Save anyway", onPress: proceedAfterQtyCheck },
+          { text: "חזור לעריכה", style: "cancel" },
+          { text: "שמור בכל זאת", onPress: proceedAfterQtyCheck },
         ]
       );
       return;
@@ -1191,7 +1253,8 @@ function ProductForm({
         markupType,
         markupValue: parseFloat(markupValue) || 0,
         baseLabel: baseLabel || undefined,
-        spiceLabel: spiceLabel || undefined };
+        spiceLabel: spiceLabel || undefined,
+      };
 
       if (isEditing && product) {
         await updateProduct(product.id, productData);
@@ -1202,17 +1265,17 @@ function ProductForm({
         ? orders.some((o) => o.products.some((p) => p.productId === product.id))
         : false;
       Alert.alert(
-        "Success",
+        "הצלחה",
         isEditing && isDirty && hasLinkedOrders
-          ? "Product updated successfully.\nThe update will apply to new orders from now on.\nFor existing orders, you can update them according to this change when you open them."
-          : "Product updated successfully"
+          ? "המוצר עודכן בהצלחה.\nהעדכון ישמש להזמנות חדשות מכאן ולהבא.\nבהזמנות קיימות שכבר נוצרו, ניתן יהיה לעדכן את ההזמנה לפי השינוי הזה כאשר תיכנס אליהן."
+          : "המוצר עודכן בהצלחה"
       );
       onClose(!isEditing);
     } catch (e: any) {
       // Network errors: the server may have saved the product even though
       // the response didn't arrive. Refresh and check before showing error.
       const isNetworkError =
-        !e.message?.includes("Already exists") &&
+        !e.message?.includes("כבר קיים") &&
         (e.message?.toLowerCase()?.includes("network") ||
          e.message?.toLowerCase()?.includes("fetch") ||
          e.message?.toLowerCase()?.includes("timeout") ||
@@ -1229,7 +1292,7 @@ function ProductForm({
           );
           if (found) {
             // Product was actually saved — show success
-            Alert.alert("Success", "Product saved successfully");
+            Alert.alert("הצלחה", "המוצר נשמר בהצלחה");
             onClose(true);
             return;
           }
@@ -1237,7 +1300,7 @@ function ProductForm({
           // Refresh also failed — show original error
         }
       }
-      Alert.alert("Error", e.message || "Error saving the product");
+      Alert.alert("שגיאה", e.message || "שגיאה בשמירת המוצר");
     } finally {
       setSaving(false);
     }
@@ -1324,9 +1387,9 @@ function ProductForm({
                   setErrorFields((prev) => { const next = new Set(prev); next.delete(`${fieldPrefix}-name-${index}`); return next; });
                 }
               }}
-              placeholder="Name"
+              placeholder="שם"
               placeholderTextColor={DS_COLORS.textSecondary}
-              textAlign="left"
+              textAlign="right"
               returnKeyType="done"
               onFocus={() => setFocusedField(`${fieldPrefix}-name-${index}`)}
               onBlur={() => setFocusedField(null)}
@@ -1344,7 +1407,7 @@ function ProductForm({
                   setErrorFields((prev) => { const next = new Set(prev); next.delete(`${fieldPrefix}-qty-${index}`); return next; });
                 }
               }}
-              placeholder="Quantity"
+              placeholder="כמות"
               placeholderTextColor={DS_COLORS.textSecondary}
               keyboardType="decimal-pad"
               textAlign="center"
@@ -1371,7 +1434,7 @@ function ProductForm({
                 ]}
                 numberOfLines={1}
               >
-                {item.unit ? getUnitLabel(item.unit, item.quantity, units) : "Unit"}
+                {item.unit ? getUnitLabel(item.unit, item.quantity, units) : "יחידה"}
               </Text>
               <MaterialIcons name="arrow-drop-down" size={18} color={DS_COLORS.textSecondary} />
             </TouchableOpacity>
@@ -1391,7 +1454,7 @@ function ProductForm({
                   setErrorFields((prev) => { const next = new Set(prev); next.delete(`${fieldPrefix}-price-${index}`); return next; });
                 }
               }}
-              placeholder="Price"
+              placeholder="מחיר"
               placeholderTextColor={DS_COLORS.textSecondary}
               keyboardType="decimal-pad"
               textAlign="center"
@@ -1400,9 +1463,9 @@ function ProductForm({
               onFocus={() => setFocusedField(`${fieldPrefix}-price-${index}`)}
               onBlur={() => setFocusedField(null)}
             />
-            <Text style={s.priceSuffix}>$</Text>
+            <Text style={s.priceSuffix}>ש״ח</Text>
             {(item.quantity > 0 && item.unit) ? (
-              <Text style={s.priceSuffix}>for {item.quantity} {getUnitLabel(item.unit, item.quantity, units)}</Text>
+              <Text style={s.priceSuffix}>עבור {item.quantity} {getUnitLabel(item.unit, item.quantity, units)}</Text>
             ) : null}
           </Pressable>
         </View>
@@ -1419,7 +1482,7 @@ function ProductForm({
             <MaterialIcons name="close" size={22} color={DS_COLORS.textPrimary} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>
-            {isEditing ? "Edit product" : "New product"}
+            {isEditing ? "עריכת מוצר" : "מוצר חדש"}
           </Text>
           <View style={{ width: 40 }} />
         </View>
@@ -1432,21 +1495,21 @@ function ProductForm({
               style={[s.prodTabBtn, activeTab === "customer" && s.prodTabBtnActive]}
               activeOpacity={0.8}
             >
-              <Text style={[s.prodTabBtnText, activeTab === "customer" && s.prodTabBtnTextActive]}>Customer price</Text>
+              <Text style={[s.prodTabBtnText, activeTab === "customer" && s.prodTabBtnTextActive]}>מחיר ללקוח</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setActiveTab("cost")}
               style={[s.prodTabBtn, activeTab === "cost" && s.prodTabBtnActive]}
               activeOpacity={0.8}
             >
-              <Text style={[s.prodTabBtnText, activeTab === "cost" && s.prodTabBtnTextActive]}>Price Cost</Text>
+              <Text style={[s.prodTabBtnText, activeTab === "cost" && s.prodTabBtnTextActive]}>מחיר עלות</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setActiveTab("profit")}
               style={[s.prodTabBtn, activeTab === "profit" && s.prodTabBtnActive]}
               activeOpacity={0.8}
             >
-              <Text style={[s.prodTabBtnText, activeTab === "profit" && s.prodTabBtnTextActive]}>Our profit</Text>
+              <Text style={[s.prodTabBtnText, activeTab === "profit" && s.prodTabBtnTextActive]}>ריווח שלנו</Text>
             </TouchableOpacity>
           </View>
 
@@ -1454,7 +1517,7 @@ function ProductForm({
             <View style={s.prodTabContentCell}>
               {activeTab === "customer" && (
                 <View style={s.formTabPriceInputWrap}>
-                  <Text style={s.formTabPriceCurrency}>$</Text>
+                  <Text style={s.formTabPriceCurrency}>₪</Text>
                   <TextInput
                     style={[
                       s.formTabPriceInput,
@@ -1482,7 +1545,7 @@ function ProductForm({
             </View>
             <View style={s.prodTabContentCell}>
               {activeTab === "cost" && (
-                <Text style={s.prodTabValueAmount}>${formatPrice(finalCost)}</Text>
+                <Text style={s.prodTabValueAmount}>₪{formatPrice(finalCost)}</Text>
               )}
             </View>
             <View style={s.prodTabContentCell}>
@@ -1490,7 +1553,7 @@ function ProductForm({
                 <Text style={[
                   s.prodTabValueAmount,
                   formProfit < 0 && { color: DS_COLORS.error },
-                ]}>${formatPrice(formProfit)}</Text>
+                ]}>₪{formatPrice(formProfit)}</Text>
               )}
             </View>
           </View>
@@ -1510,7 +1573,7 @@ function ProductForm({
 
             {/* Product Name */}
             <View style={s.formCard}>
-              <Text style={s.formLabel}>Name Product</Text>
+              <Text style={s.formLabel}>שם מוצר</Text>
               <TextInput
                 style={inputStyle("name")}
                 value={name}
@@ -1521,9 +1584,9 @@ function ProductForm({
                     setErrorFields((prev) => { const next = new Set(prev); next.delete("name"); return next; });
                   }
                 }}
-                placeholder="Enter product name"
+                placeholder="הזן שם מוצר"
                 placeholderTextColor={DS_COLORS.textSecondary}
-                textAlign="left"
+                textAlign="right"
                 returnKeyType="done"
                 onFocus={() => setFocusedField("name")}
                 onBlur={() => setFocusedField(null)}
@@ -1532,7 +1595,7 @@ function ProductForm({
 
             {/* Markup */}
             <View style={s.formCard}>
-              <Text style={s.formLabel}>Price markup (on cost price)</Text>
+              <Text style={s.formLabel}>תוספת מחיר (למחיר עלות)</Text>
               <View style={s.markupRow}>
                 <View style={s.markupToggle}>
                   <TouchableOpacity
@@ -1566,7 +1629,7 @@ function ProductForm({
                         markupType === "fixed" && s.markupToggleBtnTextActive,
                       ]}
                     >
-                      $
+                      ₪
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1576,7 +1639,7 @@ function ProductForm({
                    onChangeText={(v) => { setMarkupValue(sanitizeQuantity(v)); setIsDirty(true); }}
                   keyboardType="decimal-pad"
                   textAlign="center"
-                  placeholder={markupType === "percent" ? "Percent" : "Amount"}
+                  placeholder={markupType === "percent" ? "אחוז" : "סכום"}
                   placeholderTextColor={DS_COLORS.textSecondary}
                   returnKeyType="done"
                   selectTextOnFocus
@@ -1586,8 +1649,8 @@ function ProductForm({
               </View>
               <Text style={s.markupHint}>
                 {markupType === "percent"
-                  ? "The markup will be calculated as a percentage of the cost price"
-                  : "The markup will be added as a fixed amount to the cost price"}
+                  ? "התוספת תחושב כאחוז ממחיר העלות"
+                  : "התוספת תתווסף כסכום קבוע למחיר העלות"}
               </Text>
             </View>
 
@@ -1598,12 +1661,12 @@ function ProductForm({
                 <Text style={s.formLabel}>{baseLabel}</Text>
                 <TouchableOpacity onPress={addIngredient} style={s.addSmallBtn} activeOpacity={0.8}>
                   <MaterialIcons name="add" size={16} color={DS_COLORS.accent} />
-                  <Text style={s.addSmallBtnText}>Add</Text>
+                  <Text style={s.addSmallBtnText}>הוסף</Text>
                 </TouchableOpacity>
               </View>
 
               {baseIngredients.length === 0 && (
-                <Text style={s.hint}>To add an item, tap "Add"</Text>
+                <Text style={s.hint}>להוספת פריט יש ללחוץ על ״הוסף״</Text>
               )}
               {baseIngredients.map((ingredient, index) =>
                 renderItemRow(
@@ -1625,11 +1688,11 @@ function ProductForm({
                 <Text style={s.formLabel}>{spiceLabel}</Text>
                 <TouchableOpacity onPress={addSpice} style={s.addSmallBtn} activeOpacity={0.8}>
                   <MaterialIcons name="add" size={16} color={DS_COLORS.accent} />
-                  <Text style={s.addSmallBtnText}>Add</Text>
+                  <Text style={s.addSmallBtnText}>הוסף</Text>
                 </TouchableOpacity>
               </View>
               {spices.length === 0 && (
-                <Text style={s.hint}>To add an item, tap "Add"</Text>
+                <Text style={s.hint}>להוספת פריט יש ללחוץ על ״הוסף״</Text>
               )}
               {spices.map((spice, index) =>
                 renderItemRow(
@@ -1655,11 +1718,11 @@ function ProductForm({
                     activeOpacity={0.8}
                   >
                     <MaterialIcons name="add" size={16} color={DS_COLORS.accent} />
-                    <Text style={s.addSmallBtnText}>Add</Text>
+                    <Text style={s.addSmallBtnText}>הוסף</Text>
                   </TouchableOpacity>
                 </View>
                 {cat.items.length === 0 && (
-                  <Text style={s.hint}>To add an item, tap "Add"</Text>
+                  <Text style={s.hint}>להוספת פריט יש ללחוץ על ״הוסף״</Text>
                 )}
                 {cat.items.map((item, itemIndex) =>
                   renderItemRow(
@@ -1681,7 +1744,7 @@ function ProductForm({
               activeOpacity={0.8}
             >
               <MaterialIcons name="edit" size={20} color={DS_COLORS.accent} />
-              <Text style={s.addCategoryBtnText}>Add / Delete / Rename categories</Text>
+              <Text style={s.addCategoryBtnText}>הוספה / מחיקה / שינוי שם של קטגוריות</Text>
             </TouchableOpacity>
 
             <View style={{ height: 40 }} />
@@ -1697,7 +1760,7 @@ function ProductForm({
             disabled={saving}
           >
             <Text style={s.saveBtnText}>
-              {saving ? "Saving..." : "Save"}
+              {saving ? "שומר..." : "שמירה"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1711,6 +1774,7 @@ function ProductForm({
         onSelect={handleUnitSelect}
         onClose={() => setUnitPickerTarget(null)}
         onAddUnit={addUnit}
+        onDeleteUnit={deleteUnit}
       />
 
       {/* Category Management Modal */}
@@ -1729,7 +1793,8 @@ function ProductForm({
           const newCat: ProductCategory = {
             categoryId: created.id,
             categoryName: created.name,
-            items: [] };
+            items: [],
+          };
           // Only add if not already present (syncCategories may have added it)
           setCategories((prev) => {
             if (prev.some((c) => c.categoryId === created.id)) return prev;
@@ -1771,7 +1836,7 @@ function ProductForm({
             try {
               await deleteCustomCategory(id);
             } catch (e: any) {
-              Alert.alert("Error", e.message);
+              Alert.alert("שגיאה", e.message);
               return;
             }
             // Remove from form
@@ -1801,7 +1866,7 @@ function _make_s() { return StyleSheet.create({
     paddingHorizontal: DS_SPACING.xl,
     paddingVertical: DS_SPACING.md,
     backgroundColor: DS_COLORS.background,
-    writingDirection: "rtl",
+    direction: "rtl",
   },
   headerBtn: {
     width: 40,
@@ -1829,7 +1894,7 @@ function _make_s() { return StyleSheet.create({
   },
   editHeaderBtn: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     gap: 4,
     paddingHorizontal: DS_SPACING.md,
@@ -1899,7 +1964,7 @@ function _make_s() { return StyleSheet.create({
   },
   productCardInner: {
     flexDirection: "row",
-    writingDirection: "rtl",
+    direction: "rtl",
     alignItems: "center",
     gap: DS_SPACING.md,
   },
@@ -1951,7 +2016,7 @@ function _make_s() { return StyleSheet.create({
     borderRadius: DS_RADIUS.lg,
     padding: DS_SPACING.lg,
     gap: DS_SPACING.md,
-    writingDirection: "rtl",
+    direction: "rtl",
     ...DS_SHADOW.card,
   },
   detailCardHeader: {
@@ -1973,7 +2038,7 @@ function _make_s() { return StyleSheet.create({
     justifyContent: "flex-start",
     gap: DS_SPACING.sm,
     paddingVertical: DS_SPACING.sm,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     borderBottomWidth: 0.5,
     borderBottomColor: DS_COLORS.border,
   },
@@ -2013,7 +2078,7 @@ function _make_s() { return StyleSheet.create({
     borderRadius: DS_RADIUS.lg,
     padding: DS_SPACING.lg,
     gap: DS_SPACING.md,
-    writingDirection: "rtl",
+    direction: "rtl",
     ...DS_SHADOW.card,
   },
   formCardHeader: {
@@ -2145,7 +2210,7 @@ function _make_s() { return StyleSheet.create({
     borderRadius: DS_RADIUS.md,
     borderWidth: 1.5,
     borderColor: DS_COLORS.accent,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   addCategoryBtnText: {
     color: DS_COLORS.accent,
@@ -2180,7 +2245,7 @@ function _make_s() { return StyleSheet.create({
   // ── Category Row ──
   catRow: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     gap: DS_SPACING.md,
     paddingVertical: DS_SPACING.md,
@@ -2213,7 +2278,7 @@ function _make_s() { return StyleSheet.create({
     borderTopLeftRadius: DS_RADIUS.xl,
     borderTopRightRadius: DS_RADIUS.xl,
     maxHeight: "70%",
-    writingDirection: "rtl",
+    direction: "rtl",
     paddingBottom: DS_SPACING.xl,
   },
   unitModalHeader: {
@@ -2389,7 +2454,7 @@ function _make_s() { return StyleSheet.create({
     flexDirection: "row" as const,
     borderBottomWidth: 1,
     borderBottomColor: DS_COLORS.border,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   prodTabBtn: {
     flex: 1,
@@ -2415,7 +2480,7 @@ function _make_s() { return StyleSheet.create({
   },
   prodTabContentRow: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   prodTabContentCell: {
     flex: 1,
@@ -2427,7 +2492,7 @@ function _make_s() { return StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "flex-start" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     gap: DS_SPACING.sm,
   },
   prodTabValueLabel: {

@@ -20,7 +20,6 @@ import { createClient } from "@supabase/supabase-js";
 import { TRPCError } from "@trpc/server";
 import { createHash, randomInt } from "crypto";
 import { Resend } from "resend";
-import { SUPABASE_URL as SUPABASE_URL_RESOLVED, SUPABASE_SERVICE_ROLE_KEY as SUPABASE_SERVICE_ROLE_KEY_RESOLVED } from './supabase-config';
 
 const FROM_EMAIL = "support@cateringmanager.app";
 
@@ -66,8 +65,8 @@ const APP_SCHEME = I18N.he.appScheme;
  */
 async function broadcastDeviceKick(userId: string, newDeviceUuid: string): Promise<void> {
   try {
-    const url = SUPABASE_URL_RESOLVED;
-    const key = SUPABASE_SERVICE_ROLE_KEY_RESOLVED;
+    const url = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
     if (!url || !key) return;
 
     const admin = createClient(url, key, {
@@ -97,8 +96,8 @@ async function broadcastDeviceKick(userId: string, newDeviceUuid: string): Promi
 // ============ HELPERS ============
 
 function getAdminClient() {
-  const url = SUPABASE_URL_RESOLVED;
-  const key = SUPABASE_SERVICE_ROLE_KEY_RESOLVED;
+  const url = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
   if (!url || !key) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",

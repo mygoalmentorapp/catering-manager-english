@@ -73,7 +73,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         "color-border": SchemeColors[colorScheme].border,
         "color-success": SchemeColors[colorScheme].success,
         "color-warning": SchemeColors[colorScheme].warning,
-        "color-error": SchemeColors[colorScheme].error }),
+        "color-error": SchemeColors[colorScheme].error,
+      }),
     [colorScheme],
   );
 
@@ -81,7 +82,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     () => ({
       colorScheme,
       setColorScheme,
-      isDark: colorScheme === "dark" }),
+      isDark: colorScheme === "dark",
+    }),
     [colorScheme, setColorScheme],
   );
 

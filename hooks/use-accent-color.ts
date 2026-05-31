@@ -18,6 +18,7 @@ export function useAccentColor() {
     return {
       accent,
       accentLight: `rgba(${r}, ${g}, ${b}, 0.08)`,
-      accentMedium: `rgba(${r}, ${g}, ${b}, 0.15)` };
+      accentMedium: `rgba(${r}, ${g}, ${b}, 0.15)`,
+    };
   }, [primaryColor]);
 }

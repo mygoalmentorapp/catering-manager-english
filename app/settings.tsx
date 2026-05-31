@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { setOneSignalScreenTrigger } from "@/lib/onesignal-bootstrap";
 import {
   Text,
   View,
@@ -11,7 +12,8 @@ import {
   Image,
   KeyboardAvoidingView,
   AppState,
-  Linking } from "react-native";
+  Linking,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -28,28 +30,29 @@ import {
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
-  DS_SHADOW } from "@/lib/design-system";
+  DS_SHADOW,
+} from "@/lib/design-system";
 import { trpc } from "@/lib/trpc";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { useNetwork } from "@/lib/network-context";
 
 const COLOR_OPTIONS = [
-  { value: "#3AAFA9", label: "Turquoise" },
-  { value: "#6C63FF", label: "Purple" },
-  { value: "#3B82F6", label: "Blue" },
-  { value: "#06B6D4", label: "Light blue" },
-  { value: "#10B981", label: "Green" },
-  { value: "#22C55E", label: "Green Light" },
-  { value: "#F59E0B", label: "Orange" },
-  { value: "#F97316", label: "Orange" },
-  { value: "#EF4444", label: "Red" },
-  { value: "#EC4899", label: "Pink" },
-  { value: "#A855F7", label: "Purple Light" },
-  { value: "#8B5CF6", label: "Lilac" },
-  { value: "#64748B", label: "Gray" },
-  { value: "#78350F", label: "Brown" },
-  { value: "#1E1E2E", label: "Black" },
-  { value: "#DC2626", label: "Dark red" },
+  { value: "#3AAFA9", label: "טורקיז" },
+  { value: "#6C63FF", label: "סגול" },
+  { value: "#3B82F6", label: "כחול" },
+  { value: "#06B6D4", label: "תכלת" },
+  { value: "#10B981", label: "ירוק" },
+  { value: "#22C55E", label: "ירוק בהיר" },
+  { value: "#F59E0B", label: "כתום" },
+  { value: "#F97316", label: "כתום" },
+  { value: "#EF4444", label: "אדום" },
+  { value: "#EC4899", label: "ורוד" },
+  { value: "#A855F7", label: "סגול בהיר" },
+  { value: "#8B5CF6", label: "סגליל" },
+  { value: "#64748B", label: "אפור" },
+  { value: "#78350F", label: "חום" },
+  { value: "#1E1E2E", label: "שחור" },
+  { value: "#DC2626", label: "אדום כהה" },
 ];
 
 export default function SettingsScreen() {
@@ -58,9 +61,12 @@ export default function SettingsScreen() {
   const trpcUtils = trpc.useUtils();
 
   const router = useRouter();
+
+  // OneSignal in-app message trigger
+  useEffect(() => { setOneSignalScreenTrigger("settings"); }, []);
   const { businessName, setBusinessNameValue, businessLogo, setBusinessLogoValue, primaryColor, setPrimaryColorValue } = useData();
   const { guardMutation } = useMutationGuard();
-  const { signOut, user } = useAuth();
+  const { signOut, user, profile } = useAuth();
 
   const appVersion = Constants.expoConfig?.version ?? "1.0.0";
   const [nameText, setNameText] = useState(businessName);
@@ -111,28 +117,31 @@ export default function SettingsScreen() {
       let base64Raw = "";
       try {
         base64Raw = await FileSystem.readAsStringAsync(finalUri, {
-          encoding: FileSystem.EncodingType.Base64 });
+          encoding: FileSystem.EncodingType.Base64,
+        });
       } catch (readErr) {
         console.warn("Failed to read finalUri, trying original:", readErr);
         // Fallback: try reading the original picked image
         base64Raw = await FileSystem.readAsStringAsync(pickedImageUri, {
-          encoding: FileSystem.EncodingType.Base64 });
+          encoding: FileSystem.EncodingType.Base64,
+        });
       }
 
       if (!base64Raw || base64Raw.length < 100) {
-        throw new Error("Could not read the image. Please try a different image.");
+        throw new Error("לא הצלחנו לקרוא את התמונה. נסה תמונה אחרת.");
       }
 
       const { logoUrl } = await trpcUtils.client.cloudData.settings.uploadLogo.mutate({
         base64: base64Raw,
-        mimeType: "image/png" });
+        mimeType: "image/png",
+      });
       // Save the public URL to settings (not the local file URI)
       await saveLogoUri(logoUrl);
       setCropModalVisible(false);
       setPickedImageUri(null);
     } catch (saveErr: any) {
       console.error("Save logo error:", saveErr);
-      Alert.alert("Error saving", `Details: ${saveErr?.message || "Unknown"}`);
+      Alert.alert("שגיאה בשמירה", `פרטים: ${saveErr?.message || "לא ידוע"}`);
     } finally {
       setCropSaving(false);
     }
@@ -162,11 +171,11 @@ export default function SettingsScreen() {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
           Alert.alert(
-            "Permission required",
-            "To select an image, please allow photo access in device settings.",
+            "נדרשת הרשאה",
+            "כדי לבחור תמונה, יש לאשר גישה לתמונות בהגדרות המכשיר.",
             [
-              { text: "Cancel", style: "cancel" },
-              { text: "Open settings", onPress: () => Linking.openSettings() },
+              { text: "ביטול", style: "cancel" },
+              { text: "פתח הגדרות", onPress: () => Linking.openSettings() },
             ]
           );
           return;
@@ -182,10 +191,11 @@ export default function SettingsScreen() {
       result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsEditing: false,
-        quality: 0.8 });
+        quality: 0.8,
+      });
     } catch (pickerErr: any) {
       console.error("Image picker launch error:", pickerErr);
-      Alert.alert("Error opening gallery", `Details: ${pickerErr?.message || "Unknown"}`);
+      Alert.alert("שגיאה בפתיחת גלריה", `פרטים: ${pickerErr?.message || "לא ידוע"}`);
       return;
     }
 
@@ -194,7 +204,7 @@ export default function SettingsScreen() {
     const asset = result.assets[0];
     const uri = asset.uri;
     if (!uri) {
-      Alert.alert("Error", "No image was received from the gallery.");
+      Alert.alert("שגיאה", "לא התקבלה כתובת תמונה מהגלריה.");
       return;
     }
 
@@ -238,16 +248,17 @@ export default function SettingsScreen() {
   }, [setBusinessLogoValue]);
 
   const handleRemoveLogo = () => {
-    Alert.alert("Remove logo", "Remove the logo and return to the default logo?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert("הסרת לוגו", "האם להסיר את הלוגו ולחזור ללוגו ברירת המחדל?", [
+      { text: "ביטול", style: "cancel" },
       {
-        text: "Remove",
+        text: "הסר",
         style: "destructive",
         onPress: async () => {
           const allowed = await guardMutation();
           if (!allowed) return;
           await setBusinessLogoValue("");
-        } },
+        },
+      },
     ]);
   };
 
@@ -260,7 +271,7 @@ export default function SettingsScreen() {
         {/* Header */}
         <View style={s.header}>
           <View style={{ width: 40 }} />
-          <Text style={s.headerTitle}>Settings</Text>
+          <Text style={s.headerTitle}>הגדרות</Text>
           <TouchableOpacity
             onPress={() => router.back()}
             style={s.headerBtn}
@@ -283,10 +294,10 @@ export default function SettingsScreen() {
           <View style={s.businessCard}>
             <View style={s.businessHeader}>
               <MaterialIcons name="image" size={22} color={DS_COLORS.accent} />
-              <Text style={s.businessTitle}>Business logo</Text>
+              <Text style={s.businessTitle}>לוגו העסק</Text>
             </View>
             <Text style={s.businessHint}>
-              The logo will be displayed on the home screen and in printed documents
+              הלוגו יוצג במסך הראשי ובמסמכי הדפסה
             </Text>
             <View style={s.logoRow}>
               <View style={s.logoCircle}>
@@ -299,12 +310,12 @@ export default function SettingsScreen() {
               <View style={s.logoBtns}>
                 <TouchableOpacity onPress={handlePickLogo} style={s.logoBtn} activeOpacity={0.8}>
                   <MaterialIcons name="photo-library" size={18} color={DS_COLORS.white} />
-                  <Text style={s.logoBtnText}>Select image</Text>
+                  <Text style={s.logoBtnText}>בחר תמונה</Text>
                 </TouchableOpacity>
                 {businessLogo ? (
                   <TouchableOpacity onPress={handleRemoveLogo} style={s.logoRemoveBtn} activeOpacity={0.8}>
                     <MaterialIcons name="delete-outline" size={18} color={DS_COLORS.error} />
-                    <Text style={s.logoRemoveBtnText}>Remove</Text>
+                    <Text style={s.logoRemoveBtnText}>הסר</Text>
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -315,19 +326,19 @@ export default function SettingsScreen() {
           <View style={s.businessCard}>
             <View style={s.businessHeader}>
               <MaterialIcons name="store" size={22} color={DS_COLORS.accent} />
-              <Text style={s.businessTitle}>Business name</Text>
+              <Text style={s.businessTitle}>שם העסק</Text>
             </View>
             <Text style={s.businessHint}>
-              The name will be displayed on the home screen and in printed documents
+              השם יוצג במסך הראשי ובמסמכי הדפסה
             </Text>
             <View style={s.businessInputRow}>
               <TextInput
                 style={s.businessInput}
                 value={nameText}
                 onChangeText={setNameText}
-                placeholder="Enter your business name"
+                placeholder="הזן את שם העסק שלך"
                 placeholderTextColor={DS_COLORS.textSecondary}
-                textAlign="left"
+                textAlign="right"
                 returnKeyType="done"
                 onSubmitEditing={handleSaveBusinessName}
                 selectTextOnFocus
@@ -343,7 +354,7 @@ export default function SettingsScreen() {
                 {nameSaved ? (
                   <MaterialIcons name="check" size={18} color={DS_COLORS.white} />
                 ) : (
-                  <Text style={s.businessSaveBtnText}>Save</Text>
+                  <Text style={s.businessSaveBtnText}>שמור</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -353,10 +364,10 @@ export default function SettingsScreen() {
           <View style={s.businessCard}>
             <View style={s.businessHeader}>
               <MaterialIcons name="palette" size={22} color={DS_COLORS.accent} />
-              <Text style={s.businessTitle}>App color</Text>
+              <Text style={s.businessTitle}>צבע האפליקציה</Text>
             </View>
             <Text style={s.businessHint}>
-              Select a custom color for buttons and elements in the app
+              בחר צבע מותאם אישית לכפתורים ואלמנטים באפליקציה
             </Text>
             <View style={s.colorGrid}>
               {COLOR_OPTIONS.map((c) => (
@@ -394,8 +405,8 @@ export default function SettingsScreen() {
               <View style={s.darkModeLeft}>
                 <MaterialIcons name={isDark ? "dark-mode" : "light-mode"} size={22} color={DS_COLORS.accent} />
                 <View style={s.darkModeTextWrap}>
-                  <Text style={s.businessTitle}>Dark mode</Text>
-                  <Text style={s.businessHint}>{isDark ? "Active — Dark theme" : "Off — Light theme"}</Text>
+                  <Text style={s.businessTitle}>מצב כהה</Text>
+                  <Text style={s.businessHint}>{isDark ? "פעיל — עיצוב כהה" : "כבוי — עיצוב בהיר"}</Text>
                 </View>
               </View>
               <View style={[s.toggleTrack, isDark && s.toggleTrackActive]}>
@@ -403,6 +414,67 @@ export default function SettingsScreen() {
               </View>
             </TouchableOpacity>
           </View>
+
+          {/* Premium Status / Upgrade */}
+          {(profile?.subscription_status === "active" || profile?.subscription_status === "free_access") ? (
+            <View style={[s.actionCard, { borderColor: "#8B5CF6", borderWidth: 1 }]}>
+              <View style={[s.actionIconWrap, { backgroundColor: isDark ? "#2D1B4E" : "#F3E8FF" }]}>
+                <MaterialIcons name="verified" size={22} color="#8B5CF6" />
+              </View>
+              <View style={s.actionTextWrap}>
+                <Text style={s.actionTitle}>מנוי פרימיום פעיל</Text>
+                <Text style={s.actionSubtitle}>
+                  {profile?.subscription_status === "free_access" ? "גישה מלאה (חינם)" : "גישה לכל הפיצ׳רים ללא הגבלה"}
+                </Text>
+              </View>
+              <MaterialIcons name="check-circle" size={20} color="#8B5CF6" />
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={s.actionCard}
+              onPress={() => router.push("/paywall?placement=settings" as any)}
+              activeOpacity={0.7}
+            >
+              <View style={[s.actionIconWrap, { backgroundColor: isDark ? "#2D1B4E" : "#F3E8FF" }]}>
+                <MaterialIcons name="workspace-premium" size={22} color="#8B5CF6" />
+              </View>
+              <View style={s.actionTextWrap}>
+                <Text style={s.actionTitle}>שדרג לפרימיום</Text>
+                <Text style={s.actionSubtitle}>
+                  גישה לכל הפיצ׳רים ללא הגבלה
+                </Text>
+              </View>
+              <MaterialIcons name="chevron-left" size={20} color={DS_COLORS.border} />
+            </TouchableOpacity>
+          )}
+
+          {/* Restore Purchases — always visible for non-premium users */}
+          {profile?.subscription_status !== "active" && profile?.subscription_status !== "free_access" && (
+            <TouchableOpacity
+              style={s.actionCard}
+              onPress={async () => {
+                try {
+                  const result = await (await import("@/lib/services/adapty-service")).restorePurchases();
+                  if (result) {
+                    // Refresh profile to update subscription status
+                    (await import("@/lib/services/adapty-service")).getSubscriptionStatus();
+                  }
+                } catch {}
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={[s.actionIconWrap, { backgroundColor: isDark ? "#1E2A3A" : "#EFF6FF" }]}>
+                <MaterialIcons name="restore" size={22} color="#3B82F6" />
+              </View>
+              <View style={s.actionTextWrap}>
+                <Text style={s.actionTitle}>שחזור רכישות</Text>
+                <Text style={s.actionSubtitle}>
+                  שחזר מנוי קיים ממכשיר אחר
+                </Text>
+              </View>
+              <MaterialIcons name="chevron-left" size={20} color={DS_COLORS.border} />
+            </TouchableOpacity>
+          )}
 
           {/* Video Tutorials */}
           <TouchableOpacity
@@ -414,9 +486,9 @@ export default function SettingsScreen() {
               <MaterialIcons name="play-circle-outline" size={22} color="#10B981" />
             </View>
             <View style={s.actionTextWrap}>
-              <Text style={s.actionTitle}>Video tutorials</Text>
+              <Text style={s.actionTitle}>הדרכות וידאו</Text>
               <Text style={s.actionSubtitle}>
-                Tutorial videos on using the app
+                סרטוני הדרכה על השימוש באפליקציה
               </Text>
             </View>
             <MaterialIcons name="chevron-left" size={20} color={DS_COLORS.border} />
@@ -432,9 +504,9 @@ export default function SettingsScreen() {
               <MaterialIcons name="rate-review" size={22} color="#3B82F6" />
             </View>
             <View style={s.actionTextWrap}>
-              <Text style={s.actionTitle}>Send feedback</Text>
+              <Text style={s.actionTitle}>שלח משוב</Text>
               <Text style={s.actionSubtitle}>
-                Help us improve the app
+                עזור לנו לשפר את האפליקציה
               </Text>
             </View>
             <MaterialIcons name="chevron-left" size={20} color={DS_COLORS.border} />
@@ -450,9 +522,9 @@ export default function SettingsScreen() {
               <MaterialIcons name="info-outline" size={22} color="#6366F1" />
             </View>
             <View style={s.actionTextWrap}>
-              <Text style={s.actionTitle}>About</Text>
+              <Text style={s.actionTitle}>אודות</Text>
               <Text style={s.actionSubtitle}>
-                App info and contact
+                מידע על האפליקציה ויצירת קשר
               </Text>
             </View>
             <MaterialIcons name="chevron-left" size={20} color={DS_COLORS.border} />
@@ -463,14 +535,15 @@ export default function SettingsScreen() {
             style={s.actionCard}
             onPress={() => {
               Alert.alert(
-                "Sign out",
-                "Are you sure you want to sign out?",
+                "התנתקות",
+                "האם אתה בטוח שברצונך להתנתק?",
                 [
-                  { text: "Cancel", style: "cancel" },
+                  { text: "ביטול", style: "cancel" },
                   {
-                    text: "Sign out",
+                    text: "התנתק",
                     style: "destructive",
-                    onPress: () => signOut() },
+                    onPress: () => signOut(),
+                  },
                 ]
               );
             }}
@@ -480,7 +553,7 @@ export default function SettingsScreen() {
               <MaterialIcons name="logout" size={22} color="#EF4444" />
             </View>
             <View style={s.actionTextWrap}>
-              <Text style={[s.actionTitle, { color: "#EF4444" }]}>Sign out</Text>
+              <Text style={[s.actionTitle, { color: "#EF4444" }]}>התנתק</Text>
               <Text style={s.actionSubtitle}>
                 {user?.email || ""}
               </Text>
@@ -490,7 +563,7 @@ export default function SettingsScreen() {
 
           {/* Version */}
           <Text style={{ textAlign: "center", fontSize: 12, color: DS_COLORS.textSecondary, marginTop: 8 }}>
-            Version {appVersion}
+            גרסה {appVersion}
           </Text>
         </ScrollView>
         </KeyboardAvoidingView>
@@ -532,25 +605,25 @@ function SyncStatusCard() {
     statusColor = "#D97706";
     bgColor = "#FEF3C7";
     if (syncStatus.pendingCount > 0) {
-      statusText = `Offline — ${syncStatus.pendingCount} changes pending sync`;
+      statusText = `אופליין — ${syncStatus.pendingCount} שינויים ממתינים לסנכרון`;
     } else {
-      statusText = "Offline — data saved on device";
+      statusText = "אופליין — הנתונים נשמרים במכשיר";
     }
   } else if (syncStatus.isSyncing) {
     icon = "sync";
     statusColor = "#2563EB";
     bgColor = "#EFF6FF";
-    statusText = "Syncing changes...";
+    statusText = "מסנכרן שינויים...";
   } else if (syncStatus.pendingCount > 0) {
     icon = "sync-problem";
     statusColor = "#D97706";
     bgColor = "#FEF3C7";
-    statusText = `${syncStatus.pendingCount} changes pending sync`;
+    statusText = `${syncStatus.pendingCount} שינויים ממתינים לסנכרון`;
   } else {
     icon = "cloud-done";
     statusColor = DS_COLORS.accent;
     bgColor = DS_COLORS.accentLight;
-    statusText = "All data synced to cloud";
+    statusText = "כל הנתונים מסונכרנים לענן";
   }
 
   // Format last sync time
@@ -561,11 +634,11 @@ function SyncStatusCard() {
     const diffMs = now.getTime() - d.getTime();
     const diffMin = Math.floor(diffMs / 60000);
     if (diffMin < 1) {
-      lastSyncText = "Last synced just now";
+      lastSyncText = "סונכרן לאחרונה עכשיו";
     } else if (diffMin < 60) {
-      lastSyncText = `Synced ${diffMin} minutes ago`;
+      lastSyncText = `סונכרן לפני ${diffMin} דקות`;
     } else {
-      lastSyncText = `Synced ${d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
+      lastSyncText = `סונכרן ${d.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}`;
     }
   }
 
@@ -590,7 +663,7 @@ const syncCardStyles = StyleSheet.create({
     borderRadius: DS_RADIUS.md,
     padding: DS_SPACING.lg,
     marginTop: DS_SPACING.md,
-    writingDirection: "rtl" as any,
+    direction: "rtl" as any,
   },
   textCol: {
     flex: 1,
@@ -643,13 +716,14 @@ function _make_s() { return StyleSheet.create({
   },
   content: {
     padding: DS_SPACING.xl,
+    paddingBottom: DS_SPACING.xl + 24,
     gap: DS_SPACING.lg,
   },
   businessCard: {
     backgroundColor: DS_COLORS.card,
     borderRadius: DS_RADIUS.lg,
     padding: DS_SPACING.lg,
-    writingDirection: "rtl",
+    direction: "rtl",
     ...DS_SHADOW.card,
   },
   businessHeader: {
@@ -762,7 +836,7 @@ function _make_s() { return StyleSheet.create({
     backgroundColor: DS_COLORS.card,
     borderRadius: DS_RADIUS.lg,
     padding: DS_SPACING.lg,
-    writingDirection: "rtl",
+    direction: "rtl",
     ...DS_SHADOW.card,
   },
   actionIconWrap: {
@@ -799,7 +873,7 @@ function _make_s() { return StyleSheet.create({
     borderRadius: DS_RADIUS.md,
     padding: DS_SPACING.lg,
     marginTop: DS_SPACING.md,
-    writingDirection: "rtl",
+    direction: "rtl",
   },
   warningText: {
     flex: 1,

@@ -71,16 +71,16 @@ export function OfflineEditDialog({ visible, onDismiss }: OfflineEditDialogProps
           </View>
 
           {/* Title */}
-          <Text style={s.title}>Saved on device</Text>
+          <Text style={s.title}>נשמר במכשיר</Text>
 
           {/* Main message */}
           <Text style={s.message}>
-            No internet connection right now. Your changes are saved on the device and will sync to the cloud when connected.
+            אין כרגע חיבור לאינטרנט. השינויים שלך נשמרים במכשיר ויסונכרנו לענן כשיהיה חיבור.
           </Text>
 
           {/* Secondary message */}
           <Text style={s.secondaryMessage}>
-            You can continue working as usual.
+            אפשר להמשיך לעבוד כרגיל.
           </Text>
 
           {/* Dismiss button */}
@@ -92,7 +92,7 @@ export function OfflineEditDialog({ visible, onDismiss }: OfflineEditDialogProps
                 pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
               ]}
             >
-              <Text style={s.dismissButtonText}>Got it</Text>
+              <Text style={s.dismissButtonText}>הבנתי</Text>
             </Pressable>
           </View>
         </View>
@@ -118,7 +118,7 @@ export function OfflineInfoBanner({ visible }: OfflineInfoBannerProps) {
     <View style={s.banner}>
       <MaterialIcons name="cloud-off" size={16} color="#92400E" />
       <Text style={s.bannerText}>
-        Offline mode — changes are saved on the device and will sync when connected
+        מצב אופליין — השינויים נשמרים במכשיר ויסונכרנו כשיהיה חיבור
       </Text>
     </View>
   );
@@ -156,7 +156,8 @@ export function useOfflineDialog(blockReason: EditBlockReason) {
   return {
     showOfflineDialog: visible,
     triggerOfflineDialog,
-    dismissOfflineDialog };
+    dismissOfflineDialog,
+  };
 }
 
 // ============ OFFLINE TOUCH INTERCEPTOR (LEGACY — NO-OP) ============

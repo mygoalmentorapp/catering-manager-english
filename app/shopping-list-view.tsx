@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
   Platform,
   Linking,
-  Share } from "react-native";
+  Share,
+} from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -22,7 +23,8 @@ import {
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
-  DS_SHADOW } from "@/lib/design-system";
+  DS_SHADOW,
+} from "@/lib/design-system";
 import { imageUriToBase64, getDefaultLogoBase64 } from "@/lib/image-to-base64";
 import { useThemeContext } from "@/lib/theme-provider";
 
@@ -73,9 +75,10 @@ function groupByCategory(rows: ShoppingListIngredientRow[]): GroupedSection[] {
 
   const groups: GroupedSection[] = [];
   const categoryLabels: Record<string, { label: string; emoji: string }> = {
-    base: { label: "Base ingredients", emoji: "🛒" },
-    spice: { label: "Spices", emoji: "🧂" },
-    manual: { label: "Additional items", emoji: "📝" } };
+    base: { label: "מרכיבי בסיס", emoji: "🛒" },
+    spice: { label: "תבלינים", emoji: "🧂" },
+    manual: { label: "פריטים נוספים", emoji: "📝" },
+  };
 
   const order = ["base", "spice"];
   const dynamicCats = [...map.keys()].filter((k) => !["base", "spice", "manual"].includes(k));
@@ -99,7 +102,8 @@ function calcDiffs(rows: ShoppingListIngredientRow[]): { name: string; unit: str
       result.push({
         name: row.name,
         unit: row.unit,
-        diff: Math.round(row.manualDelta * 10) / 10 });
+        diff: Math.round(row.manualDelta * 10) / 10,
+      });
     }
   }
   return result;
@@ -130,7 +134,7 @@ function generateShoppingListHtml(
   if (diffs.length > 0) {
     diffHtml = `<div class="diff-section">
       <div class="diff-divider"></div>
-      <div class="diff-title">Changes from the original list</div>`;
+      <div class="diff-title">שינויים מהרשימה המקורית</div>`;
     for (const d of diffs) {
       const sign = d.diff > 0 ? "+" : "";
       const color = d.diff > 0 ? "#22C55E" : "#EF4444";
@@ -149,7 +153,7 @@ function generateShoppingListHtml(
 <meta charset="UTF-8">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; direction: ltr; padding: 20px 30px; color: #1E1E2E; }
+  body { font-family: Arial, Helvetica, sans-serif; direction: rtl; padding: 20px 30px; color: #1E1E2E; }
   .header { text-align: center; margin-bottom: 16px; }
   .logo { width: 50px; height: 50px; border-radius: 50%; margin-bottom: 6px; }
   .biz-name { font-size: 18px; font-weight: bold; margin-bottom: 2px; }
@@ -205,7 +209,7 @@ function generateShoppingListHtml(
   <div class="header">
     ${logoHtml}
     <div class="biz-name">${businessName}</div>
-    <div class="doc-title">Shopping list</div>
+    <div class="doc-title">רשימת קניות</div>
     <div class="orders-label">${linkedOrders.length > 0
       ? linkedOrders.map(o => `\u{1F4C5} ${o.customerName} \u2014 ${formatDate(o.eventDate)}`).join('<br/>')
       : orderNames.join(", ")}</div>
@@ -266,9 +270,10 @@ export default function ShoppingListViewScreen() {
         // Navigate to changes-review for the first locked order
         router.push({
           pathname: "/changes-review",
-          params: { orderId: lockedOrders[0].id, fromShoppingList: "1" } } as any);
+          params: { orderId: lockedOrders[0].id, fromShoppingList: "1" },
+        } as any);
       } else {
-        Alert.alert("Locked list", "Please refresh the locked orders first.");
+        Alert.alert("רשימה נעולה", "יש לרענן תחילה את ההזמנות הנעולות.");
       }
       return;
     }
@@ -279,7 +284,7 @@ export default function ShoppingListViewScreen() {
   const shareText = useMemo(() => {
     if (!list) return "";
     const groups2 = groupByCategory(list.rows);
-    let text = `\u{1F6D2} Shopping List\n`;
+    let text = `\u{1F6D2} רשימת קניות\n`;
     if (linkedOrders.length > 0) {
       for (const order of linkedOrders) {
         text += `\u{1F4C5} ${order.customerName} — ${formatDate(order.eventDate)}\n`;
@@ -297,7 +302,7 @@ export default function ShoppingListViewScreen() {
     }
     if (diffs.length > 0) {
       text += `\n${"-".repeat(20)}\n`;
-      text += `\u{1F504} Changes:\n`;
+      text += `\u{1F504} שינויים:\n`;
       for (const d of diffs) {
         const sign = d.diff > 0 ? "+" : "-";
         text += `${d.name}: ${sign}${formatQty(Math.abs(d.diff))} ${getPluralUnit(d.unit, Math.abs(d.diff), units)}\n`;
@@ -320,7 +325,7 @@ export default function ShoppingListViewScreen() {
       try {
         await Share.share({ message: shareText });
       } catch {
-        Alert.alert("Error", "Unable to share right now");
+        Alert.alert("שגיאה", "לא ניתן לשתף כרגע");
       }
     }
   }, [shareText]);
@@ -329,7 +334,7 @@ export default function ShoppingListViewScreen() {
     try {
       await Share.share({ message: shareText });
     } catch {
-      Alert.alert("Error", "Unable to share right now");
+      Alert.alert("שגיאה", "לא ניתן לשתף כרגע");
     }
   }, [shareText]);
 
@@ -344,7 +349,7 @@ export default function ShoppingListViewScreen() {
         logoBase64 = await getDefaultLogoBase64();
       }
 
-      const displayName = businessName.trim() || "Your business name";
+      const displayName = businessName.trim() || "שם העסק שלך";
       const html = generateShoppingListHtml(
         list.rows,
         list.orderNames,
@@ -371,14 +376,15 @@ export default function ShoppingListViewScreen() {
         if (isAvailable) {
           await Sharing.shareAsync(uri, {
             mimeType: "application/pdf",
-            dialogTitle: "shopping_list",
-            UTI: "com.adobe.pdf" });
+            dialogTitle: "רשימת_קניות",
+            UTI: "com.adobe.pdf",
+          });
         } else {
           await Print.printAsync({ html });
         }
       }
     } catch (e: any) {
-      Alert.alert("Error", "Unable to print: " + (e.message || ""));
+      Alert.alert("שגיאה", "לא ניתן להדפיס: " + (e.message || ""));
     } finally {
       setPrinting(false);
     }
@@ -390,13 +396,13 @@ export default function ShoppingListViewScreen() {
         <View style={vs.container}>
           <View style={vs.header}>
             <View style={{ width: 40 }} />
-            <Text style={vs.headerTitle}>Shopping list</Text>
+            <Text style={vs.headerTitle}>רשימת קניות</Text>
             <TouchableOpacity onPress={() => router.back()} style={vs.headerBtn} activeOpacity={0.7}>
               <MaterialIcons name="arrow-back" size={22} color={DS_COLORS.textPrimary} />
             </TouchableOpacity>
           </View>
           <View style={vs.emptyState}>
-            <Text style={vs.emptyTitle}>List not found</Text>
+            <Text style={vs.emptyTitle}>רשימה לא נמצאה</Text>
           </View>
         </View>
       </ScreenContainer>
@@ -414,12 +420,12 @@ export default function ShoppingListViewScreen() {
           {!isLocked ? (
             <TouchableOpacity onPress={handleEdit} style={vs.editBtn} activeOpacity={0.7}>
               <MaterialIcons name="edit" size={18} color={DS_COLORS.accent} />
-              <Text style={vs.editBtnText}>Edit</Text>
+              <Text style={vs.editBtnText}>עריכה</Text>
             </TouchableOpacity>
           ) : (
             <View style={{ width: 40 }} />
           )}
-          <Text style={vs.headerTitle}>Shopping list</Text>
+          <Text style={vs.headerTitle}>רשימת קניות</Text>
           <TouchableOpacity onPress={() => router.back()} style={vs.headerBtn} activeOpacity={0.7}>
             <MaterialIcons name="arrow-back" size={22} color={DS_COLORS.textPrimary} />
           </TouchableOpacity>
@@ -456,11 +462,11 @@ export default function ShoppingListViewScreen() {
             <View style={vs.lockedBannerRow}>
               <MaterialIcons name="lock" size={18} color={DS_COLORS.warning} />
               <Text style={vs.lockedBannerText}>
-                The shopping list is not updated
+                רשימת הקניות לא מעודכנת
               </Text>
             </View>
             <Text style={vs.lockedBannerSub}>
-              There are changes in the linked order — tap to view and update
+              יש שינויים בהזמנה המקושרת — לחץ לצפייה ועדכון
             </Text>
             {lockedOrders.length > 0 && (
               <View style={vs.lockedOrdersList}>
@@ -511,7 +517,7 @@ export default function ShoppingListViewScreen() {
           {diffs.length > 0 && (
             <View style={vs.diffCard}>
               <View style={vs.diffDivider} />
-              <Text style={vs.diffTitle}>Changes from the original list</Text>
+              <Text style={vs.diffTitle}>שינויים מהרשימה המקורית</Text>
               {diffs.map((d, i) => (
                 <View key={`diff-${i}`} style={vs.diffRow}>
                   <Text style={vs.diffName}>{d.name}</Text>
@@ -538,7 +544,7 @@ export default function ShoppingListViewScreen() {
             activeOpacity={0.8}
           >
             <MaterialIcons name="send" size={20} color={DS_COLORS.white} />
-            <Text style={vs.whatsappBtnText}>Share via WhatsApp</Text>
+            <Text style={vs.whatsappBtnText}>שתף ב-WhatsApp</Text>
           </TouchableOpacity>
           <View style={vs.bottomRow}>
             <TouchableOpacity
@@ -547,7 +553,7 @@ export default function ShoppingListViewScreen() {
               activeOpacity={0.8}
             >
               <MaterialIcons name="share" size={18} color={DS_COLORS.white} />
-              <Text style={vs.shareBtnText}>Share</Text>
+              <Text style={vs.shareBtnText}>שתף</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handlePrint}
@@ -560,7 +566,7 @@ export default function ShoppingListViewScreen() {
               ) : (
                 <>
                   <MaterialIcons name="picture-as-pdf" size={18} color={DS_COLORS.white} />
-                  <Text style={vs.printBtnSmallText}>Save PDF</Text>
+                  <Text style={vs.printBtnSmallText}>שמור PDF</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -583,7 +589,7 @@ function _make_vs() { return StyleSheet.create({
     paddingHorizontal: DS_SPACING.xl,
     paddingVertical: DS_SPACING.md,
     backgroundColor: DS_COLORS.background,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   headerBtn: {
     width: 40,
@@ -602,7 +608,7 @@ function _make_vs() { return StyleSheet.create({
   },
   editBtn: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     gap: 4,
     paddingHorizontal: DS_SPACING.md,
@@ -634,7 +640,7 @@ function _make_vs() { return StyleSheet.create({
   },
   purpleBannerDateRow: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center" as const,
     gap: DS_SPACING.xs,
   },
@@ -650,7 +656,7 @@ function _make_vs() { return StyleSheet.create({
   },
   eventRow: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: DS_SPACING.sm,
@@ -690,7 +696,7 @@ function _make_vs() { return StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     gap: DS_SPACING.sm,
     marginBottom: DS_SPACING.xs,
@@ -712,7 +718,7 @@ function _make_vs() { return StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     paddingVertical: DS_SPACING.md,
   },
   itemRowBorder: {
@@ -760,7 +766,7 @@ function _make_vs() { return StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     paddingVertical: DS_SPACING.xs + 2,
   },
   diffName: {
@@ -783,7 +789,7 @@ function _make_vs() { return StyleSheet.create({
   },
   whatsappBtn: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: DS_SPACING.lg,
@@ -799,13 +805,13 @@ function _make_vs() { return StyleSheet.create({
   },
   bottomRow: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     gap: DS_SPACING.sm,
   },
   shareBtn: {
     flex: 1,
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: DS_SPACING.md,
@@ -822,7 +828,7 @@ function _make_vs() { return StyleSheet.create({
   printBtnSmall: {
     flex: 1,
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: DS_SPACING.md,
@@ -846,7 +852,7 @@ function _make_vs() { return StyleSheet.create({
   },
   lockedBannerRow: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center" as const,
     gap: DS_SPACING.sm,
   },
@@ -870,7 +876,7 @@ function _make_vs() { return StyleSheet.create({
   },
   lockedOrderBtn: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center" as const,
     justifyContent: "space-between" as const,
     paddingVertical: DS_SPACING.xs + 2,

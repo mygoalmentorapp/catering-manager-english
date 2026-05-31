@@ -12,7 +12,8 @@ import {
   Platform,
   Modal,
   Animated,
-  BackHandler } from "react-native";
+  BackHandler,
+} from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,7 +28,8 @@ import {
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
-  DS_SHADOW } from "@/lib/design-system";
+  DS_SHADOW,
+} from "@/lib/design-system";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 // useEditGuard removed — offline editing is seamless now
 // OfflineInfoBanner removed — smooth UX, toast on save only
@@ -74,20 +76,20 @@ export default function OrderScreen() {
               size={48}
               color={existingOrder.status === "archived" ? "#9CA3AF" : "#F59E0B"}
             />
-            <Text style={{ fontSize: 18, fontWeight: "700", color: "#1F2937", marginTop: 16, textAlign: "left" }}>
-              {existingOrder.status === "archived" ? "Archived order" : "Locked order"}
+            <Text style={{ fontSize: 18, fontWeight: "700", color: "#1F2937", marginTop: 16, textAlign: "right" }}>
+              {existingOrder.status === "archived" ? "הזמנה בארכיון" : "הזמנה נעולה"}
             </Text>
-            <Text style={{ fontSize: 14, color: "#6B7280", marginTop: 8, textAlign: "left", lineHeight: 20 }}>
+            <Text style={{ fontSize: 14, color: "#6B7280", marginTop: 8, textAlign: "right", lineHeight: 20 }}>
               {existingOrder.status === "archived"
-                ? "This order is archived. Please unarchive before editing."
-                : "This order is locked due to product changes. Please refresh the order from the orders list screen."}
+                ? "הזמנה זו בארכיון. יש להוציא מהארכיון לפני עריכה."
+                : "הזמנה זו נעולה בגלל שינויים במוצרים. יש לרענן את ההזמנה ממסך רשימת ההזמנות."}
             </Text>
             <TouchableOpacity
               onPress={() => router.back()}
               style={{ backgroundColor: DS_COLORS.accent, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 32, marginTop: 20 }}
               activeOpacity={0.8}
             >
-              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>Back</Text>
+              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "600" }}>חזרה</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -104,7 +106,7 @@ export default function OrderScreen() {
         <View style={s.container}>
           <View style={s.header}>
             <View style={{ width: 40 }} />
-            <Text style={s.headerTitle}>New order</Text>
+            <Text style={s.headerTitle}>הזמנה חדשה</Text>
             <TouchableOpacity
               onPress={() => router.back()}
               style={s.headerBtn}
@@ -117,8 +119,8 @@ export default function OrderScreen() {
             <View style={s.emptyIconCircle}>
               <MaterialIcons name="inventory-2" size={40} color={DS_COLORS.accent} />
             </View>
-            <Text style={s.emptyTitle}>No products in the system</Text>
-            <Text style={s.emptySubtitle}>Please add products first</Text>
+            <Text style={s.emptyTitle}>אין מוצרים במערכת</Text>
+            <Text style={s.emptySubtitle}>יש להוסיף מוצרים תחילה</Text>
             <TouchableOpacity
               onPress={() => {
                 router.back();
@@ -127,7 +129,7 @@ export default function OrderScreen() {
               style={s.emptyBtn}
               activeOpacity={0.8}
             >
-              <Text style={s.emptyBtnText}>Go to data entry</Text>
+              <Text style={s.emptyBtnText}>מעבר להזנת נתונים</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -140,7 +142,8 @@ export default function OrderScreen() {
 
 function OrderForm({
   existingOrder,
-  isEditing }: {
+  isEditing,
+}: {
   existingOrder: any;
   isEditing: boolean;
 }) {
@@ -177,11 +180,11 @@ function OrderForm({
   const handleClose = () => {
     if (isDirty) {
       Alert.alert(
-        "Unsaved changes",
-        "You have unsaved changes. Exit without saving?",
+        "שינויים שלא נשמרו",
+        "יש שינויים שלא נשמרו. לצאת בלי לשמור?",
         [
-          { text: "Continue Edit", style: "cancel" },
-          { text: "Exit without saving", style: "destructive", onPress: () => router.back() },
+          { text: "המשך עריכה", style: "cancel" },
+          { text: "צא בלי לשמור", style: "destructive", onPress: () => router.back() },
         ]
       );
     } else {
@@ -233,7 +236,7 @@ function OrderForm({
   const addProductToOrder = useCallback(
     (product: Product) => {
       if (orderProducts.some((op) => op.productId === product.id)) {
-        Alert.alert("Error", "This product is already in the order");
+        Alert.alert("שגיאה", "מוצר זה כבר קיים בהזמנה");
         return;
       }
       // Create a full snapshot row
@@ -268,16 +271,17 @@ function OrderForm({
 
   const removeProductFromOrder = useCallback(
     (index: number) => {
-      const productName = orderProducts[index]?.productNameAtAdd ?? "Product";
-      Alert.alert("Remove product", `Remove "${productName}" from the order?`, [
-        { text: "Cancel", style: "cancel" },
+      const productName = orderProducts[index]?.productNameAtAdd ?? "מוצר";
+      Alert.alert("הסרת מוצר", `האם להסיר את "${productName}" מההזמנה?`, [
+        { text: "ביטול", style: "cancel" },
         {
-          text: "Remove",
+          text: "הסרה",
           style: "destructive",
           onPress: () => {
             setOrderProducts(orderProducts.filter((_, i) => i !== index));
             setIsDirty(true);
-          } },
+          },
+        },
       ]);
     },
     [orderProducts]
@@ -293,7 +297,7 @@ function OrderForm({
     if (!customerName.trim()) {
       newErrors.add("customerName");
       setErrorFields(new Set([...newErrors]));
-      Alert.alert("Error", "Please enter a customer name");
+      Alert.alert("שגיאה", "יש להזין שם לקוח");
       return;
     }
 
@@ -309,18 +313,18 @@ function OrderForm({
       newErrors.add("customerName");
       setErrorFields(new Set([...newErrors]));
       Alert.alert(
-        "Duplicate name",
-        "An order with this exact name already exists.\nTo avoid confusion, please add an identifier such as a number, event type, or short description.\nChanging only spaces does not count as a different name."
+        "שם כפול",
+        "כבר קיימת הזמנה עם אותו שם בדיוק.\nכדי למנוע בלבול וטעויות, יש להוסיף לשם ההזמנה מזהה נוסף, למשל מספר, סוג אירוע או תיאור קצר.\nשינוי של רווחים בלבד לא נחשב לשם שונה."
       );
       return;
     }
     if (!selectedDate) {
-      Alert.alert("Error", "Please select an event date");
+      Alert.alert("שגיאה", "יש לבחור תאריך אירוע");
       return;
     }
     const dateObj = selectedDate;
     if (orderProducts.length === 0) {
-      Alert.alert("Error", "Please add at least one product");
+      Alert.alert("שגיאה", "יש להוסיף לפחות מוצר אחד");
       return;
     }
     let hasQtyErrors = false;
@@ -333,7 +337,7 @@ function OrderForm({
     }
     if (hasQtyErrors) {
       setErrorFields(new Set([...newErrors]));
-      Alert.alert("Error", "Please enter a quantity greater than 0 for all products marked in red");
+      Alert.alert("שגיאה", "יש להזין כמות גדולה מ-0 לכל המוצרים המסומנים באדום");
       return;
     }
 
@@ -346,7 +350,8 @@ function OrderForm({
         eventDate: dateObj.toISOString(),
         products: orderProducts,
         notes: notes.trim(),
-        status: existingOrder?.status ?? ("open" as const) };
+        status: existingOrder?.status ?? ("open" as const),
+      };
 
       let shoppingListUpdated = false;
       if (isEditing && existingOrder) {
@@ -364,7 +369,8 @@ function OrderForm({
             );
             await updateSavedShoppingList(linkedList.id, {
               rows: updatedRows,
-              updatedAt: new Date().toISOString() });
+              updatedAt: new Date().toISOString(),
+            });
             shoppingListUpdated = true;
           } catch {
             // Delta failure should not block order save
@@ -375,16 +381,16 @@ function OrderForm({
         await addOrder(orderData);
       }
       Alert.alert(
-        "Success",
+        "הצלחה",
         shoppingListUpdated
-          ? "Order updated successfully.\nThe shopping list has been updated according to your changes."
-          : "Order saved successfully"
+          ? "ההזמנה עודכנה בהצלחה.\nרשימת הקניות עודכנה בהתאם לשינויים שביצעת."
+          : "ההזמנה נשמרה בהצלחה"
       );
       router.back();
     } catch (e: any) {
       // Network errors: server may have saved the order even though response didn't arrive.
       const isNetworkError =
-        !e.message?.includes("Already exists") &&
+        !e.message?.includes("כבר קיימת") &&
         (e.message?.toLowerCase()?.includes("network") ||
          e.message?.toLowerCase()?.includes("fetch") ||
          e.message?.toLowerCase()?.includes("timeout") ||
@@ -399,7 +405,7 @@ function OrderForm({
             (o) => o.customerName.trim().toLowerCase() === savedName
           );
           if (found) {
-            Alert.alert("Success", "Order saved successfully");
+            Alert.alert("הצלחה", "ההזמנה נשמרה בהצלחה");
             router.back();
             return;
           }
@@ -407,7 +413,7 @@ function OrderForm({
           // Refresh also failed
         }
       }
-      Alert.alert("Error", e.message || "Error saving the order");
+      Alert.alert("שגיאה", e.message || "שגיאה בשמירת ההזמנה");
     } finally {
       setSaving(false);
     }
@@ -415,10 +421,10 @@ function OrderForm({
 
   const handleDelete = () => {
     if (!existingOrder) return;
-    Alert.alert("Delete order", "Are you sure you want to delete?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert("מחיקת הזמנה", "האם אתה בטוח שברצונך למחוק?", [
+      { text: "ביטול", style: "cancel" },
       {
-        text: "Delete",
+        text: "מחיקה",
         style: "destructive",
         onPress: async () => {
           const allowed = await guardMutation();
@@ -427,9 +433,10 @@ function OrderForm({
             await deleteOrder(existingOrder.id);
             router.back();
           } catch (e: any) {
-            Alert.alert("Error", e.message);
+            Alert.alert("שגיאה", e.message);
           }
-        } },
+        },
+      },
     ]);
   };
 
@@ -448,7 +455,7 @@ function OrderForm({
         <View style={s.header}>
           <View style={{ width: 40 }} />
           <Text style={s.headerTitle}>
-            {isEditing ? "Edit order" : "New order"}
+            {isEditing ? "עריכת הזמנה" : "הזמנה חדשה"}
           </Text>
           <TouchableOpacity
             onPress={handleClose}
@@ -461,8 +468,8 @@ function OrderForm({
 
         {/* Sticky Customer Price Header */}
         <View style={s.stickyPriceHeader}>
-          <Text style={s.stickyPriceLabel}>Customer price</Text>
-          <Text style={s.stickyPriceValue}>${formatPrice(customerTotal)}</Text>
+          <Text style={s.stickyPriceLabel}>מחיר ללקוח</Text>
+          <Text style={s.stickyPriceValue}>₪{formatPrice(customerTotal)}</Text>
         </View>
 
         <KeyboardAvoidingView
@@ -479,7 +486,7 @@ function OrderForm({
 
             {/* Customer Name */}
             <View style={s.formCard}>
-              <Text style={s.formLabel}>Name Customer</Text>
+              <Text style={s.formLabel}>שם לקוח</Text>
               <TextInput
                 style={inputStyle("customerName")}
                 value={customerName}
@@ -490,9 +497,9 @@ function OrderForm({
                     setErrorFields((prev) => { const next = new Set(prev); next.delete("customerName"); return next; });
                   }
                 }}
-                placeholder="Enter customer name..."
+                placeholder="הזן שם לקוח..."
                 placeholderTextColor={DS_COLORS.textSecondary}
-                textAlign="left"
+                textAlign="right"
                 returnKeyType="done"
                 onFocus={() => setFocusedField("customer")}
                 onBlur={() => setFocusedField(null)}
@@ -507,7 +514,7 @@ function OrderForm({
             >
               <View style={s.accordionHeaderLeft}>
                 <MaterialIcons name="person-outline" size={20} color={DS_COLORS.accent} />
-                <Text style={s.accordionHeaderText}>Customer details</Text>
+                <Text style={s.accordionHeaderText}>פרטי לקוח</Text>
                 {!showCustomerDetails && (customerAddress || customerPhone) ? (
                   <Text style={s.accordionPreview} numberOfLines={1}>
                     {[customerPhone, customerAddress].filter(Boolean).join(" · ")}
@@ -523,14 +530,14 @@ function OrderForm({
             {showCustomerDetails && (
               <View style={s.accordionBody}>
                 <View style={s.accordionField}>
-                  <Text style={s.accordionFieldLabel}>Phone</Text>
+                  <Text style={s.accordionFieldLabel}>טלפון</Text>
                   <TextInput
                     style={[s.input, focusedField === "phone" && s.inputFocused]}
                     value={customerPhone}
                     onChangeText={(v) => { setCustomerPhone(v); setIsDirty(true); }}
-                    placeholder="Enter phone number..."
+                    placeholder="הזן מספר טלפון..."
                     placeholderTextColor={DS_COLORS.textSecondary}
-                    textAlign="left"
+                    textAlign="right"
                     keyboardType="phone-pad"
                     returnKeyType="done"
                     selectTextOnFocus
@@ -539,14 +546,14 @@ function OrderForm({
                   />
                 </View>
                 <View style={s.accordionField}>
-                  <Text style={s.accordionFieldLabel}>Address</Text>
+                  <Text style={s.accordionFieldLabel}>כתובת</Text>
                   <TextInput
                     style={[s.input, focusedField === "address" && s.inputFocused]}
                     value={customerAddress}
                     onChangeText={(v) => { setCustomerAddress(v); setIsDirty(true); }}
-                    placeholder="Enter address..."
+                    placeholder="הזן כתובת..."
                     placeholderTextColor={DS_COLORS.textSecondary}
-                    textAlign="left"
+                    textAlign="right"
                     returnKeyType="done"
                     selectTextOnFocus
                     onFocus={() => setFocusedField("address")}
@@ -558,7 +565,7 @@ function OrderForm({
 
             {/* Event Date */}
             <View style={s.formCard}>
-              <Text style={s.formLabel}>Event date</Text>
+              <Text style={s.formLabel}>תאריך אירוע</Text>
               <TouchableOpacity
                 onPress={() => setShowDatePicker(true)}
                 style={s.datePickerBtn}
@@ -570,7 +577,7 @@ function OrderForm({
                     !selectedDate && { color: DS_COLORS.textSecondary },
                   ]}
                 >
-                  {selectedDate ? formatDateForDisplay(selectedDate.toISOString()) : "Select date..."}
+                  {selectedDate ? formatDateForDisplay(selectedDate.toISOString()) : "בחר תאריך..."}
                 </Text>
                 <MaterialIcons name="event" size={20} color={DS_COLORS.accent} />
               </TouchableOpacity>
@@ -591,19 +598,19 @@ function OrderForm({
             {/* Products */}
             <View style={s.formCard}>
               <View style={s.formCardHeader}>
-                <Text style={s.formLabel}>Products</Text>
+                <Text style={s.formLabel}>מוצרים</Text>
                 <TouchableOpacity
                   onPress={() => setShowSearch(true)}
                   style={s.addSmallBtn}
                   activeOpacity={0.8}
                 >
                   <MaterialIcons name="add" size={16} color={DS_COLORS.accent} />
-                  <Text style={s.addSmallBtnText}>Add product</Text>
+                  <Text style={s.addSmallBtnText}>הוסף מוצר</Text>
                 </TouchableOpacity>
               </View>
 
               {orderProducts.length === 0 && (
-                <Text style={s.hint}>Please add at least one product</Text>
+                <Text style={s.hint}>יש להוסיף לפחות מוצר אחד</Text>
               )}
 
               {orderProducts.map((op, index) => {
@@ -616,7 +623,7 @@ function OrderForm({
                       {op.productNameAtAdd}
                     </Text>
                     <View style={s.orderProductCalcRow}>
-                      <Text style={s.orderProductPrice}>${formatPrice(unitPrice)}</Text>
+                      <Text style={s.orderProductPrice}>₪{formatPrice(unitPrice)}</Text>
                       <Text style={s.orderProductMultiply}>×</Text>
                       <TextInput
                         style={[inputStyle(`qty-${index}`), s.qtyInput]}
@@ -630,7 +637,7 @@ function OrderForm({
                         }}
                         keyboardType="decimal-pad"
                         textAlign="center"
-                        placeholder="Quantity"
+                        placeholder="כמות"
                         placeholderTextColor={DS_COLORS.textSecondary}
                         returnKeyType="done"
                         selectTextOnFocus
@@ -638,7 +645,7 @@ function OrderForm({
                         onBlur={() => setFocusedField(null)}
                       />
                       <Text style={s.orderProductEquals}>=</Text>
-                      <Text style={s.orderProductTotal}>${formatPrice(lineTotal)}</Text>
+                      <Text style={s.orderProductTotal}>₪{formatPrice(lineTotal)}</Text>
                     </View>
                     <TouchableOpacity
                       onPress={() => removeProductFromOrder(index)}
@@ -658,14 +665,14 @@ function OrderForm({
 
             {/* Notes */}
             <View style={s.formCard}>
-              <Text style={s.formLabel}>Notes</Text>
+              <Text style={s.formLabel}>הערות</Text>
               <TextInput
                 style={[s.input, s.notesInput, focusedField === "notes" && s.inputFocused]}
                 value={notes}
                 onChangeText={(v) => { setNotes(v); setIsDirty(true); }}
-                placeholder="Notes for order..."
+                placeholder="הערות להזמנה..."
                 placeholderTextColor={DS_COLORS.textSecondary}
-                textAlign="left"
+                textAlign="right"
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
@@ -686,7 +693,7 @@ function OrderForm({
             activeOpacity={0.8}
             disabled={saving}
           >
-            <Text style={s.saveBtnText}>{saving ? "Saving..." : "Save"}</Text>
+            <Text style={s.saveBtnText}>{saving ? "שומר..." : "שמירה"}</Text>
           </TouchableOpacity>
 
         </View>
@@ -697,7 +704,7 @@ function OrderForm({
             <View style={s.modalContent}>
               <View style={s.modalHeader}>
                 <View style={{ width: 40 }} />
-                <Text style={s.modalTitle}>Select product</Text>
+                <Text style={s.modalTitle}>בחירת מוצר</Text>
                 <TouchableOpacity
                   onPress={() => {
                     setShowSearch(false);
@@ -715,9 +722,9 @@ function OrderForm({
                   style={s.searchInput}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  placeholder="Search Product..."
+                  placeholder="חיפוש מוצר..."
                   placeholderTextColor={DS_COLORS.textSecondary}
-                  textAlign="left"
+                  textAlign="right"
                   autoFocus
                   returnKeyType="search"
                 />
@@ -729,7 +736,7 @@ function OrderForm({
                 contentContainerStyle={{ padding: DS_SPACING.xl, gap: DS_SPACING.sm, paddingBottom: Math.max(DS_SPACING.xl, insets.bottom + DS_SPACING.xl) }}
                 ListEmptyComponent={
                   <Text style={s.emptySearchText}>
-                    {searchQuery ? "No products found" : "All products are already in the order"}
+                    {searchQuery ? "לא נמצאו מוצרים" : "כל המוצרים כבר בהזמנה"}
                   </Text>
                 }
                 renderItem={({ item }) => (
@@ -742,7 +749,7 @@ function OrderForm({
                     <View style={s.searchResultInfo}>
                       <Text style={s.searchResultText}>{item.name}</Text>
                       <Text style={s.searchResultPrice}>
-                        {(item.customerPrice ?? 0) > 0 ? `$${formatPrice(item.customerPrice ?? 0)}` : "Not set"}
+                        {(item.customerPrice ?? 0) > 0 ? `₪${formatPrice(item.customerPrice ?? 0)}` : "לא הוגדר"}
                       </Text>
                     </View>
                     <View style={s.searchResultIcon}>
@@ -784,7 +791,7 @@ function _make_s() { return StyleSheet.create({
     paddingHorizontal: DS_SPACING.xl,
     paddingVertical: DS_SPACING.md,
     backgroundColor: DS_COLORS.background,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   headerBtn: {
     width: 40,
@@ -798,7 +805,7 @@ function _make_s() { return StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     paddingHorizontal: DS_SPACING.xl,
     paddingVertical: DS_SPACING.md,
     backgroundColor: DS_COLORS.accent,
@@ -871,13 +878,13 @@ function _make_s() { return StyleSheet.create({
     padding: DS_SPACING.lg,
     gap: DS_SPACING.md,
     ...DS_SHADOW.card,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   formCardHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   formLabel: {
     fontSize: DS_FONT.titleCard,
@@ -914,7 +921,7 @@ function _make_s() { return StyleSheet.create({
   datePickerBtn: {
     flexDirection: "row",
     alignItems: "center",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     gap: DS_SPACING.md,
     backgroundColor: DS_COLORS.background,
     borderWidth: 1.5,
@@ -932,7 +939,7 @@ function _make_s() { return StyleSheet.create({
   addSmallBtn: {
     flexDirection: "row",
     alignItems: "center",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     gap: 4,
     paddingHorizontal: DS_SPACING.md,
     paddingVertical: DS_SPACING.xs + 2,
@@ -947,7 +954,7 @@ function _make_s() { return StyleSheet.create({
   orderProductRow: {
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     gap: DS_SPACING.sm,
     paddingVertical: DS_SPACING.sm,
     flexWrap: "wrap" as const,
@@ -964,7 +971,7 @@ function _make_s() { return StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     gap: DS_SPACING.sm,
-    writingDirection: "ltr" as const,
+    direction: "ltr" as const,
   },
   orderProductPrice: {
     fontSize: DS_FONT.bodySmall,
@@ -1021,7 +1028,7 @@ function _make_s() { return StyleSheet.create({
   deleteOrderBtn: {
     flexDirection: "row",
     alignItems: "center",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     justifyContent: "center",
     paddingVertical: DS_SPACING.md,
     borderRadius: DS_RADIUS.md,
@@ -1049,7 +1056,7 @@ function _make_s() { return StyleSheet.create({
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     justifyContent: "space-between",
     padding: DS_SPACING.xl,
     borderBottomWidth: 1,
@@ -1075,7 +1082,7 @@ function _make_s() { return StyleSheet.create({
   searchResultItem: {
     flexDirection: "row",
     alignItems: "center",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     gap: DS_SPACING.md,
     paddingVertical: DS_SPACING.md,
     paddingHorizontal: DS_SPACING.sm,
@@ -1113,12 +1120,12 @@ function _make_s() { return StyleSheet.create({
   markupRow: {
     flexDirection: "row",
     alignItems: "center",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     gap: DS_SPACING.md,
   },
   markupToggle: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     borderRadius: DS_RADIUS.md,
     borderWidth: 1.5,
     borderColor: DS_COLORS.border,
@@ -1153,7 +1160,7 @@ function _make_s() { return StyleSheet.create({
   accordionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     justifyContent: "space-between",
     backgroundColor: DS_COLORS.card,
     borderRadius: DS_RADIUS.lg,
@@ -1165,7 +1172,7 @@ function _make_s() { return StyleSheet.create({
   accordionHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     gap: DS_SPACING.sm,
     flex: 1,
   },

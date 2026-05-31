@@ -25,7 +25,8 @@ export async function imageUriToBase64(uri: string): Promise<string> {
     // On native, use expo-file-system
     const FileSystem = require("expo-file-system/legacy");
     const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64 });
+      encoding: FileSystem.EncodingType.Base64,
+    });
     return `data:image/png;base64,${base64}`;
   } catch (e) {
     console.warn("Failed to convert image to base64:", e);

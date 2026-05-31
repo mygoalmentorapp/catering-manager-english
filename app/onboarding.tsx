@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,13 +7,20 @@ import {
   Dimensions,
   StyleSheet,
   ViewToken,
-  I18nManager } from "react-native";
+  I18nManager,
+  ActivityIndicator,
+} from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { OnboardingSlide } from "@/components/onboarding-slide";
 import { DS_COLORS, DS_FONT, DS_WEIGHT, DS_SPACING, DS_RADIUS, DS_SHADOW } from "@/lib/design-system";
+import { DynamicOnboardingRenderer } from "@/components/dynamic-onboarding-renderer";
+import { DynamicOnboardingService, type ActiveOnboardingFlow } from "@/lib/services/dynamic-onboarding-service";
+import { useConfig } from "@/lib/config-context";
+import { ExperienceEventService, EVENT_NAMES } from "@/lib/services/experience-event-service";
+import { UserExperienceStateService } from "@/lib/services/user-experience-state-service";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -32,40 +39,46 @@ interface SlideData {
 const SLIDES: SlideData[] = [
   {
     id: "welcome",
-    title: "Welcome to Catering Manager Pro",
-    description: "The tool that helps you manage your catering business easily and professionally",
+    title: "ברוך הבא לניהול קייטרינג פרו",
+    description: "הכלי שיעזור לך לנהל את עסק הקייטרינג שלך בקלות ובמקצועיות",
     iconName: "restaurant",
-    accentColor: "#3AAFA9" },
+    accentColor: "#3AAFA9",
+  },
   {
     id: "products",
-    title: "Product management",
-    description: "Set up your products, prices, costs, and categories — all in one place",
+    title: "ניהול מוצרים",
+    description: "הגדר את המוצרים שלך, מחירים, עלויות וקטגוריות — הכל במקום אחד",
     iconName: "inventory-2",
-    accentColor: "#4CAF50" },
+    accentColor: "#4CAF50",
+  },
   {
     id: "orders",
-    title: "Order management",
-    description: "Create orders, track statuses, and manage all your customers easily",
+    title: "ניהול הזמנות",
+    description: "צור הזמנות, עקוב אחרי סטטוסים, ונהל את כל הלקוחות שלך בקלות",
     iconName: "receipt-long",
-    accentColor: "#2196F3" },
+    accentColor: "#2196F3",
+  },
   {
     id: "shopping",
-    title: "Shopping lists",
-    description: "Automatic shopping list from all orders — saves time and prevents forgetting",
+    title: "רשימות קניות חכמות",
+    description: "רשימת קניות אוטומטית מכל ההזמנות — חוסך לך זמן ומונע שכחה",
     iconName: "shopping-cart",
-    accentColor: "#FF9800" },
+    accentColor: "#FF9800",
+  },
   {
     id: "profit",
-    title: "Profit tracking",
-    description: "See exactly how much you earn from every order and product — full control of your business",
+    title: "מעקב רווחים",
+    description: "ראה בדיוק כמה אתה מרוויח מכל הזמנה ומכל מוצר — שליטה מלאה בעסק",
     iconName: "trending-up",
-    accentColor: "#E91E63" },
+    accentColor: "#E91E63",
+  },
   {
     id: "cta",
-    title: "Let's get started!",
-    description: "Create an account or sign in to start managing your business",
+    title: "בוא נתחיל!",
+    description: "צור חשבון או התחבר כדי להתחיל לנהל את העסק שלך",
     iconName: "rocket-launch",
-    accentColor: "#3AAFA9" },
+    accentColor: "#3AAFA9",
+  },
 ];
 
 /**
@@ -76,6 +89,69 @@ const SLIDES: SlideData[] = [
 const isRTL = I18nManager.isRTL;
 
 export default function OnboardingScreen() {
+  const { remoteConfig, remoteConfigReady } = useConfig();
+  const [dynamicFlow, setDynamicFlow] = useState<ActiveOnboardingFlow | null>(null);
+  const [dynamicLoading, setDynamicLoading] = useState(true);
+
+  // Try to load dynamic onboarding flow
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDynamic() {
+      try {
+        // Only attempt if dynamic_onboarding_enabled is true in remote config
+        if (remoteConfigReady && remoteConfig.dynamic_onboarding_enabled) {
+          DynamicOnboardingService.setReady();
+          const flow = await DynamicOnboardingService.getActiveFlow();
+          if (!cancelled && flow && flow.screens.length > 0) {
+            setDynamicFlow(flow);
+          }
+        }
+      } catch {
+        // Fail silently — fall back to static
+      } finally {
+        if (!cancelled) setDynamicLoading(false);
+      }
+    }
+
+    // Wait for remote config to be ready, or timeout after 3s
+    if (remoteConfigReady) {
+      loadDynamic();
+    } else {
+      const timeout = setTimeout(() => {
+        if (!cancelled) setDynamicLoading(false);
+      }, 3000);
+      return () => { cancelled = true; clearTimeout(timeout); };
+    }
+
+    return () => { cancelled = true; };
+  }, [remoteConfigReady, remoteConfig.dynamic_onboarding_enabled]);
+
+  // Show loading briefly while checking for dynamic flow
+  if (dynamicLoading) {
+    return (
+      <SafeAreaView style={s.container}>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color={DS_COLORS.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // If dynamic flow available, render it
+  if (dynamicFlow) {
+    return <DynamicOnboardingRenderer flow={dynamicFlow} />;
+  }
+
+  // Otherwise, fall back to static onboarding
+  return <StaticOnboarding />;
+}
+
+/**
+ * StaticOnboarding — the original hardcoded onboarding screens.
+ * Used as fallback when dynamic_onboarding_enabled=false or no active flow exists.
+ */
+function StaticOnboarding() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
@@ -105,11 +181,23 @@ export default function OnboardingScreen() {
 
   const handleComplete = useCallback(async () => {
     await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
+    // Fire onboarding_completed event (same as dynamic renderer)
+    ExperienceEventService.logEvent({
+      event_name: EVENT_NAMES.ONBOARDING_COMPLETED,
+      flow_key: "static_fallback",
+    }).catch(() => {});
+    UserExperienceStateService.onOnboardingCompleted().catch(() => {});
     router.replace("/auth/signup" as any);
   }, []);
 
   const handleSkip = useCallback(async () => {
     await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
+    // Fire onboarding_completed even on skip (user saw onboarding)
+    ExperienceEventService.logEvent({
+      event_name: EVENT_NAMES.ONBOARDING_COMPLETED,
+      flow_key: "static_fallback_skipped",
+    }).catch(() => {});
+    UserExperienceStateService.onOnboardingCompleted().catch(() => {});
     router.replace("/auth/signup" as any);
   }, []);
 
@@ -135,7 +223,7 @@ export default function OnboardingScreen() {
       {/* Skip Button — always visible */}
       <View style={s.skipRow}>
         <TouchableOpacity onPress={handleSkip} style={s.skipButton} activeOpacity={0.7}>
-          <Text style={s.skipText}>Skip</Text>
+          <Text style={s.skipText}>דלג</Text>
           <MaterialIcons name="chevron-left" size={18} color={DS_COLORS.textSecondary} />
         </TouchableOpacity>
       </View>
@@ -155,7 +243,8 @@ export default function OnboardingScreen() {
         getItemLayout={(_, index) => ({
           length: SCREEN_WIDTH,
           offset: SCREEN_WIDTH * index,
-          index })}
+          index,
+        })}
       />
 
       {/* Bottom Controls */}
@@ -180,7 +269,7 @@ export default function OnboardingScreen() {
             onPress={handleComplete}
             activeOpacity={0.8}
           >
-            <Text style={s.ctaButtonText}>Let's get started!</Text>
+            <Text style={s.ctaButtonText}>בוא נתחיל!</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -188,7 +277,7 @@ export default function OnboardingScreen() {
             onPress={handleNext}
             activeOpacity={0.8}
           >
-            <Text style={s.nextButtonText}>Next</Text>
+            <Text style={s.nextButtonText}>הבא</Text>
             <MaterialIcons name="chevron-left" size={20} color={DS_COLORS.white} />
           </TouchableOpacity>
         )}
@@ -200,61 +289,74 @@ export default function OnboardingScreen() {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DS_COLORS.background },
+    backgroundColor: DS_COLORS.background,
+  },
   skipRow: {
     flexDirection: "row",
     justifyContent: "flex-start",
     paddingHorizontal: DS_SPACING.xl,
     paddingTop: DS_SPACING.sm,
-    paddingBottom: DS_SPACING.sm },
+    paddingBottom: DS_SPACING.sm,
+  },
   skipButton: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     gap: 2,
     paddingVertical: DS_SPACING.xs,
-    paddingHorizontal: DS_SPACING.sm },
+    paddingHorizontal: DS_SPACING.sm,
+  },
   skipText: {
     fontSize: DS_FONT.body,
     color: DS_COLORS.textSecondary,
-    fontWeight: DS_WEIGHT.medium },
+    fontWeight: DS_WEIGHT.medium,
+  },
   bottomControls: {
     paddingHorizontal: DS_SPACING.xl,
     paddingBottom: DS_SPACING.xxl,
-    gap: DS_SPACING.xl },
+    gap: DS_SPACING.xl,
+  },
   dotsContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: DS_SPACING.sm },
+    gap: DS_SPACING.sm,
+  },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: DS_COLORS.border },
+    backgroundColor: DS_COLORS.border,
+  },
   dotActive: {
     width: 24,
     backgroundColor: DS_COLORS.accent,
-    borderRadius: 4 },
+    borderRadius: 4,
+  },
   nextButton: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "center",
     gap: DS_SPACING.xs,
     backgroundColor: DS_COLORS.accent,
     borderRadius: DS_RADIUS.md,
     paddingVertical: DS_SPACING.lg,
-    ...DS_SHADOW.button },
+    ...DS_SHADOW.button,
+  },
   nextButtonText: {
     color: DS_COLORS.white,
     fontSize: DS_FONT.body,
-    fontWeight: DS_WEIGHT.bold },
+    fontWeight: DS_WEIGHT.bold,
+  },
   ctaButton: {
     backgroundColor: DS_COLORS.accent,
     borderRadius: DS_RADIUS.md,
     paddingVertical: DS_SPACING.lg,
     alignItems: "center",
     justifyContent: "center",
-    ...DS_SHADOW.button },
+    ...DS_SHADOW.button,
+  },
   ctaButtonText: {
     color: DS_COLORS.white,
     fontSize: DS_FONT.body,
-    fontWeight: DS_WEIGHT.bold } });
+    fontWeight: DS_WEIGHT.bold,
+  },
+});

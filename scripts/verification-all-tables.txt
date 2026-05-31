@@ -1,0 +1,78 @@
+== VERIFICATION RESULTS ==
+
+=== paywall_placements (10 columns) ===
+✓ id - bigint - NO
+✓ app_key - text - NO
+✓ app_language - text - NO - default 'he'
+✓ placement_key - text - NO
+✓ display_name - text - NO  (was: name)
+✓ description - text - YES - default ''
+✓ is_enabled - boolean - NO - default true  (was: is_active)
+✓ created_at - timestamptz - NO - default now()
+✓ updated_at - timestamptz - NO - default now()
+✓ default_offering_id - text - YES - default ''  (NEW column)
+
+Status: ALL 3 changes applied correctly.
+
+=== paywall_rules (17 columns) ===
+✓ id - bigint - NO
+✓ app_key - text - NO
+✓ app_language - text - NO - default 'he'
+✓ rule_key - text - NO
+✓ is_enabled - boolean - NO - default true  (was: enabled)
+✓ required_entitlement - text - NO - default 'premium_access'  (was: required_entitlement_id)
+✓ offering_id - text - YES - default ''
+✓ target_audience - text - NO - default 'all'  (was: audience)
+✓ rollout_percentage - integer - NO - default 100
+✓ max_impressions - integer - YES  (was: max_impressions_per_user)
+✓ cooldown_hours - integer - YES - default 24
+✓ start_at - timestamptz - YES
+✓ end_at - timestamptz - YES
+✓ priority - integer - NO - default 0
+✓ created_at - timestamptz - NO - default now()
+✓ updated_at - timestamptz - NO - default now()
+✓ placement_id - bigint - YES  (was: placement_key TEXT → now FK to paywall_placements.id)
+
+Status: ALL 6 changes applied correctly (17 columns total).
+=== premium_feature_gates (11 columns) ===
+✓ id - bigint - NO
+✓ app_key - text - NO
+✓ feature_key - text - NO
+✓ display_name - text - NO  (was: name in old script, but display_name was already correct in DB)
+✓ requires_premium - boolean - NO - default false
+✓ required_entitlement - text - NO - default 'premium_access'  (was: required_entitlement_id)
+✓ placement_key - text - YES  (was: paywall_placement_key)
+✓ is_enabled - boolean - NO - default false  (was: is_active)
+✓ created_at - timestamptz - NO - default now()
+✓ updated_at - timestamptz - NO - default now()
+✓ app_language - text - NO - default 'he'  (NEW column)
+
+Status: ALL 4 changes applied correctly (11 columns total).
+=== user_entitlements_cache (5 columns) === UNCHANGED ✓
+✓ user_id - uuid - NO
+✓ revenuecat_customer_id - text - YES
+✓ active_entitlements - jsonb - NO - default '[]'
+✓ subscription_status - text - NO - default 'none'
+✓ last_synced_at - timestamptz - NO - default now()
+
+Status: NOT TOUCHED by migration. All 5 columns intact.
+
+=== RLS Policies (3 policies) === ALL UPDATED ✓
+✓ paywall_placements → authenticated_read_placements → SELECT → (is_enabled = true)
+✓ paywall_rules → authenticated_read_rules → SELECT → (is_enabled = true)
+✓ premium_feature_gates → authenticated_read_gates → SELECT → (is_enabled = true)
+
+All 3 policies now use is_enabled (not is_active or enabled).
+
+=== FK Constraint === VERIFIED ✓
+✓ paywall_rules_placement_id_fkey: placement_id → paywall_placements.id
+
+=== FINAL VERIFICATION SUMMARY ===
+✓ paywall_placements: 10 columns, all correct names
+✓ paywall_rules: 15 columns, all correct names, FK verified
+✓ premium_feature_gates: 11 columns, all correct names, app_language added
+✓ user_entitlements_cache: 5 columns, untouched
+✓ RLS policies: 3 policies, all use is_enabled
+✓ FK constraint: placement_id → paywall_placements.id
+
+MIGRATION COMPLETE — ALL VERIFICATIONS PASSED

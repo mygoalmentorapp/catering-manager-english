@@ -1,0 +1,7 @@
+Migration SQL loaded in Supabase SQL Editor.
+Verified content matches the approved script:
+- Section 1: paywall_placements (3 ALTER statements)
+- Section 2: paywall_rules (7 statements including DROP/ADD/INDEX)
+- Section 3: premium_feature_gates (6 statements including constraint)
+- Section 4: RLS policies (6 DROP/CREATE statements)
+Ready to click Run.

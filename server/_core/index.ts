@@ -2,11 +2,13 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { SUPABASE_URL as SUPABASE_URL_RESOLVED, SUPABASE_SERVICE_ROLE_KEY as SUPABASE_SERVICE_ROLE_KEY_RESOLVED } from '../supabase-config';
+import { adminIndexHtml, adminAssets } from "../admin-assets";
+import { createAdaptyWebhookRouter } from "../adapty-webhook";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -77,8 +79,8 @@ async function startServer() {
         const userId = authResult.user?.openId;
 
         if (userId) {
-          const url = SUPABASE_URL_RESOLVED;
-          const key = SUPABASE_SERVICE_ROLE_KEY_RESOLVED;
+          const url = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+          const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
           if (url && key) {
             const { createClient } = await import("@supabase/supabase-js");
             const admin = createClient(url, key, {
@@ -102,6 +104,9 @@ async function startServer() {
     res.json(result);
   });
 
+  // Adapty Webhook endpoint — receives subscription lifecycle events
+  app.use("/api/webhooks/adapty", createAdaptyWebhookRouter());
+
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -109,6 +114,34 @@ async function startServer() {
       createContext,
     }),
   );
+
+  // Serve admin dashboard - embedded assets (no file system dependency)
+  // Routes under /api/admin/ so the deploy platform's reverse proxy forwards them to Express
+  app.get("/api/admin/assets/:filename", (req, res) => {
+    const asset = adminAssets[req.params.filename];
+    if (asset) {
+      res.setHeader("Content-Type", asset.contentType);
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.send(asset.content);
+    } else {
+      res.status(404).send("Not found");
+    }
+  });
+  // Serve admin HTML (SPA fallback for all admin routes)
+  app.get("/api/admin", (_req, res) => {
+    res.setHeader("Content-Type", "text/html");
+    res.send(adminIndexHtml);
+  });
+  app.get("/api/admin/*", (_req, res) => {
+    res.setHeader("Content-Type", "text/html");
+    res.send(adminIndexHtml);
+  });
+  // Redirect legacy paths to the official dashboard URL
+  app.get("/admin", (_req, res) => res.redirect(301, "/api/admin"));
+  app.get("/admin/*", (_req, res) => res.redirect(301, "/api/admin"));
+  app.get("/dashboard", (_req, res) => res.redirect(301, "/api/admin"));
+  app.get("/dashboard/*", (_req, res) => res.redirect(301, "/api/admin"));
+  console.log("[admin] Dashboard served from embedded assets at /api/admin/");
 
   const preferredPort = parseInt(process.env.PORT || "3000");
   const port = await findAvailablePort(preferredPort);

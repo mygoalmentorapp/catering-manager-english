@@ -11,7 +11,7 @@
  * - Hidden when everything is fine (99% of the time)
  * - Slides down from top when there's a problem (offline / server unreachable)
  * - Shows progressive states:
- *   "Offline — X changes pending" → "Syncing..." → "Synced! ✓" (fades out after 2.5s)
+ *   "אופליין — X שינויים ממתינים" → "מסנכרן..." → "מסונכרן! ✓" (fades out after 2.5s)
  * - Uses semantic colors (red/orange/blue/green) that are NOT affected by user's brand color
  *
  * Semantic colors (locked, not user-customizable):
@@ -46,27 +46,33 @@ const BANNER_CONFIGS: Record<Exclude<BannerState, "hidden">, BannerConfig> = {
     bgColor: "#FEF2F2",
     textColor: "#DC2626",
     icon: "wifi-off",
-    text: "No internet connection" },
+    text: "אין חיבור לאינטרנט",
+  },
   "offline-pending": {
     bgColor: "#FEF2F2",
     textColor: "#DC2626",
     icon: "wifi-off",
-    text: "Offline — changes pending sync" },
+    text: "אופליין — שינויים ממתינים לסנכרון",
+  },
   "server-unreachable": {
     bgColor: "#FFFBEB",
     textColor: "#D97706",
     icon: "cloud-off",
-    text: "No server connection • Trying to connect..." },
+    text: "אין חיבור לשרת • מנסה להתחבר...",
+  },
   syncing: {
     bgColor: "#EFF6FF",
     textColor: "#2563EB",
     icon: "sync",
-    text: "Syncing changes..." },
+    text: "מסנכרן שינויים...",
+  },
   reconnected: {
     bgColor: "#F0FDF4",
     textColor: "#16A34A",
     icon: "check-circle",
-    text: "Synced! ✓" } };
+    text: "מסונכרן! ✓",
+  },
+};
 
 // ============ CONSTANTS ============
 
@@ -129,7 +135,8 @@ export function ConnectionBanner() {
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: SLIDE_DURATION,
-        useNativeDriver: true }).start(() => {
+        useNativeDriver: true,
+      }).start(() => {
         setDisplayedState("hidden");
       });
     } else {
@@ -137,7 +144,8 @@ export function ConnectionBanner() {
       Animated.timing(slideAnim, {
         toValue: 1,
         duration: SLIDE_DURATION,
-        useNativeDriver: true }).start();
+        useNativeDriver: true,
+      }).start();
 
       if (bannerState === "reconnected") {
         reconnectedTimerRef.current = setTimeout(() => {
@@ -164,7 +172,7 @@ export function ConnectionBanner() {
   // Dynamic text for offline-pending with count
   let displayText = config.text;
   if (displayedState === "offline-pending" && syncStatus.pendingCount > 0) {
-    displayText = `Offline — ${syncStatus.pendingCount} changes pending sync`;
+    displayText = `אופליין — ${syncStatus.pendingCount} שינויים ממתינים לסנכרון`;
   }
 
   // Position: absolute, top = insets.top (below status bar)
@@ -172,7 +180,8 @@ export function ConnectionBanner() {
 
   const translateY = slideAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [-BANNER_CONTENT_HEIGHT, 0] });
+    outputRange: [-BANNER_CONTENT_HEIGHT, 0],
+  });
 
   return (
     <Animated.View
@@ -182,7 +191,8 @@ export function ConnectionBanner() {
           top: topPosition,
           backgroundColor: config.bgColor,
           transform: [{ translateY }],
-          opacity: slideAnim },
+          opacity: slideAnim,
+        },
       ]}
     >
       <View style={styles.content}>
@@ -206,16 +216,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 9999,
-    elevation: 9999 },
+    elevation: 9999,
+  },
   content: {
-    flexDirection: "row", // RTL: icon on right, text on left
+    flexDirection: "row-reverse", // RTL: icon on right, text on left
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 16,
-    height: BANNER_CONTENT_HEIGHT },
+    height: BANNER_CONTENT_HEIGHT,
+  },
   icon: {
-    marginLeft: 6 },
+    marginLeft: 6,
+  },
   text: {
     fontSize: 12,
     fontWeight: "600",
-    textAlign: "center" } });
+    textAlign: "center",
+  },
+});

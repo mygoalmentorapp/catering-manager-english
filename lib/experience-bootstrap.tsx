@@ -35,6 +35,8 @@ import { CampaignRenderer } from "../components/campaign/campaign-renderer";
 import type { RemoteCampaign, RuleContext, CampaignState } from "./services/experience-rule-engine";
 import type { FeatureName } from "./services/feature-service";
 import Constants from "expo-constants";
+import { getLocales } from "expo-localization";
+import { APP_KEY, APP_LANGUAGE } from "@/constants/app-identity";
 
 const APP_VERSION = Constants.expoConfig?.version ?? "1.0.0";
 const TAG = "ExperienceBoot";
@@ -98,28 +100,38 @@ export function ExperienceBootstrap(): React.ReactElement | null {
     ExperienceEventService.setTrpcClient({
       logEvent: {
         mutate: (input: Record<string, unknown>) =>
-          trpcUtils.client.experience.logEvent.mutate(input as any) } });
+          trpcUtils.client.experience.logEvent.mutate(input as any),
+      },
+    });
 
     // Inject tRPC client into CampaignSelectorService
     CampaignSelectorService.setTrpcClient({
       getActiveCampaigns: {
-        query: () => trpcUtils.client.experience.getActiveCampaigns.query() } });
+        query: () => trpcUtils.client.experience.getActiveCampaigns.query(),
+      },
+    });
 
     // Inject tRPC client into UserExperienceStateService
     UserExperienceStateService.setTrpcClient({
       upsertState: {
         mutate: (input: { updates: Record<string, unknown> }) =>
-          trpcUtils.client.experience.upsertState.mutate(input) },
+          trpcUtils.client.experience.upsertState.mutate(input),
+      },
       getState: {
-        query: () => trpcUtils.client.experience.getState.query() },
+        query: () => trpcUtils.client.experience.getState.query(),
+      },
       incrementCounter: {
         mutate: (input: { field: string }) =>
-          trpcUtils.client.experience.incrementCounter.mutate(input) },
+          trpcUtils.client.experience.incrementCounter.mutate(input),
+      },
       getCampaignStates: {
-        query: () => trpcUtils.client.experience.getCampaignStates.query() },
+        query: () => trpcUtils.client.experience.getCampaignStates.query(),
+      },
       upsertCampaignState: {
         mutate: (input: { campaign_key: string; updates: Record<string, unknown> }) =>
-          trpcUtils.client.experience.upsertCampaignState.mutate(input) } });
+          trpcUtils.client.experience.upsertCampaignState.mutate(input),
+      },
+    });
 
     return () => {
       trpcInjectedRef.current = false;
@@ -161,7 +173,8 @@ export function ExperienceBootstrap(): React.ReactElement | null {
               last_clicked_at: (row.last_clicked_at as string) ?? null,
               last_dismissed_at: (row.last_dismissed_at as string) ?? null,
               dismissed_count: (row.dismissed_count as number) ?? 0,
-              completed: (row.completed as boolean) ?? false };
+              completed: (row.completed as boolean) ?? false,
+            };
           }
         }
       } catch {
@@ -182,10 +195,11 @@ export function ExperienceBootstrap(): React.ReactElement | null {
         isInCriticalFlow,
         isOnline,
         appVersion: APP_VERSION,
+        appKey: APP_KEY, // Identifies which app product
         platform: Platform.OS, // "android" | "ios" | "web"
-        language: "he",
-        country: "IL",
-        region: "",
+        language: APP_LANGUAGE, // App variant language (he/en), not device locale
+        country: getDeviceCountry(),
+        region: getDeviceRegion(),
         environment: isProd ? "prod" : "dev",
         // User state
         firstOpenAt: (userState as any)?.first_open_at ?? null,
@@ -202,7 +216,8 @@ export function ExperienceBootstrap(): React.ReactElement | null {
         subscriptionStatus: profile?.subscription_status ?? "trial",
         // Campaign state
         campaignStates,
-        sessionImpressions: { ...sessionImpressionsRef.current } };
+        sessionImpressions: { ...sessionImpressionsRef.current },
+      };
 
       return ctx;
     } catch (err) {
@@ -253,6 +268,7 @@ export function ExperienceBootstrap(): React.ReactElement | null {
         // The client-side feature flag was unreliable due to Supabase auth timing.
 
         console.log(`[${TAG}] ✅ Campaign selected: ${campaign.campaign_key} (trigger: ${triggerEvent})`);
+        // Campaign content is already in the correct language (server filters by app_language)
         setActiveCampaign(campaign);
         setCampaignVisible(true);
       } else {
@@ -295,7 +311,7 @@ export function ExperienceBootstrap(): React.ReactElement | null {
   // ── 2. Update session timeout from remote_config ──
   useEffect(() => {
     if (!remoteConfigReady) return;
-    const timeout = (remoteConfig as unknown as Record<string, unknown>)?.session_timeout_minutes;
+    const timeout = remoteConfig.session_timeout_minutes;
     if (typeof timeout === "number" && timeout > 0) {
       SessionTracker.setSessionTimeout(timeout);
     }
@@ -464,4 +480,42 @@ function _isFeedbackCampaign(campaign: RemoteCampaign): boolean {
     campaign.primary_button_action === "open_feedback" ||
     campaign.secondary_button_action === "open_feedback"
   );
+}
+
+/**
+ * Get device language code (e.g., "he", "en", "ar").
+ * Falls back to "he" if detection fails.
+ */
+function getDeviceLanguage(): string {
+  try {
+    const locales = getLocales();
+    return locales[0]?.languageCode ?? "he";
+  } catch {
+    return "he";
+  }
+}
+
+/**
+ * Get device country code (e.g., "IL", "US", "GB").
+ * Falls back to "IL" if detection fails.
+ */
+function getDeviceCountry(): string {
+  try {
+    const locales = getLocales();
+    return locales[0]?.regionCode ?? "IL";
+  } catch {
+    return "IL";
+  }
+}
+
+/**
+ * Get device region (empty string if unavailable).
+ */
+function getDeviceRegion(): string {
+  try {
+    const locales = getLocales();
+    return locales[0]?.regionCode ?? "";
+  } catch {
+    return "";
+  }
 }

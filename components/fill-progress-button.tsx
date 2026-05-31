@@ -2,8 +2,8 @@
  * FillProgressButton — Animated button with RTL fill effect and dual-layer text.
  *
  * States:
- * 1. idle: Purple background, white text (e.g. "Sign in")
- * 2. loading: White background with purple border, text changes (e.g. "Starting connection"),
+ * 1. idle: Purple background, white text (e.g. "התחבר")
+ * 2. loading: White background with purple border, text changes (e.g. "מתחיל בחיבור"),
  *    purple fill sweeps from right to left. Dual-layer text: purple on white area,
  *    white on filled purple area.
  * 3. success: Fill completes to 100%, fully purple with white text.
@@ -19,7 +19,8 @@ import Animated, {
   withTiming,
   withDelay,
   runOnJS,
-  Easing } from "react-native-reanimated";
+  Easing,
+} from "react-native-reanimated";
 import { DS_COLORS, DS_SPACING, DS_RADIUS, DS_FONT, DS_WEIGHT, DS_SHADOW } from "@/lib/design-system";
 
 type ButtonState = "idle" | "loading" | "success" | "error";
@@ -27,9 +28,9 @@ type ButtonState = "idle" | "loading" | "success" | "error";
 interface FillProgressButtonProps {
   /** Current state of the button */
   state: ButtonState;
-  /** Button label text shown in idle state (e.g. "Sign in") */
+  /** Button label text shown in idle state (e.g. "התחבר") */
   label: string;
-  /** Text shown during loading state (e.g. "Starting connection") */
+  /** Text shown during loading state (e.g. "מתחיל בחיבור") */
   loadingLabel: string;
   /** Called when the button is pressed (only in idle state) */
   onPress: () => void;
@@ -48,7 +49,8 @@ export function FillProgressButton({
   label,
   loadingLabel,
   onPress,
-  onSuccessComplete }: FillProgressButtonProps) {
+  onSuccessComplete,
+}: FillProgressButtonProps) {
   // fillProgress: 0 = empty (white bg), 1 = fully filled (purple bg)
   const fillProgress = useSharedValue(0);
   // phase: 0 = idle (purple bg), 1 = loading/filling (white bg + fill)
@@ -68,13 +70,15 @@ export function FillProgressButton({
         TRANSITION_TO_LOADING,
         withTiming(0.9, {
           duration: FILL_DURATION,
-          easing: Easing.out(Easing.quad) })
+          easing: Easing.out(Easing.quad),
+        })
       );
     } else if (state === "success") {
       // Complete the fill to 100%
       fillProgress.value = withTiming(1, {
         duration: FILL_COMPLETE,
-        easing: Easing.out(Easing.cubic) });
+        easing: Easing.out(Easing.cubic),
+      });
       // After fill completes + hold, transition back to solid purple (phase=0)
       phase.value = withDelay(
         FILL_COMPLETE + SUCCESS_HOLD,
@@ -97,7 +101,8 @@ export function FillProgressButton({
     return {
       backgroundColor: p > 0.5 ? "#FFFFFF" : DS_COLORS.accent,
       borderColor: DS_COLORS.accent,
-      borderWidth: 2 };
+      borderWidth: 2,
+    };
   });
 
   // Fill overlay: purple rectangle that grows from right to left
@@ -122,7 +127,8 @@ export function FillProgressButton({
   // Idle text (white on purple) — visible when not in loading phase
   const idleTextStyle = useAnimatedStyle(() => {
     return {
-      opacity: 1 - phase.value };
+      opacity: 1 - phase.value,
+    };
   });
 
   const isDisabled = state === "loading" || state === "success";
@@ -168,22 +174,26 @@ const BUTTON_HEIGHT = 52;
 
 const s = StyleSheet.create({
   pressable: {
-    marginTop: DS_SPACING.sm },
+    marginTop: DS_SPACING.sm,
+  },
   button: {
     height: BUTTON_HEIGHT,
     borderRadius: DS_RADIUS.md,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    ...DS_SHADOW.button },
+    ...DS_SHADOW.button,
+  },
   textLayer: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
-    justifyContent: "center" },
+    justifyContent: "center",
+  },
   text: {
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.bold as any,
-    textAlign: "center" },
+    textAlign: "center",
+  },
   fillOverlay: {
     position: "absolute",
     // RTL: fill from right side. In RTL mode, right:0 is the start side.
@@ -194,7 +204,8 @@ const s = StyleSheet.create({
     backgroundColor: DS_COLORS.accent,
     overflow: "hidden",
     alignItems: "center",
-    justifyContent: "center" },
+    justifyContent: "center",
+  },
   fillText: {
     // The text inside the fill overlay needs to be positioned so it aligns
     // with the full-width text underneath. We use a fixed width matching
@@ -207,4 +218,6 @@ const s = StyleSheet.create({
     width: 1000,
     // Center the text: the fill grows from right:0, so we need the text
     // to be anchored to the right edge of the button.
-    right: 0 } });
+    right: 0,
+  },
+});

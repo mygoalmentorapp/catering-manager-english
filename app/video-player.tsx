@@ -8,7 +8,8 @@ import {
   ScrollView,
   Platform,
   Linking,
-  Dimensions } from "react-native";
+  Dimensions,
+} from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -20,7 +21,8 @@ import {
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
-  DS_SHADOW } from "@/lib/design-system";
+  DS_SHADOW,
+} from "@/lib/design-system";
 import { extractYouTubeVideoId } from "@/lib/services/video-tutorials-service";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -96,7 +98,7 @@ export default function VideoPlayerScreen() {
         <View style={[s.playerError, isDark && s.playerErrorDark]}>
           <MaterialIcons name="error-outline" size={40} color={DS_COLORS.textSecondary} />
           <Text style={[s.playerErrorText, isDark && s.textDark]}>
-            Unable to load the video right now. You can open it on YouTube.
+            לא הצלחנו לטעון את הסרטון כרגע. אפשר לפתוח אותו ביוטיוב.
           </Text>
           <TouchableOpacity
             style={[s.youtubeButton, { backgroundColor: "#FF0000" }]}
@@ -104,7 +106,7 @@ export default function VideoPlayerScreen() {
             activeOpacity={0.8}
           >
             <MaterialIcons name="play-arrow" size={20} color="#FFFFFF" />
-            <Text style={s.youtubeButtonText}>Open on YouTube</Text>
+            <Text style={s.youtubeButtonText}>פתח ביוטיוב</Text>
           </TouchableOpacity>
         </View>
       );
@@ -120,7 +122,8 @@ export default function VideoPlayerScreen() {
               width: "100%",
               height: PLAYER_HEIGHT,
               border: "none",
-              borderRadius: DS_RADIUS.md } as any}
+              borderRadius: DS_RADIUS.md,
+            } as any}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
@@ -167,7 +170,7 @@ export default function VideoPlayerScreen() {
           <MaterialIcons name="chevron-right" size={28} color={DS_COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={[s.headerTitle, isDark && s.textDark]} numberOfLines={1}>
-          {title || "Watch video"}
+          {title || "צפייה בסרטון"}
         </Text>
         <View style={{ width: 28 }} />
       </View>
@@ -198,7 +201,7 @@ export default function VideoPlayerScreen() {
           >
             <MaterialIcons name="open-in-new" size={18} color={DS_COLORS.accent} />
             <Text style={[s.secondaryButtonText, { color: DS_COLORS.accent }]}>
-              Open on YouTube
+              פתח ביוטיוב
             </Text>
           </TouchableOpacity>
         )}
@@ -292,7 +295,7 @@ const s = StyleSheet.create({
   },
   infoSection: {
     marginBottom: DS_SPACING.xl,
-    writingDirection: "rtl",
+    direction: "rtl",
   },
   videoTitle: {
     fontSize: DS_FONT.titleCard,

@@ -8,8 +8,7 @@ import { useAuth } from "@/lib/auth-context";
  * Trial never blocks the user, paywall is never shown.
  *
  * This hook is prepared for future use when:
- * - app_config.paywall_enabled = true
- * - app_config.paywall_mode = "trial_expired" or "hard"
+ * - remoteConfig.paywall_enabled = true
  * - Trial has expired
  *
  * Returns:
@@ -19,7 +18,7 @@ import { useAuth } from "@/lib/auth-context";
  * - canUseFeature: function that always returns true in beta
  */
 export function useLimitedMode() {
-  const { trial, appConfig } = useConfig();
+  const { trial } = useConfig();
   const { profile } = useAuth();
 
   // In beta: NEVER limit the user
@@ -35,5 +34,6 @@ export function useLimitedMode() {
     trialDaysRemaining: trial.daysRemaining,
     trialExpired: trial.isExpired,
     subscriptionStatus: profile?.subscription_status ?? "trial",
-    canUseFeature };
+    canUseFeature,
+  };
 }

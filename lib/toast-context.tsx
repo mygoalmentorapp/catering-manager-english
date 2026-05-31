@@ -7,7 +7,7 @@
  *
  * Usage:
  *   const { showToast } = useToast();
- *   showToast("Saved on device, will sync when connected");
+ *   showToast("נשמר במכשיר, יסונכרן כשיהיה חיבור");
  */
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
@@ -62,14 +62,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     Animated.timing(slideAnim, {
       toValue: 1,
       duration: SLIDE_DURATION,
-      useNativeDriver: true }).start();
+      useNativeDriver: true,
+    }).start();
 
     // Auto-dismiss
     timerRef.current = setTimeout(() => {
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: SLIDE_DURATION,
-        useNativeDriver: true }).start(() => {
+        useNativeDriver: true,
+      }).start(() => {
         setVisible(false);
       });
     }, newConfig.duration ?? DEFAULT_DURATION);
@@ -85,9 +87,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onOfflineSave(() => {
       showToast({
-        message: "Saved on device, will sync to cloud when connected",
+        message: "נשמר במכשיר, יסונכרן לענן כשיהיה חיבור",
         icon: "cloud-queue",
-        duration: 3000 });
+        duration: 3000,
+      });
     });
     return unsubscribe;
   }, [showToast]);
@@ -96,7 +99,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const translateY = slideAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [80, 0] });
+    outputRange: [80, 0],
+  });
 
   return (
     <ToastContext.Provider value={{ showToast }}>
@@ -108,7 +112,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             {
               bottom: bottomOffset,
               transform: [{ translateY }],
-              opacity: slideAnim },
+              opacity: slideAnim,
+            },
           ]}
           pointerEvents="none"
         >

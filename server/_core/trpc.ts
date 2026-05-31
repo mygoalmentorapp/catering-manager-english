@@ -3,7 +3,6 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
 import { PROFILE_LOAD_FAILED } from "./sdk";
-import { SUPABASE_URL as SUPABASE_URL_RESOLVED, SUPABASE_SERVICE_ROLE_KEY as SUPABASE_SERVICE_ROLE_KEY_RESOLVED } from '../supabase-config';
 
 /**
  * Custom error class for profile-loading failures.
@@ -103,8 +102,8 @@ const requireActiveDevice = t.middleware(async (opts) => {
 
   // Check if this device is the active one
   const { createClient } = await import("@supabase/supabase-js");
-  const url = SUPABASE_URL_RESOLVED;
-  const key = SUPABASE_SERVICE_ROLE_KEY_RESOLVED;
+  const url = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
   if (!url || !key) {
     // Can't validate — allow through (fail open for config issues)

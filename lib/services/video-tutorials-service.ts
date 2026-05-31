@@ -101,7 +101,8 @@ export const VideoTutorialsService = {
       const topicsWithVideos: TopicWithVideos[] = topics
         .map((topic) => ({
           ...topic,
-          videos: tutorials.filter((t) => t.topic_id === topic.id) }))
+          videos: tutorials.filter((t) => t.topic_id === topic.id),
+        }))
         // Only show topics that have at least one active video
         .filter((topic) => topic.videos.length > 0);
 
@@ -121,4 +122,5 @@ export const VideoTutorialsService = {
   async clearCache(): Promise<void> {
     await CacheManager.remove(CACHE_KEY_TOPICS);
     await CacheManager.remove(CACHE_KEY_TUTORIALS);
-  } };
+  },
+};

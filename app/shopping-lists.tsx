@@ -7,7 +7,8 @@ import {
   Alert,
   StyleSheet,
   Animated,
-  Modal } from "react-native";
+  Modal,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -21,7 +22,8 @@ import {
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
-  DS_SHADOW } from "@/lib/design-system";
+  DS_SHADOW,
+} from "@/lib/design-system";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { useThemeContext } from "@/lib/theme-provider";
 
@@ -42,7 +44,8 @@ function ShoppingListCard({
   item,
   onView,
   onDelete,
-  orders }: {
+  orders,
+}: {
   item: SavedShoppingList;
   onView: () => void;
   onDelete: () => void;
@@ -60,14 +63,16 @@ function ShoppingListCard({
     Animated.timing(scaleAnim, {
       toValue: 0.97,
       duration: 80,
-      useNativeDriver: true }).start();
+      useNativeDriver: true,
+    }).start();
   };
 
   const handlePressOut = () => {
     Animated.timing(scaleAnim, {
       toValue: 1,
       duration: 120,
-      useNativeDriver: true }).start();
+      useNativeDriver: true,
+    }).start();
   };
 
   return (
@@ -87,7 +92,7 @@ function ShoppingListCard({
 
           {/* Info */}
           <View style={ls.cardInfo}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6}}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, direction: "rtl" as const }}>
               <Text style={ls.cardNames} numberOfLines={2}>
                 {(() => {
                   const linkedOrders = orders.filter((o) => item.orderIds.includes(o.id));
@@ -100,14 +105,14 @@ function ShoppingListCard({
               {isLocked && (
                 <View style={ls.lockedBadge}>
                   <MaterialIcons name="lock" size={12} color={DS_COLORS.warning} />
-                  <Text style={ls.lockedBadgeText}>Locked</Text>
+                  <Text style={ls.lockedBadgeText}>נעולה</Text>
                 </View>
               )}
             </View>
             <View style={ls.cardMeta}>
               <MaterialIcons name="event" size={14} color={DS_COLORS.textSecondary} />
               <Text style={ls.cardDate}>
-                Event date: {(() => {
+                תאריך אירוע: {(() => {
                   const linkedOrders = orders.filter((o) => item.orderIds.includes(o.id));
                   if (linkedOrders.length === 0) return formatDate(item.createdAt);
                   const sorted = [...linkedOrders].sort(
@@ -121,7 +126,7 @@ function ShoppingListCard({
               </Text>
             </View>
             {isLocked && (
-              <Text style={ls.lockedHint}>List not updated — tap to view</Text>
+              <Text style={ls.lockedHint}>רשימה לא מעודכנת — לחץ לצפייה</Text>
             )}
           </View>
 
@@ -238,9 +243,9 @@ export default function ShoppingListsScreen() {
       } else {
         try {
           await archiveOrder(order.id);
-          Alert.alert("Success", "Order moved to archive.");
+          Alert.alert("הצלחה", "ההזמנה הועברה לארכיון.");
         } catch {
-          Alert.alert("Error", "Archiving failed.");
+          Alert.alert("שגיאה", "ההעברה לארכיון נכשלה.");
         }
         setDialogStep(null);
         setDialogList(null);
@@ -264,7 +269,8 @@ export default function ShoppingListsScreen() {
     setDialogOrderId(null);
     router.push({
       pathname: "/changes-review",
-      params: { orderId: order.id, fromShoppingList: "1" } } as any);
+      params: { orderId: order.id, fromShoppingList: "1" },
+    } as any);
   }, [dialogList, dialogOrderId, orders, products, savedShoppingLists, archiveOrder, updateOrder, refreshOrders, router, guardMutation]);
 
   const handleArchiveConfirm = useCallback(async (confirm: boolean) => {
@@ -278,9 +284,9 @@ export default function ShoppingListsScreen() {
     if (!allowed) return;
     try {
       await archiveOrder(dialogOrderId);
-      Alert.alert("Success", "Order moved to archive.");
+      Alert.alert("הצלחה", "ההזמנה הועברה לארכיון.");
     } catch {
-      Alert.alert("Error", "Archiving failed.");
+      Alert.alert("שגיאה", "ההעברה לארכיון נכשלה.");
     }
     setDialogStep(null);
     setDialogList(null);
@@ -289,10 +295,10 @@ export default function ShoppingListsScreen() {
 
   const handleDelete = useCallback(
     (list: SavedShoppingList) => {
-      Alert.alert("Delete list", "Are you sure you want to delete this list?", [
-        { text: "Cancel", style: "cancel" },
+      Alert.alert("מחיקת רשימה", "האם אתה בטוח שברצונך למחוק רשימה זו?", [
+        { text: "ביטול", style: "cancel" },
         {
-          text: "Delete",
+          text: "מחיקה",
           style: "destructive",
           onPress: async () => {
             const allowed = await guardMutation();
@@ -300,9 +306,10 @@ export default function ShoppingListsScreen() {
             try {
               await deleteSavedShoppingList(list.id);
             } catch (e: any) {
-              Alert.alert("Error", e.message);
+              Alert.alert("שגיאה", e.message);
             }
-          } },
+          },
+        },
       ]);
     },
     [deleteSavedShoppingList, guardMutation]
@@ -317,7 +324,7 @@ export default function ShoppingListsScreen() {
         {/* Header */}
         <View style={ls.header}>
           <View style={{ width: 40 }} />
-          <Text style={ls.headerTitle}>Shopping lists</Text>
+          <Text style={ls.headerTitle}>רשימות קניות</Text>
           <TouchableOpacity
             onPress={() => router.back()}
             style={ls.headerBtn}
@@ -332,9 +339,9 @@ export default function ShoppingListsScreen() {
             <View style={ls.emptyIconCircle}>
               <MaterialIcons name="shopping-cart" size={40} color={DS_COLORS.accent} />
             </View>
-            <Text style={ls.emptyTitle}>No shopping lists</Text>
+            <Text style={ls.emptyTitle}>אין רשימות קניות</Text>
             <Text style={ls.emptySubtitle}>
-              Create a shopping list from the orders screen
+              צור רשימת קניות ממסך ההזמנות
             </Text>
           </View>
         ) : (
@@ -360,21 +367,21 @@ export default function ShoppingListsScreen() {
       <Modal visible={dialogStep === "was_completed"} transparent animationType="fade">
         <View style={ls.modalOverlay}>
           <View style={ls.modalCard}>
-            <Text style={ls.modalTitle}>This shopping list was created from an order whose products have changed</Text>
+            <Text style={ls.modalTitle}>רשימת קניות זו נוצרה מהזמנה שהשתנו בה מוצרים</Text>
             <Text style={ls.modalBody}>
-              Product changes were made related to the order from which this shopping list was created.{"\n"}
-              If the order was already completed — it will be archived and all its shopping lists will be deleted.{"\n"}
-              If not yet completed — you can update the data.
+              בוצעו שינויים במוצרים הקשורים להזמנה שממנה נוצרה רשימת הקניות.{"\n"}
+              אם ההזמנה כבר בוצעה — היא תועבר לארכיון וכל רשימות הקניות שלה יימחקו.{"\n"}
+              אם עדיין לא בוצעה — תוכל לעדכן את הנתונים.
             </Text>
             <View style={ls.modalBtnCol}>
               <TouchableOpacity style={ls.modalBtnPrimary} onPress={() => handleDialogAnswer("yes")} activeOpacity={0.8}>
-                <Text style={ls.modalBtnPrimaryText}>Yes, completed</Text>
+                <Text style={ls.modalBtnPrimaryText}>כן, בוצעה</Text>
               </TouchableOpacity>
               <TouchableOpacity style={ls.modalBtnOutline} onPress={() => handleDialogAnswer("no")} activeOpacity={0.8}>
-                <Text style={ls.modalBtnOutlineText}>No, not completed yet</Text>
+                <Text style={ls.modalBtnOutlineText}>לא, עדיין לא בוצעה</Text>
               </TouchableOpacity>
               <TouchableOpacity style={ls.modalBtnGhost} onPress={() => handleDialogAnswer("cancel")} activeOpacity={0.8}>
-                <Text style={ls.modalBtnGhostText}>Cancel</Text>
+                <Text style={ls.modalBtnGhostText}>ביטול</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -385,16 +392,16 @@ export default function ShoppingListsScreen() {
       <Modal visible={dialogStep === "archive_confirm"} transparent animationType="fade">
         <View style={ls.modalOverlay}>
           <View style={ls.modalCard}>
-            <Text style={ls.modalTitle}>Archive order</Text>
+            <Text style={ls.modalTitle}>העברת הזמנה לארכיון</Text>
             <Text style={ls.modalBody}>
-              All shopping lists containing this order will be permanently deleted — even if shared with other orders. This action cannot be undone.
+              כל רשימות הקניות שמכילות את ההזמנה יימחקו לצמיתות — גם אם הן משותפות להזמנות אחרות. פעולה זו אינה ניתנת לשחזור.
             </Text>
             <View style={ls.modalBtnCol}>
               <TouchableOpacity style={[ls.modalBtnPrimary, { backgroundColor: DS_COLORS.error }]} onPress={() => handleArchiveConfirm(true)} activeOpacity={0.8}>
-                <Text style={ls.modalBtnPrimaryText}>Move to archive</Text>
+                <Text style={ls.modalBtnPrimaryText}>העבר לארכיון</Text>
               </TouchableOpacity>
               <TouchableOpacity style={ls.modalBtnGhost} onPress={() => handleArchiveConfirm(false)} activeOpacity={0.8}>
-                <Text style={ls.modalBtnGhostText}>Cancel</Text>
+                <Text style={ls.modalBtnGhostText}>ביטול</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -417,7 +424,7 @@ function _make_ls() { return StyleSheet.create({
     paddingHorizontal: DS_SPACING.xl,
     paddingVertical: DS_SPACING.md,
     backgroundColor: DS_COLORS.background,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   headerBtn: {
     width: 40,
@@ -475,7 +482,7 @@ function _make_ls() { return StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: DS_SPACING.md,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   iconWrap: {
     width: 44,
@@ -500,7 +507,7 @@ function _make_ls() { return StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   cardDate: {
     fontSize: DS_FONT.bodySmall,
@@ -511,7 +518,7 @@ function _make_ls() { return StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: DS_SPACING.sm,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   deleteBtn: {
     width: 34,
@@ -523,7 +530,7 @@ function _make_ls() { return StyleSheet.create({
   },
   lockedBadge: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     gap: 3,
     backgroundColor: DS_COLORS.warningBg,

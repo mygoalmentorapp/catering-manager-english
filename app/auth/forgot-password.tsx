@@ -8,7 +8,8 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  StyleSheet } from "react-native";
+  StyleSheet,
+} from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/lib/auth-context";
@@ -26,7 +27,7 @@ export default function ForgotPasswordScreen() {
     setError("");
 
     if (!email.trim()) {
-      setError("Please enter an email address");
+      setError("נא להזין כתובת אימייל");
       return;
     }
 
@@ -35,7 +36,7 @@ export default function ForgotPasswordScreen() {
     setLoading(false);
 
     if (authError) {
-      setError("Error sending the link. Please try again");
+      setError("שגיאה בשליחת הקישור. נסה שוב");
       return;
     }
 
@@ -49,16 +50,16 @@ export default function ForgotPasswordScreen() {
           <View style={s.successIcon}>
             <MaterialIcons name="mark-email-read" size={48} color={DS_COLORS.accent} />
           </View>
-          <Text style={s.successTitle}>Link sent!</Text>
+          <Text style={s.successTitle}>הקישור נשלח!</Text>
           <Text style={s.successText}>
-            We sent a password reset link to {email}. Check your inbox (including spam).
+            שלחנו קישור לאיפוס סיסמה ל-{email}. בדוק את תיבת הדואר שלך (כולל ספאם).
           </Text>
           <TouchableOpacity
             style={s.primaryButton}
             onPress={() => router.replace("/auth/login")}
             activeOpacity={0.8}
           >
-            <Text style={s.primaryButtonText}>Back to sign in</Text>
+            <Text style={s.primaryButtonText}>חזור להתחברות</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -90,16 +91,16 @@ export default function ForgotPasswordScreen() {
             <View style={s.iconCircle}>
               <MaterialIcons name="lock-reset" size={36} color={DS_COLORS.accent} />
             </View>
-            <Text style={s.title}>Forgot password?</Text>
+            <Text style={s.title}>שכחת סיסמה?</Text>
             <Text style={s.subtitle}>
-              Enter your email address and we will send you a password reset link
+              הזן את כתובת האימייל שלך ונשלח לך קישור לאיפוס הסיסמה
             </Text>
           </View>
 
           {/* Form */}
           <View style={s.form}>
             <View style={s.inputGroup}>
-              <Text style={s.label}>Email</Text>
+              <Text style={s.label}>אימייל</Text>
               <View style={s.inputWrapper}>
                 <TextInput
                   style={s.input}
@@ -110,7 +111,7 @@ export default function ForgotPasswordScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  textAlign="left"
+                  textAlign="right"
                   returnKeyType="done"
                   onSubmitEditing={handleReset}
                 />
@@ -136,16 +137,16 @@ export default function ForgotPasswordScreen() {
               {loading ? (
                 <ActivityIndicator color={DS_COLORS.white} />
               ) : (
-                <Text style={s.primaryButtonText}>Send reset link</Text>
+                <Text style={s.primaryButtonText}>שלח קישור איפוס</Text>
               )}
             </TouchableOpacity>
           </View>
 
           {/* Back to Login */}
           <View style={s.footer}>
-            <Text style={s.footerText}>Remember your password?</Text>
+            <Text style={s.footerText}>נזכרת בסיסמה?</Text>
             <TouchableOpacity onPress={() => router.replace("/auth/login")}>
-              <Text style={s.footerLink}> Sign in</Text>
+              <Text style={s.footerLink}> התחבר</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -157,19 +158,23 @@ export default function ForgotPasswordScreen() {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DS_COLORS.background },
+    backgroundColor: DS_COLORS.background,
+  },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: DS_SPACING.xl,
     paddingTop: 20,
     paddingBottom: 30,
-    justifyContent: "center" },
+    justifyContent: "center",
+  },
   backButton: {
     alignSelf: "flex-end",
-    marginBottom: DS_SPACING.lg },
+    marginBottom: DS_SPACING.lg,
+  },
   header: {
     alignItems: "center",
-    marginBottom: 36 },
+    marginBottom: 36,
+  },
   iconCircle: {
     width: 72,
     height: 72,
@@ -177,44 +182,53 @@ const s = StyleSheet.create({
     backgroundColor: DS_COLORS.accentLight,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: DS_SPACING.lg },
+    marginBottom: DS_SPACING.lg,
+  },
   title: {
     fontSize: 28,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
-    marginBottom: 8 },
+    marginBottom: 8,
+  },
   subtitle: {
     fontSize: DS_FONT.body,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
-    lineHeight: 24 },
+    lineHeight: 24,
+  },
   form: {
-    gap: DS_SPACING.lg },
+    gap: DS_SPACING.lg,
+  },
   inputGroup: {
-    gap: DS_SPACING.xs + 2 },
+    gap: DS_SPACING.xs + 2,
+  },
   label: {
     fontSize: DS_FONT.bodySmall,
     fontWeight: DS_WEIGHT.semibold,
     color: DS_COLORS.textPrimary,
-    textAlign: "left",
-    alignSelf: "flex-start"
+    textAlign: "right",
+    alignSelf: "flex-start",
+    writingDirection: "rtl",
   },
   inputWrapper: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     backgroundColor: DS_COLORS.card,
     borderWidth: 1.5,
     borderColor: DS_COLORS.border,
     borderRadius: DS_RADIUS.md,
-    paddingHorizontal: DS_SPACING.lg },
+    paddingHorizontal: DS_SPACING.lg,
+  },
   input: {
     flex: 1,
     paddingVertical: DS_SPACING.md + 2,
     fontSize: DS_FONT.body,
-    color: DS_COLORS.textPrimary
+    color: DS_COLORS.textPrimary,
+    writingDirection: "rtl",
   },
   inputIcon: {
-    marginRight: DS_SPACING.sm },
+    marginRight: DS_SPACING.sm,
+  },
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -224,12 +238,14 @@ const s = StyleSheet.create({
     borderColor: DS_COLORS.error,
     borderRadius: DS_RADIUS.sm,
     paddingHorizontal: DS_SPACING.md,
-    paddingVertical: DS_SPACING.sm + 2 },
+    paddingVertical: DS_SPACING.sm + 2,
+  },
   errorText: {
     fontSize: DS_FONT.bodySmall,
     color: DS_COLORS.error,
-    textAlign: "left",
-    flex: 1 },
+    textAlign: "right",
+    flex: 1,
+  },
   primaryButton: {
     backgroundColor: DS_COLORS.accent,
     borderRadius: DS_RADIUS.md,
@@ -239,31 +255,38 @@ const s = StyleSheet.create({
     justifyContent: "center",
     marginTop: DS_SPACING.sm,
     alignSelf: "stretch",
-    ...DS_SHADOW.button },
+    ...DS_SHADOW.button,
+  },
   buttonDisabled: {
-    opacity: 0.7 },
+    opacity: 0.7,
+  },
   primaryButtonText: {
     color: DS_COLORS.white,
     fontSize: DS_FONT.body + 2,
-    fontWeight: DS_WEIGHT.bold },
+    fontWeight: DS_WEIGHT.bold,
+  },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 32 },
+    marginTop: 32,
+  },
   footerText: {
     fontSize: DS_FONT.bodySmall,
-    color: DS_COLORS.textSecondary },
+    color: DS_COLORS.textSecondary,
+  },
   footerLink: {
     fontSize: DS_FONT.bodySmall,
     color: DS_COLORS.textPrimary,
-    fontWeight: DS_WEIGHT.bold },
+    fontWeight: DS_WEIGHT.bold,
+  },
   // Success state
   successContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: DS_SPACING.xl },
+    paddingHorizontal: DS_SPACING.xl,
+  },
   successIcon: {
     width: 80,
     height: 80,
@@ -271,15 +294,19 @@ const s = StyleSheet.create({
     backgroundColor: DS_COLORS.accentLight,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: DS_SPACING.xxl },
+    marginBottom: DS_SPACING.xxl,
+  },
   successTitle: {
     fontSize: 24,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
-    marginBottom: DS_SPACING.md },
+    marginBottom: DS_SPACING.md,
+  },
   successText: {
     fontSize: DS_FONT.body,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
     lineHeight: 24,
-    marginBottom: DS_SPACING.xxl } });
+    marginBottom: DS_SPACING.xxl,
+  },
+});

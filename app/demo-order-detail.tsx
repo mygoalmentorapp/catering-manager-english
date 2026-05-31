@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  Dimensions } from "react-native";
+  Dimensions,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -38,21 +39,23 @@ const DK = {
   borderLight: "rgba(255,255,255,0.04)",
   error: "#EF4444",
   success: "#22C55E",
-  white: "#FFFFFF" } as const;
+  white: "#FFFFFF",
+} as const;
 
 // ============ MOCK DATA ============
 const MOCK_ORDER = {
-  customerName: "John Smith",
+  customerName: "דוד כהן",
   customerPhone: "054-1234567",
-  customerAddress: "42 Main St, New York",
+  customerAddress: "הרצל 42, תל אביב",
   eventDate: "2026-05-20",
-  notes: "No peanuts, allergy. Arrive one hour early.",
+  notes: "ללא בוטנים, אלרגיה. להגיע שעה לפני.",
   products: [
-    { name: "Premium sushi platter", quantity: 3, price: 280 },
-    { name: "Tropical fruit platter", quantity: 2, price: 180 },
-    { name: "Sandwich platter", quantity: 4, price: 120 },
-    { name: "Belgian chocolate cake", quantity: 1, price: 350 },
-  ] };
+    { name: "מגש סושי פרימיום", quantity: 3, price: 280 },
+    { name: "מגש פירות טרופיים", quantity: 2, price: 180 },
+    { name: "מגש כריכונים", quantity: 4, price: 120 },
+    { name: "עוגת שוקולד בלגי", quantity: 1, price: 350 },
+  ],
+};
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
@@ -66,7 +69,8 @@ function formatDate(dateStr: string): string {
 function GlassCard({
   children,
   style,
-  noPadding }: {
+  noPadding,
+}: {
   children: React.ReactNode;
   style?: any;
   noPadding?: boolean;
@@ -101,7 +105,8 @@ function InfoRow({
   label,
   value,
   iconColor,
-  iconBg }: {
+  iconBg,
+}: {
   icon: string;
   label: string;
   value: string;
@@ -129,7 +134,8 @@ function InfoRow({
 function ProductRow({
   item,
   index,
-  isLast }: {
+  isLast,
+}: {
   item: (typeof MOCK_ORDER.products)[0];
   index: number;
   isLast: boolean;
@@ -143,10 +149,10 @@ function ProductRow({
       <View style={s.productInfo}>
         <Text style={s.productName}>{item.name}</Text>
         <Text style={s.productMeta}>
-          {item.quantity} × ${item.price}
+          {item.quantity} × ₪{item.price}
         </Text>
       </View>
-      <Text style={s.productTotal}>${total.toLocaleString()}</Text>
+      <Text style={s.productTotal}>₪{total.toLocaleString()}</Text>
     </View>
   );
 }
@@ -183,7 +189,7 @@ export default function DemoOrderDetailScreen() {
           >
             <MaterialIcons name="arrow-back" size={22} color={DK.textPrimary} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Order details</Text>
+          <Text style={s.headerTitle}>פרטי הזמנה</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -218,18 +224,18 @@ export default function DemoOrderDetailScreen() {
 
           {/* Contact Info */}
           <GlassCard>
-            <Text style={s.sectionTitle}>Customer details</Text>
+            <Text style={s.sectionTitle}>פרטי לקוח</Text>
             <View style={s.infoList}>
               <InfoRow
                 icon="phone"
-                label="Phone"
+                label="טלפון"
                 value={MOCK_ORDER.customerPhone}
                 iconColor={DK.blue}
                 iconBg={DK.blueSoft}
               />
               <InfoRow
                 icon="location-on"
-                label="Address"
+                label="כתובת"
                 value={MOCK_ORDER.customerAddress}
                 iconColor={DK.purple}
                 iconBg={DK.purpleSoft}
@@ -240,7 +246,7 @@ export default function DemoOrderDetailScreen() {
           {/* Products */}
           <GlassCard noPadding>
             <View style={s.productsHeader}>
-              <Text style={s.sectionTitle}>Products</Text>
+              <Text style={s.sectionTitle}>מוצרים</Text>
               <View style={s.productCountBadge}>
                 <Text style={s.productCountText}>
                   {MOCK_ORDER.products.length}
@@ -264,8 +270,8 @@ export default function DemoOrderDetailScreen() {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={s.totalLabel}>Total</Text>
-              <Text style={s.totalValue}>${totalPrice.toLocaleString()}</Text>
+              <Text style={s.totalLabel}>סה״כ</Text>
+              <Text style={s.totalValue}>₪{totalPrice.toLocaleString()}</Text>
             </LinearGradient>
           </GlassCard>
 
@@ -274,7 +280,7 @@ export default function DemoOrderDetailScreen() {
             <GlassCard>
               <View style={s.notesHeader}>
                 <MaterialIcons name="sticky-note-2" size={18} color={DK.orange} />
-                <Text style={s.sectionTitle}>Notes</Text>
+                <Text style={s.sectionTitle}>הערות</Text>
               </View>
               <Text style={s.notesText}>{MOCK_ORDER.notes}</Text>
             </GlassCard>
@@ -290,13 +296,13 @@ export default function DemoOrderDetailScreen() {
                 end={{ x: 1, y: 1 }}
               >
                 <MaterialIcons name="description" size={22} color={DK.bg} />
-                <Text style={s.actionBtnText}>Price quote</Text>
+                <Text style={s.actionBtnText}>הצעת מחיר</Text>
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={s.actionBtn} activeOpacity={0.8}>
               <View style={s.actionBtnOutline}>
                 <MaterialIcons name="checklist" size={22} color={DK.accent} />
-                <Text style={s.actionBtnOutlineText}>Execution list</Text>
+                <Text style={s.actionBtnOutlineText}>רשימת ביצוע</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -310,7 +316,7 @@ export default function DemoOrderDetailScreen() {
               end={{ x: 1, y: 1 }}
             >
               <MaterialIcons name="edit" size={20} color={DK.white} />
-              <Text style={s.editBtnText}>Edit order</Text>
+              <Text style={s.editBtnText}>עריכת הזמנה</Text>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -325,7 +331,8 @@ export default function DemoOrderDetailScreen() {
 const s = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: DK.bg },
+    backgroundColor: DK.bg,
+  },
 
   // Glow orb at top
   glowOrb: {
@@ -339,39 +346,45 @@ const s = StyleSheet.create({
     opacity: 0.3,
     ...(Platform.OS === "web"
       ? { filter: "blur(80px)" }
-      : {}) },
+      : {}),
+  },
 
   // Header
   header: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 12 },
+    paddingVertical: 12,
+  },
   headerBtn: {
     width: 40,
     height: 40,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.08)" },
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
     color: DK.textPrimary,
-    letterSpacing: 0.3 },
+    letterSpacing: 0.3,
+  },
 
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    gap: 14 },
+    gap: 14,
+  },
 
   // ── Glass Card ──
   glassCardOuter: {
     borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: DK.border },
+    borderColor: DK.border,
+  },
   glassCard: {
     backgroundColor: DK.bgCard,
     borderRadius: 20,
@@ -380,215 +393,257 @@ const s = StyleSheet.create({
     borderColor: DK.border,
     ...(Platform.OS === "web"
       ? { backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }
-      : {}) },
+      : {}),
+  },
 
   // ── Hero ──
   heroTop: {
     alignItems: "center",
-    gap: 10 },
+    gap: 10,
+  },
   avatarWrap: {
     width: 64,
     height: 64,
     borderRadius: 32,
     overflow: "hidden",
-    marginBottom: 4 },
+    marginBottom: 4,
+  },
   avatarGradient: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center" },
+    justifyContent: "center",
+  },
   avatarText: {
     fontSize: 28,
     fontWeight: "800",
-    color: DK.white },
+    color: DK.white,
+  },
   heroName: {
     fontSize: 26,
     fontWeight: "800",
     color: DK.textPrimary,
-    letterSpacing: 0.5 },
+    letterSpacing: 0.5,
+  },
   dateBadge: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     gap: 6,
     backgroundColor: DK.accentSoft,
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 20 },
+    borderRadius: 20,
+  },
   dateBadgeText: {
     fontSize: 14,
     fontWeight: "600",
-    color: DK.accent },
+    color: DK.accent,
+  },
 
   // ── Section ──
   sectionTitle: {
     fontSize: 17,
     fontWeight: "700",
     color: DK.textPrimary,
-    textAlign: "left",
-    marginBottom: 14 },
+    textAlign: "right",
+    marginBottom: 14,
+  },
 
   // ── Info Rows ──
   infoList: {
-    gap: 12 },
+    gap: 12,
+  },
   infoRow: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 12 },
+    gap: 12,
+  },
   infoIconWrap: {
     width: 40,
     height: 40,
     borderRadius: 12,
     alignItems: "center",
-    justifyContent: "center" },
+    justifyContent: "center",
+  },
   infoContent: {
     flex: 1,
-    alignItems: "flex-end" },
+    alignItems: "flex-end",
+  },
   infoLabel: {
     fontSize: 12,
     fontWeight: "500",
     color: DK.textTertiary,
-    marginBottom: 2 },
+    marginBottom: 2,
+  },
   infoValue: {
     fontSize: 16,
     fontWeight: "600",
-    color: DK.textPrimary },
+    color: DK.textPrimary,
+  },
 
   // ── Products ──
   productsHeader: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 20 },
+    paddingTop: 20,
+  },
   productCountBadge: {
     backgroundColor: DK.accentSoft,
     width: 28,
     height: 28,
     borderRadius: 14,
     alignItems: "center",
-    justifyContent: "center" },
+    justifyContent: "center",
+  },
   productCountText: {
     fontSize: 14,
     fontWeight: "700",
-    color: DK.accent },
+    color: DK.accent,
+  },
   productsList: {
     paddingHorizontal: 20,
-    marginTop: 4 },
+    marginTop: 4,
+  },
   productRow: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     paddingVertical: 14,
-    gap: 12 },
+    gap: 12,
+  },
   productRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: DK.borderLight },
+    borderBottomColor: DK.borderLight,
+  },
   productIndex: {
     width: 28,
     height: 28,
     borderRadius: 8,
     backgroundColor: "rgba(255,255,255,0.06)",
     alignItems: "center",
-    justifyContent: "center" },
+    justifyContent: "center",
+  },
   productIndexText: {
     fontSize: 13,
     fontWeight: "700",
-    color: DK.textTertiary },
+    color: DK.textTertiary,
+  },
   productInfo: {
     flex: 1,
-    alignItems: "flex-end" },
+    alignItems: "flex-end",
+  },
   productName: {
     fontSize: 16,
     fontWeight: "600",
     color: DK.textPrimary,
-    marginBottom: 2 },
+    marginBottom: 2,
+  },
   productMeta: {
     fontSize: 13,
     fontWeight: "500",
     color: DK.textSecondary,
     writingDirection: "ltr" as const,
-    textAlign: "left" as const },
+    textAlign: "left" as const,
+  },
   productTotal: {
     fontSize: 17,
     fontWeight: "700",
-    color: DK.accent },
+    color: DK.accent,
+  },
 
   // ── Total Bar ──
   totalBar: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 16,
     marginTop: 4,
     borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20 },
+    borderBottomRightRadius: 20,
+  },
   totalLabel: {
     fontSize: 17,
     fontWeight: "700",
-    color: DK.textSecondary },
+    color: DK.textSecondary,
+  },
   totalValue: {
     fontSize: 24,
     fontWeight: "800",
     color: DK.accent,
-    letterSpacing: 0.5 },
+    letterSpacing: 0.5,
+  },
 
   // ── Notes ──
   notesHeader: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     gap: 8,
-    marginBottom: 10 },
+    marginBottom: 10,
+  },
   notesText: {
     fontSize: 15,
     fontWeight: "500",
     color: DK.textSecondary,
-    textAlign: "left",
-    lineHeight: 24 },
+    textAlign: "right",
+    lineHeight: 24,
+  },
 
   // ── Action Buttons ──
   actionsRow: {
-    flexDirection: "row",
-    gap: 10 },
+    flexDirection: "row-reverse",
+    gap: 10,
+  },
   actionBtn: {
     flex: 1,
     borderRadius: 16,
-    overflow: "hidden" },
+    overflow: "hidden",
+  },
   actionBtnGradient: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingVertical: 16,
-    borderRadius: 16 },
+    borderRadius: 16,
+  },
   actionBtnText: {
     fontSize: 15,
     fontWeight: "700",
-    color: DK.bg },
+    color: DK.bg,
+  },
   actionBtnOutline: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingVertical: 15,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: DK.accent },
+    borderColor: DK.accent,
+  },
   actionBtnOutlineText: {
     fontSize: 15,
     fontWeight: "700",
-    color: DK.accent },
+    color: DK.accent,
+  },
 
   // ── Edit Button ──
   editBtnWrap: {
     borderRadius: 16,
-    overflow: "hidden" },
+    overflow: "hidden",
+  },
   editBtn: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingVertical: 16,
-    borderRadius: 16 },
+    borderRadius: 16,
+  },
   editBtnText: {
     fontSize: 16,
     fontWeight: "700",
-    color: DK.white } });
+    color: DK.white,
+  },
+});

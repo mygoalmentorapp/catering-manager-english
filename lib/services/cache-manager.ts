@@ -55,7 +55,8 @@ export const CacheManager = {
       const entry: CacheEntry<T> = {
         data,
         timestamp: Date.now(),
-        ttl: ttlMs };
+        ttl: ttlMs,
+      };
       await AsyncStorage.setItem(CACHE_PREFIX + key, JSON.stringify(entry));
     } catch {
       // Storage write failure — non-fatal
@@ -94,4 +95,5 @@ export const CacheManager = {
   async has(key: string): Promise<boolean> {
     const value = await CacheManager.get(key);
     return value !== null;
-  } };
+  },
+};

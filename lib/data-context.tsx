@@ -23,7 +23,8 @@ import {
   saveLastSync,
   shouldRetry,
   type PendingOp,
-  type OpType } from "./sync-engine";
+  type OpType,
+} from "./sync-engine";
 import { isDeviceBlockedError, emitDeviceBlocked } from "./device-events";
 import { emitOfflineSave } from "./offline-toast-events";
 
@@ -243,7 +244,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         cacheData(STORAGE_KEYS.CACHE_SETTINGS, {
           businessName: settings.businessName,
           businessLogo: settings.businessLogo,
-          primaryColor: color });
+          primaryColor: color,
+        });
         AsyncStorage.setItem(CACHE_PRIMARY_COLOR, color).catch(() => {});
         if (settings.businessLogo) {
           AsyncStorage.setItem(CACHE_BUSINESS_LOGO, settings.businessLogo).catch(() => {});
@@ -673,7 +675,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         onSuccess: () => {
           ExperienceEventService.logProductCreated().catch(() => {});
           UserExperienceStateService.onProductCreated().catch(() => {});
-        } });
+        },
+      });
     },
     [offlineMutation, refreshProducts, products]
   );
@@ -696,7 +699,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         getCacheState: () => products.map(p => p.id === id ? { ...p, ...product, updatedAt: now } : p),
         onSuccess: () => {
           ExperienceEventService.logProductUpdated().catch(() => {});
-        } });
+        },
+      });
     },
     [offlineMutation, refreshProducts, products]
   );
@@ -713,7 +717,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         },
         refreshFn: refreshProducts,
         cacheKey: STORAGE_KEYS.CACHE_PRODUCTS,
-        getCacheState: () => products.filter(p => p.id !== id) });
+        getCacheState: () => products.filter(p => p.id !== id),
+      });
     },
     [offlineMutation, refreshProducts, products]
   );
@@ -742,7 +747,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           counterPromise.then(() => {
             ExperienceEventService.logOrderCreated().catch(() => {});
           });
-        } });
+        },
+      });
     },
     [offlineMutation, refreshOrders, orders]
   );
@@ -765,7 +771,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         getCacheState: () => orders.map(o => o.id === id ? { ...o, ...order, updatedAt: now } : o),
         onSuccess: () => {
           ExperienceEventService.logOrderUpdated().catch(() => {});
-        } });
+        },
+      });
     },
     [offlineMutation, refreshOrders, orders]
   );
@@ -783,10 +790,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           setSavedShoppingLists(prev => prev.map(sl => ({
             ...sl,
             orderIds: sl.orderIds.filter(oid => oid !== id),
-            orderNames: sl.orderNames.filter((_, idx) => sl.orderIds[idx] !== id) })));
+            orderNames: sl.orderNames.filter((_, idx) => sl.orderIds[idx] !== id),
+          })));
         },
         refreshFn: refreshOrders,
-        extraRefreshFns: [refreshShoppingLists] });
+        extraRefreshFns: [refreshShoppingLists],
+      });
     },
     [offlineMutation, refreshOrders, refreshShoppingLists]
   );
@@ -809,7 +818,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         onSuccess: () => {
           ExperienceEventService.logOrderCompleted().catch(() => {});
           UserExperienceStateService.onOrderCompleted().catch(() => {});
-        } });
+        },
+      });
     },
     [offlineMutation, refreshOrders, refreshShoppingLists]
   );
@@ -831,7 +841,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           }
           return { id, status: "open" as const, updatedAt: now } as Order;
         },
-        refreshFn: refreshOrders });
+        refreshFn: refreshOrders,
+      });
     },
     [offlineMutation, refreshOrders, orders]
   );
@@ -848,7 +859,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         },
         refreshFn: refreshUnits,
         cacheKey: STORAGE_KEYS.CACHE_UNITS,
-        getCacheState: () => [...units, unit] });
+        getCacheState: () => [...units, unit],
+      });
     },
     [offlineMutation, refreshUnits, units]
   );
@@ -863,7 +875,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         },
         refreshFn: refreshUnits,
         cacheKey: STORAGE_KEYS.CACHE_UNITS,
-        getCacheState: () => units.filter(u => u.singular !== singular) });
+        getCacheState: () => units.filter(u => u.singular !== singular),
+      });
     },
     [offlineMutation, refreshUnits, units]
   );
@@ -886,7 +899,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         },
         refreshFn: refreshCategories,
         cacheKey: STORAGE_KEYS.CACHE_CATEGORIES,
-        getCacheState: () => [...customCategories, optimistic] });
+        getCacheState: () => [...customCategories, optimistic],
+      });
     },
     [offlineMutation, refreshCategories, customCategories]
   );
@@ -903,7 +917,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         },
         refreshFn: refreshCategories,
         cacheKey: STORAGE_KEYS.CACHE_CATEGORIES,
-        getCacheState: () => customCategories.map(c => c.id === id ? { ...c, name } : c) });
+        getCacheState: () => customCategories.map(c => c.id === id ? { ...c, name } : c),
+      });
     },
     [offlineMutation, refreshCategories, customCategories]
   );
@@ -920,7 +935,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         },
         refreshFn: refreshCategories,
         cacheKey: STORAGE_KEYS.CACHE_CATEGORIES,
-        getCacheState: () => customCategories.filter(c => c.id !== id) });
+        getCacheState: () => customCategories.filter(c => c.id !== id),
+      });
     },
     [offlineMutation, refreshCategories, customCategories]
   );
@@ -935,7 +951,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setBusinessNameState(name);
       },
       cacheKey: STORAGE_KEYS.CACHE_SETTINGS,
-      getCacheState: () => ({ businessName: name, businessLogo, primaryColor }) });
+      getCacheState: () => ({ businessName: name, businessLogo, primaryColor }),
+    });
   }, [offlineMutation, businessLogo, primaryColor]);
 
   const setBusinessLogoValue = useCallback(async (uri: string) => {
@@ -951,7 +968,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }
       },
       cacheKey: STORAGE_KEYS.CACHE_SETTINGS,
-      getCacheState: () => ({ businessName, businessLogo: uri, primaryColor }) });
+      getCacheState: () => ({ businessName, businessLogo: uri, primaryColor }),
+    });
   }, [offlineMutation, businessName, primaryColor]);
 
   const setPrimaryColorValue = useCallback(async (color: string) => {
@@ -965,7 +983,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         AsyncStorage.setItem(CACHE_PRIMARY_COLOR, color).catch(() => {});
       },
       cacheKey: STORAGE_KEYS.CACHE_SETTINGS,
-      getCacheState: () => ({ businessName, businessLogo, primaryColor: color }) });
+      getCacheState: () => ({ businessName, businessLogo, primaryColor: color }),
+    });
   }, [offlineMutation, businessName, businessLogo]);
 
   // ============ SHOPPING LIST MUTATIONS ============
@@ -990,7 +1009,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         onSuccess: () => {
           ExperienceEventService.logShoppingListCreated().catch(() => {});
           UserExperienceStateService.onShoppingListCreated().catch(() => {});
-        } });
+        },
+      });
     },
     [offlineMutation, refreshShoppingLists, savedShoppingLists]
   );
@@ -1010,7 +1030,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         },
         refreshFn: refreshShoppingLists,
         cacheKey: STORAGE_KEYS.CACHE_SHOPPING_LISTS,
-        getCacheState: () => savedShoppingLists.map(sl => sl.id === id ? { ...sl, ...updates, updatedAt: now } : sl) });
+        getCacheState: () => savedShoppingLists.map(sl => sl.id === id ? { ...sl, ...updates, updatedAt: now } : sl),
+      });
     },
     [offlineMutation, refreshShoppingLists, savedShoppingLists]
   );
@@ -1027,7 +1048,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         },
         refreshFn: refreshShoppingLists,
         cacheKey: STORAGE_KEYS.CACHE_SHOPPING_LISTS,
-        getCacheState: () => savedShoppingLists.filter(sl => sl.id !== id) });
+        getCacheState: () => savedShoppingLists.filter(sl => sl.id !== id),
+      });
     },
     [offlineMutation, refreshShoppingLists, savedShoppingLists]
   );
@@ -1038,7 +1060,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     pendingCount: pendingOps.length,
     isSyncing,
     lastSyncAt,
-    lastError: lastSyncError };
+    lastError: lastSyncError,
+  };
 
   return (
     <DataContext.Provider
@@ -1079,7 +1102,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         updateSavedShoppingList: updateSavedShoppingListCb,
         deleteSavedShoppingList: deleteSavedShoppingListCb,
         syncStatus,
-        isOfflineCached }}
+        isOfflineCached,
+      }}
     >
       {children}
     </DataContext.Provider>

@@ -14,25 +14,28 @@ import { ColorKeyNavigator } from "@/components/color-key-navigator";
 import { DS_COLORS } from "@/lib/design-system";
 import { AppGate } from "@/components/app-gate";
 import { ExperienceBootstrap } from "@/lib/experience-bootstrap";
+import { AdaptyBootstrap } from "@/lib/adapty-bootstrap";
+import { OneSignalBootstrap } from "@/lib/onesignal-bootstrap";
 import { CriticalFlowProvider } from "@/lib/critical-flow-context";
 import { ToastProvider } from "@/lib/toast-context";
 
-// Force LTR for English — disable RTL to avoid layout issues
+// Force RTL for Hebrew — only when not already RTL to avoid reload loops
 if (Platform.OS !== "web") {
-  if (I18nManager.isRTL) {
-    I18nManager.allowRTL(false);
-    I18nManager.forceRTL(false);
+  if (!I18nManager.isRTL) {
+    I18nManager.allowRTL(true);
+    I18nManager.forceRTL(true);
   }
 } else {
-  I18nManager.allowRTL(false);
-  I18nManager.forceRTL(false);
+  I18nManager.allowRTL(true);
+  I18nManager.forceRTL(true);
 }
 
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
   SafeAreaProvider,
-  initialWindowMetrics } from "react-native-safe-area-context";
+  initialWindowMetrics,
+} from "react-native-safe-area-context";
 import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 
 import { trpc, createTRPCClient } from "@/lib/trpc";
@@ -42,7 +45,8 @@ const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
 export const unstable_settings = {
-  anchor: "(tabs)" };
+  anchor: "(tabs)",
+};
 
 export default function RootLayout() {
   const initialInsets = initialWindowMetrics?.insets ?? DEFAULT_WEB_INSETS;
@@ -74,7 +78,10 @@ export default function RootLayout() {
         defaultOptions: {
           queries: {
             refetchOnWindowFocus: false,
-            retry: 1 } } }),
+            retry: 1,
+          },
+        },
+      }),
   );
   const [trpcClient] = useState(() => createTRPCClient());
 
@@ -86,7 +93,9 @@ export default function RootLayout() {
       insets: {
         ...metrics.insets,
         top: Math.max(metrics.insets.top, 16),
-        bottom: Math.max(metrics.insets.bottom, 12) } };
+        bottom: Math.max(metrics.insets.bottom, 12),
+      },
+    };
   }, [initialInsets, initialFrame]);
 
   // Provider chain:
@@ -109,6 +118,8 @@ export default function RootLayout() {
               <trpc.Provider client={trpcClient} queryClient={queryClient}>
                 <QueryClientProvider client={queryClient}>
                   <ExperienceBootstrap />
+                  <AdaptyBootstrap />
+                  <OneSignalBootstrap />
                   <DataProvider>
                     <ToastProvider>
                       <AppGate>

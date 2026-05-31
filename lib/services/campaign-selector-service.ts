@@ -18,7 +18,8 @@ import { devLog, warnLog, CACHE_TTL, SUPPORTED_SCHEMA_VERSION } from "./environm
 import {
   ExperienceRuleEngine,
   type RemoteCampaign,
-  type RuleContext } from "./experience-rule-engine";
+  type RuleContext,
+} from "./experience-rule-engine";
 import { vanillaTrpc } from "../trpc";
 
 // ── Constants ──
@@ -145,7 +146,8 @@ export const CampaignSelectorService = {
    */
   async clearCache(): Promise<void> {
     await CacheManager.remove(CACHE_KEY);
-  } };
+  },
+};
 
 // ── Internal ──
 

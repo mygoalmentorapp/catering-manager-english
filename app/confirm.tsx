@@ -7,7 +7,8 @@ import {
   Platform,
   Linking,
   Pressable,
-  ScrollView } from "react-native";
+  ScrollView,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 import { supabase } from "@/lib/supabase";
@@ -40,12 +41,13 @@ const BRAND = {
   danger: "#FF7B7B",
   card: "rgba(5, 22, 24, 0.76)",
   border: "rgba(101, 255, 239, 0.28)",
-  borderStrong: "rgba(101, 255, 239, 0.72)" };
+  borderStrong: "rgba(101, 255, 239, 0.72)",
+};
 
 type ConfirmStatus = "loading" | "success" | "error" | "already_verified";
 
 // Deep link scheme from app.config.ts
-const DEEP_LINK_SCHEME = "manusen20260411205951";
+const DEEP_LINK_SCHEME = "manus20260411205951";
 
 export default function ConfirmScreen() {
   const params = useLocalSearchParams<{
@@ -67,7 +69,7 @@ export default function ConfirmScreen() {
   async function handleConfirmation() {
     try {
       if (params.error) {
-        const desc = params.error_description || params.error || "Unknown error";
+        const desc = params.error_description || params.error || "שגיאה לא ידועה";
         setErrorMessage(desc);
         setStatus("error");
         return;
@@ -76,7 +78,8 @@ export default function ConfirmScreen() {
       if (params.token_hash && params.type) {
         const { error } = await supabase.auth.verifyOtp({
           token_hash: params.token_hash,
-          type: params.type as EmailOtpType });
+          type: params.type as EmailOtpType,
+        });
 
         if (error) {
           if (
@@ -85,7 +88,7 @@ export default function ConfirmScreen() {
           ) {
             setStatus("already_verified");
           } else {
-            setErrorMessage(error.message || "Verification error");
+            setErrorMessage(error.message || "שגיאה באימות");
             setStatus("error");
           }
           return;
@@ -97,7 +100,7 @@ export default function ConfirmScreen() {
 
       setStatus("success");
     } catch (err: any) {
-      setErrorMessage(err?.message || "Unexpected error");
+      setErrorMessage(err?.message || "שגיאה לא צפויה");
       setStatus("error");
     }
   }
@@ -122,7 +125,7 @@ export default function ConfirmScreen() {
             <View style={s.iconCircle}>
               <ActivityIndicator size="large" color={BRAND.teal} />
             </View>
-            <Text style={s.loadingText}>Verifying your email address...</Text>
+            <Text style={s.loadingText}>מאמת את כתובת המייל...</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -144,7 +147,7 @@ export default function ConfirmScreen() {
                 <Text style={s.iconEmoji}>✕</Text>
               </View>
 
-              <Text style={s.title}>Verification error</Text>
+              <Text style={s.title}>שגיאה באימות</Text>
               <Text style={s.subtitle}>{errorMessage}</Text>
 
               {/* Decorative Divider */}
@@ -155,8 +158,8 @@ export default function ConfirmScreen() {
               </View>
 
               <Text style={s.hint}>
-                The link may have expired or already been used.{"\n"}
-                Try signing up again or request a new link from the app.
+                ייתכן שהקישור פג תוקף או שכבר נוצל.{"\n"}
+                נסה להירשם מחדש או לבקש קישור חדש מתוך האפליקציה.
               </Text>
 
               {/* Secondary Button */}
@@ -167,13 +170,13 @@ export default function ConfirmScreen() {
                   pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
                 ]}
               >
-                <Text style={s.secondaryButtonText}>Back to app</Text>
+                <Text style={s.secondaryButtonText}>חזור לאפליקציה</Text>
               </Pressable>
             </View>
           </ScrollView>
 
           <View style={s.footer}>
-            <Text style={s.footerText}>Catering Manager Pro</Text>
+            <Text style={s.footerText}>ניהול קייטרינג פרו</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -199,14 +202,14 @@ export default function ConfirmScreen() {
 
             {/* Title */}
             <Text style={s.title}>
-              {isAlreadyVerified ? "Email already verified!" : "Email verified successfully!"}
+              {isAlreadyVerified ? "המייל כבר אומת!" : "המייל אומת בהצלחה!"}
             </Text>
 
             {/* Subtitle */}
             <Text style={s.subtitle}>
               {isAlreadyVerified
-                ? "Your email was already verified.\nYou can sign in the app."
-                : "Your email has been verified successfully.\nYou can now sign in to the app and get started!"}
+                ? "כתובת המייל שלך כבר אומתה בעבר.\nאפשר להתחבר לאפליקציה."
+                : "כתובת המייל שלך אומתה בהצלחה.\nעכשיו אפשר להתחבר לאפליקציה ולהתחיל!"}
             </Text>
 
             {/* Decorative Divider */}
@@ -231,7 +234,7 @@ export default function ConfirmScreen() {
                 style={s.primaryButton}
               >
                 <View style={s.buttonShine} />
-                <Text style={s.primaryButtonText}>Open the app</Text>
+                <Text style={s.primaryButtonText}>פתח את האפליקציה</Text>
               </LinearGradient>
             </Pressable>
 
@@ -239,9 +242,9 @@ export default function ConfirmScreen() {
             {deepLinkAttempted && (
               <View style={s.fallbackContainer}>
                 <View style={s.fallbackDivider} />
-                <Text style={s.fallbackTitle}>App didn't open?</Text>
+                <Text style={s.fallbackTitle}>האפליקציה לא נפתחה?</Text>
                 <Text style={s.fallbackText}>
-                  If the app isn't installed on your device, go back to the app manually and sign in with your email and password.
+                  אם האפליקציה לא מותקנת על המכשיר, חזור לאפליקציה ידנית והתחבר עם המייל והסיסמה שלך.
                 </Text>
               </View>
             )}
@@ -249,7 +252,7 @@ export default function ConfirmScreen() {
             {/* Hint */}
             {!deepLinkAttempted && (
               <Text style={s.hint}>
-                Tap the button to open the app and sign in.
+                לחץ על הכפתור כדי לפתוח את האפליקציה ולהתחבר.
               </Text>
             )}
           </View>
@@ -257,7 +260,7 @@ export default function ConfirmScreen() {
 
         {/* Footer */}
         <View style={s.footer}>
-          <Text style={s.footerText}>Catering Manager Pro</Text>
+          <Text style={s.footerText}>ניהול קייטרינג פרו</Text>
         </View>
       </SafeAreaView>
     </LinearGradient>
@@ -266,17 +269,21 @@ export default function ConfirmScreen() {
 
 const s = StyleSheet.create({
   gradient: {
-    flex: 1 },
+    flex: 1,
+  },
   container: {
-    flex: 1 },
+    flex: 1,
+  },
   scrollContent: {
-    flexGrow: 1 },
+    flexGrow: 1,
+  },
   content: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 32,
-    paddingVertical: 48 },
+    paddingVertical: 48,
+  },
   glowTop: {
     position: "absolute",
     top: -60,
@@ -284,7 +291,8 @@ const s = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: "rgba(53, 233, 221, 0.06)" },
+    backgroundColor: "rgba(53, 233, 221, 0.06)",
+  },
   glowMiddle: {
     position: "absolute",
     bottom: 80,
@@ -292,7 +300,8 @@ const s = StyleSheet.create({
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: "rgba(216, 162, 74, 0.04)" },
+    backgroundColor: "rgba(216, 162, 74, 0.04)",
+  },
   iconCircle: {
     width: 96,
     height: 96,
@@ -302,37 +311,44 @@ const s = StyleSheet.create({
     marginBottom: 28,
     borderWidth: 2,
     borderColor: BRAND.teal,
-    backgroundColor: "rgba(53, 233, 221, 0.08)" },
+    backgroundColor: "rgba(53, 233, 221, 0.08)",
+  },
   iconEmoji: {
     fontSize: 40,
     color: BRAND.teal,
-    fontWeight: "800" },
+    fontWeight: "800",
+  },
   title: {
     fontSize: 28,
     fontWeight: "800",
     color: BRAND.text,
     textAlign: "center",
-    marginBottom: 12
+    marginBottom: 12,
+    writingDirection: "rtl",
   },
   subtitle: {
     fontSize: 16,
     color: BRAND.muted,
     textAlign: "center",
     lineHeight: 26,
-    marginBottom: 20
+    marginBottom: 20,
+    writingDirection: "rtl",
   },
   dividerRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginVertical: 24 },
+    marginVertical: 24,
+  },
   dividerLine: {
     width: 40,
     height: 1,
-    backgroundColor: BRAND.border },
+    backgroundColor: BRAND.border,
+  },
   dividerDiamond: {
     fontSize: 12,
-    color: BRAND.tealSoft },
+    color: BRAND.tealSoft,
+  },
   primaryButtonWrap: {
     width: "100%",
     maxWidth: 280,
@@ -343,14 +359,16 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
-    elevation: 8 },
+    elevation: 8,
+  },
   primaryButton: {
     paddingVertical: 18,
     paddingHorizontal: 40,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden" },
+    overflow: "hidden",
+  },
   buttonShine: {
     position: "absolute",
     top: 0,
@@ -359,11 +377,13 @@ const s = StyleSheet.create({
     height: "50%",
     backgroundColor: "rgba(255,255,255,0.06)",
     borderTopLeftRadius: 18,
-    borderTopRightRadius: 18 },
+    borderTopRightRadius: 18,
+  },
   primaryButtonText: {
     color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: "700"
+    fontWeight: "700",
+    writingDirection: "rtl",
   },
   secondaryButton: {
     paddingVertical: 16,
@@ -375,51 +395,62 @@ const s = StyleSheet.create({
     minWidth: 200,
     backgroundColor: "rgba(5, 22, 24, 0.76)",
     borderWidth: 1.5,
-    borderColor: BRAND.border },
+    borderColor: BRAND.border,
+  },
   secondaryButtonText: {
     color: BRAND.tealSoft,
     fontSize: 16,
-    fontWeight: "600"
+    fontWeight: "600",
+    writingDirection: "rtl",
   },
   hint: {
     fontSize: 14,
     color: BRAND.muted2,
     textAlign: "center",
     lineHeight: 22,
-    paddingHorizontal: 24
+    paddingHorizontal: 24,
+    writingDirection: "rtl",
   },
   fallbackContainer: {
     alignItems: "center",
     paddingHorizontal: 20,
-    marginTop: 12 },
+    marginTop: 12,
+  },
   fallbackDivider: {
     width: 40,
     height: 1,
     backgroundColor: BRAND.border,
-    marginBottom: 16 },
+    marginBottom: 16,
+  },
   fallbackTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: BRAND.text,
     textAlign: "center",
-    marginBottom: 8
+    marginBottom: 8,
+    writingDirection: "rtl",
   },
   fallbackText: {
     fontSize: 14,
     color: BRAND.muted,
     textAlign: "center",
-    lineHeight: 22
+    lineHeight: 22,
+    writingDirection: "rtl",
   },
   loadingText: {
     fontSize: 16,
     color: BRAND.muted,
     textAlign: "center",
-    marginTop: 20
+    marginTop: 20,
+    writingDirection: "rtl",
   },
   footer: {
     paddingVertical: 20,
-    alignItems: "center" },
+    alignItems: "center",
+  },
   footerText: {
     fontSize: 13,
-    color: BRAND.muted2
-  } });
+    color: BRAND.muted2,
+    writingDirection: "rtl",
+  },
+});

@@ -23,42 +23,49 @@ const TYPE_CONFIG: Record<string, { icon: keyof typeof MaterialIcons.glyphMap; b
   info: { icon: "info-outline", bgColor: "#EFF6FF", textColor: "#1D4ED8", iconColor: "#3B82F6" },
   warning: { icon: "warning-amber", bgColor: "#FFFBEB", textColor: "#92400E", iconColor: "#F59E0B" },
   success: { icon: "check-circle-outline", bgColor: "#F0FDF4", textColor: "#166534", iconColor: "#22C55E" },
-  update: { icon: "system-update", bgColor: "#F5F3FF", textColor: "#5B21B6", iconColor: "#8B5CF6" } };
+  error: { icon: "error-outline", bgColor: "#FEF2F2", textColor: "#991B1B", iconColor: "#EF4444" },
+  update: { icon: "system-update", bgColor: "#F5F3FF", textColor: "#5B21B6", iconColor: "#8B5CF6" },
+  maintenance: { icon: "construction", bgColor: "#FFF7ED", textColor: "#9A3412", iconColor: "#F97316" },
+};
 
 /**
- * Global message banner from app_config.
- * Shown when global_message_enabled = true.
+ * Global message banner — reads from remote_config (not legacy app_config).
+ * Shown when global_message_enabled = true AND global_message_text is non-empty.
  * Dismissal is tracked by message hash — new message text = new banner.
+ * Supports title, action button, and dismissible control from remote_config.
  */
 export function GlobalMessageBanner() {
-  const { appConfig } = useConfig();
+  const { remoteConfig } = useConfig();
   const [dismissed, setDismissed] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  const messageText = appConfig?.global_message_text || "";
+  const messageText = remoteConfig.global_message_text || "";
+  const messageTitle = remoteConfig.global_message_title || "";
   const messageHash = simpleHash(messageText);
+  const isDismissible = remoteConfig.global_message_dismissible !== false; // default true
 
   // Check if this message was already dismissed
   useEffect(() => {
     const checkDismissed = async () => {
       try {
         const savedHash = await AsyncStorage.getItem(DISMISSED_MESSAGE_HASH_KEY);
-        if (savedHash === messageHash) {
+        if (savedHash === messageHash && isDismissible) {
           setDismissed(true);
         }
       } catch {}
       setLoaded(true);
     };
     checkDismissed();
-  }, [messageHash]);
+  }, [messageHash, isDismissible]);
 
   const handleDismiss = useCallback(async () => {
+    if (!isDismissible) return;
     setDismissed(true);
     await AsyncStorage.setItem(DISMISSED_MESSAGE_HASH_KEY, messageHash);
-  }, [messageHash]);
+  }, [messageHash, isDismissible]);
 
   const handleAction = useCallback(() => {
-    const action = appConfig?.global_message_action || "";
+    const action = remoteConfig.global_message_action || "";
 
     if (action === "feedback") {
       router.push("/feedback" as any);
@@ -67,30 +74,49 @@ export function GlobalMessageBanner() {
     } else if (action.startsWith("url:")) {
       const url = action.replace("url:", "");
       Linking.openURL(url).catch(() => {});
+    } else if (action === "open_home") {
+      router.push("/(tabs)" as any);
+    } else if (action === "open_products") {
+      router.push("/products" as any);
+    } else if (action === "open_orders") {
+      router.push("/orders" as any);
+    } else if (action === "open_shopping_lists") {
+      router.push("/shopping-lists" as any);
+    } else if (action === "open_settings") {
+      router.push("/about" as any);
     }
-  }, [appConfig?.global_message_action, handleDismiss]);
+  }, [remoteConfig.global_message_action, handleDismiss]);
 
   // Don't show if not enabled, dismissed, or not loaded
   if (!loaded || dismissed) return null;
-  if (!appConfig?.global_message_enabled || !messageText) return null;
+  if (!remoteConfig.global_message_enabled || !messageText) return null;
 
-  const type = appConfig.global_message_type || "info";
+  const type = remoteConfig.global_message_type || "info";
   const config = TYPE_CONFIG[type] || TYPE_CONFIG.info;
-  const actionText = appConfig.global_message_action_text || "";
+  const actionText = remoteConfig.global_message_action_text || "";
 
   return (
     <View style={[s.container, { backgroundColor: config.bgColor }]}>
       <View style={s.mainRow}>
         <MaterialIcons name={config.icon} size={20} color={config.iconColor} />
-        <Text style={[s.text, { color: config.textColor }]} numberOfLines={3}>
-          {messageText}
-        </Text>
-        <TouchableOpacity
-          onPress={handleDismiss}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <MaterialIcons name="close" size={18} color={config.textColor} />
-        </TouchableOpacity>
+        <View style={s.textColumn}>
+          {messageTitle ? (
+            <Text style={[s.title, { color: config.textColor }]} numberOfLines={1}>
+              {messageTitle}
+            </Text>
+          ) : null}
+          <Text style={[s.text, { color: config.textColor }]} numberOfLines={3}>
+            {messageText}
+          </Text>
+        </View>
+        {isDismissible && (
+          <TouchableOpacity
+            onPress={handleDismiss}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <MaterialIcons name="close" size={18} color={config.textColor} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {actionText ? (
@@ -108,23 +134,39 @@ const s = StyleSheet.create({
     borderRadius: DS_RADIUS.md,
     paddingHorizontal: DS_SPACING.md,
     paddingVertical: DS_SPACING.sm + 2,
-    marginBottom: DS_SPACING.md },
+    marginBottom: DS_SPACING.md,
+  },
   mainRow: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "flex-start",
-    gap: DS_SPACING.sm },
+    gap: DS_SPACING.sm,
+  },
+  textColumn: {
+    flex: 1,
+    gap: 2,
+  },
+  title: {
+    fontSize: DS_FONT.bodySmall,
+    fontWeight: DS_WEIGHT.bold,
+    textAlign: "right",
+    lineHeight: 20,
+  },
   text: {
     flex: 1,
     fontSize: DS_FONT.bodySmall,
     fontWeight: DS_WEIGHT.medium,
     lineHeight: 20,
-    textAlign: "left" },
+    textAlign: "right",
+  },
   actionButton: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     alignSelf: "flex-end",
     marginTop: DS_SPACING.xs,
-    gap: 2 },
+    gap: 2,
+  },
   actionText: {
     fontSize: DS_FONT.bodySmall,
-    fontWeight: DS_WEIGHT.bold } });
+    fontWeight: DS_WEIGHT.bold,
+  },
+});

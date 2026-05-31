@@ -28,23 +28,25 @@ export function useFeedbackTrigger() {
       setTimeout(() => {
         if (Platform.OS === "web") {
           // On web, use a simpler approach
-          const shouldFeedback = confirm("We would love to hear what you think! Want to send feedback?");
+          const shouldFeedback = confirm("נשמח לשמוע מה אתה חושב! רוצה לשלוח משוב?");
           if (shouldFeedback) {
             router.push({ pathname: "/feedback" as any, params: { context } });
           }
         } else {
           Alert.alert(
-            "What do you think?",
-            "We would love to hear your thoughts about the app!",
+            "מה אתה חושב?",
+            "נשמח לשמוע את דעתך על האפליקציה!",
             [
               {
-                text: "Later",
-                style: "cancel" },
+                text: "אחר כך",
+                style: "cancel",
+              },
               {
-                text: "Send feedback",
+                text: "שלח משוב",
                 onPress: () => {
                   router.push({ pathname: "/feedback" as any, params: { context } });
-                } },
+                },
+              },
             ],
             { cancelable: true }
           );
@@ -65,5 +67,6 @@ export function useFeedbackTrigger() {
 
   return {
     triggerAfterOrder,
-    triggerAfterShoppingList };
+    triggerAfterShoppingList,
+  };
 }

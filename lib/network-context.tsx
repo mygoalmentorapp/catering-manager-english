@@ -83,7 +83,8 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
       const response = await fetch(`${baseUrl}/api/health`, {
         method: "GET",
         signal: controller.signal,
-        headers });
+        headers,
+      });
 
       clearTimeout(timeoutId);
 
@@ -217,7 +218,8 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
     isServerReachable,
     isConnected,
     checkConnectivity,
-    isInitialized };
+    isInitialized,
+  };
 
   return (
     <NetworkContext.Provider value={value}>

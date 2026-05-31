@@ -30,6 +30,8 @@ interface AuthState {
   bridgeFailed: boolean;
   /** True while a bridge retry is in progress */
   bridgeRetrying: boolean;
+  /** True while session recovery is in progress (initAuth running after background resume) */
+  isRecovering: boolean;
 }
 
 interface AuthActions {
@@ -80,10 +82,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const bridgeAutoRetriedRef = useRef(false);
   // Track whether initAuth is still running — prevents safety timeout from firing prematurely
   const initAuthRunningRef = useRef(true);
+  // Track whether initAuth has completed at least once — gates startAutoRefresh
+  const initAuthCompletedRef = useRef(false);
+  // Track whether a recovery is actively running (initAuth or SIGNED_OUT recovery)
+  // Used to gate startAutoRefresh — must not run during any recovery.
+  const recoveryActiveRef = useRef(false);
 
   // Bridge retry state — exposed to UI for BridgeRetryScreen
   const [bridgeFailed, setBridgeFailed] = useState(false);
   const [bridgeRetrying, setBridgeRetrying] = useState(false);
+  // Recovery state — exposed to UI so AppGate can show "recovering" instead of login
+  const [isRecovering, setIsRecovering] = useState(false);
 
   // ============ BRIDGE READINESS ============
   // The custom JWT (bridge token) must be available before we consider the user
@@ -222,6 +231,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         debugLog("Auth", "initAuth starting...");
 
+        // FIX 1: Check auth flag BEFORE any Supabase calls.
+        // If the user was previously authenticated (flag is set), enter recovery mode.
+        // This tells AppGate to show a loading/recovery screen instead of login
+        // while we attempt to restore the session.
+        const wasAuthenticated = Platform.OS !== "web" ? await getAuthFlag() : false;
+        if (wasAuthenticated && mountedRef.current) {
+          debugLog("Auth", "Auth flag is set — entering recovery mode");
+          setIsRecovering(true);
+        }
+
         // Race getSession against a 6s timeout — SecureStore/AsyncStorage can hang
         const sessionResult = await raceTimeout(
           supabase.auth.getSession(),
@@ -230,18 +249,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!mountedRef.current) return;
 
+        let currentSession: Session | null = null;
+
         if (!sessionResult) {
-          debugLog("Auth", "getSession timed out — treating as no session");
-          setIsLoading(false);
-          return;
+          debugLog("Auth", "getSession timed out — will continue to refreshSession/fallback");
+          // DO NOT return here! Continue to refreshSession and AsyncStorage fallback.
+          // On Android after 1-2h in background, getSession() can hang due to slow
+          // storage or stale Supabase internal state. The fallbacks below can still recover.
+        } else {
+          currentSession = sessionResult.data?.session ?? null;
+          debugLog("Auth", "Session found:", !!currentSession);
         }
 
-        let currentSession = sessionResult.data?.session;
-        debugLog("Auth", "Session found:", !!currentSession);
-
-        // FIX: If getSession() returns null, it might be because Supabase's internal
-        // auto-refresh already ran and failed (e.g., after warm restart where JS context
-        // was killed but AsyncStorage still has the refresh token). In this case,
+        // FIX: If getSession() returns null (or timed out), it might be because Supabase's
+        // internal auto-refresh already ran and failed (e.g., after warm restart where JS
+        // context was killed but AsyncStorage still has the refresh token). In this case,
         // explicitly try refreshSession() which reads the refresh token from storage
         // and attempts a fresh exchange. This fixes the bug where opening the app after
         // some time shows DataLoadingSplash then redirects to login, but force-closing
@@ -251,7 +273,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             const refreshResult = await raceTimeout(
               supabase.auth.refreshSession(),
-              6000
+              8000
             );
             if (refreshResult?.data?.session?.user) {
               currentSession = refreshResult.data.session;
@@ -329,14 +351,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
         } else {
-          debugLog("Auth", "No session found");
+          debugLog("Auth", "No session found after all recovery attempts");
+          // If auth flag was set but we couldn't recover, clear it — user truly has no session
+          if (wasAuthenticated) {
+            debugLog("Auth", "Clearing stale auth flag — all recovery attempts failed");
+            await clearAuthFlag();
+          }
         }
       } catch (err) {
         debugLog("Auth", "Init error:", err);
       } finally {
         initAuthRunningRef.current = false;
+        initAuthCompletedRef.current = true;
         if (mountedRef.current) {
-          debugLog("Auth", "isLoading → false");
+          setIsRecovering(false);
+          debugLog("Auth", "isLoading → false, isRecovering → false");
           setIsLoading(false);
         }
       }
@@ -347,13 +376,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mountedRef.current) return;
-      console.log("[Auth] onAuthStateChange:", event);
+      debugLog("Auth", "onAuthStateChange:", event);
 
       // If signOut is in progress, only allow SIGNED_OUT event through.
       // This prevents TOKEN_REFRESHED or other events from re-setting state
       // back to a valid session during the async signOut cleanup.
       if (signingOutRef.current && event !== "SIGNED_OUT") {
-        console.log("[Auth] Ignoring event during signOut:", event);
+        debugLog("Auth", "Ignoring event during signOut:", event);
         return;
       }
 
@@ -371,11 +400,139 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!newSession?.user && event !== "SIGNED_OUT") {
         const flagIsSet = await getAuthFlag();
         if (flagIsSet) {
-          console.log("[Auth] Ignoring null session — auth flag says user is logged in. Event:", event);
+          debugLog("AuthFlag", "Ignoring null session — auth flag says user is logged in. Event:", event);
         } else {
-          console.log("[Auth] Ignoring null session event (not SIGNED_OUT, no flag):", event);
+          debugLog("AuthFlag", "Ignoring null session event (not SIGNED_OUT, no flag):", event);
         }
         return;
+      }
+
+      // FIX 3 (v2): Handle non-intentional SIGNED_OUT with recovery attempt.
+      // Instead of blindly blocking SIGNED_OUT, we attempt to recover the session.
+      // This distinguishes between:
+      //   a) Session that can be recovered (refresh token still valid in storage)
+      //   b) Session that truly expired/was revoked (all recovery fails → legitimate logout)
+      //
+      // Supabase can fire SIGNED_OUT internally when:
+      // - Auto-refresh fails and Supabase decides to clear the session
+      // - setSession() is called with expired tokens and Supabase rejects them
+      // - Internal race conditions during warm restart
+      //
+      // We only honor SIGNED_OUT immediately if the user explicitly initiated signOut (signingOutRef).
+      // Otherwise, if the auth flag says user should be logged in, we try recovery first.
+      if (event === "SIGNED_OUT" && !signingOutRef.current) {
+        const flagIsSet = await getAuthFlag();
+        if (flagIsSet) {
+          // Guard: prevent duplicate recovery if Supabase fires multiple SIGNED_OUT events
+          if (recoveryActiveRef.current) {
+            debugLog("Auth", "SIGNED_OUT recovery already active — ignoring duplicate event");
+            return;
+          }
+
+          debugLog("AuthFlag", "Non-intentional SIGNED_OUT detected — auth flag is set, attempting recovery...");
+
+          // Enter recovery mode — AppGate will show splash instead of login
+          if (mountedRef.current) setIsRecovering(true);
+          recoveryActiveRef.current = true;
+
+          // Stop auto-refresh during recovery to prevent interference
+          supabase.auth.stopAutoRefresh();
+
+          let recoveredSession: Session | null = null;
+
+          try {
+            // Recovery Step 1: Try getSession()
+            try {
+              debugLog("Auth", "SIGNED_OUT recovery: trying getSession()...");
+              const gsResult = await raceTimeout(supabase.auth.getSession(), 6000);
+              if (gsResult?.data?.session?.user) {
+                recoveredSession = gsResult.data.session;
+                debugLog("Auth", "SIGNED_OUT recovery: getSession() succeeded");
+              }
+            } catch (e) {
+              debugLog("Auth", "SIGNED_OUT recovery: getSession() error:", e);
+            }
+
+            // Recovery Step 2: Try refreshSession()
+            if (!recoveredSession?.user) {
+              try {
+                debugLog("Auth", "SIGNED_OUT recovery: trying refreshSession()...");
+                const rfResult = await raceTimeout(supabase.auth.refreshSession(), 8000);
+                if (rfResult?.data?.session?.user) {
+                  recoveredSession = rfResult.data.session;
+                  debugLog("Auth", "SIGNED_OUT recovery: refreshSession() succeeded");
+                }
+              } catch (e) {
+                debugLog("Auth", "SIGNED_OUT recovery: refreshSession() error:", e);
+              }
+            }
+
+            // Recovery Step 3: Try AsyncStorage fallback
+            if (!recoveredSession?.user && Platform.OS !== "web") {
+              try {
+                debugLog("Auth", "SIGNED_OUT recovery: trying AsyncStorage fallback...");
+                const raw = await AsyncStorage.getItem(SUPABASE_STORAGE_KEY);
+                if (raw) {
+                  const stored = JSON.parse(raw);
+                  const at = stored?.access_token;
+                  const rt = stored?.refresh_token;
+                  if (at && rt) {
+                    const ssResult = await raceTimeout(
+                      supabase.auth.setSession({ access_token: at, refresh_token: rt }),
+                      8000
+                    );
+                    if (ssResult?.data?.session?.user) {
+                      recoveredSession = ssResult.data.session;
+                      debugLog("Auth", "SIGNED_OUT recovery: AsyncStorage fallback succeeded");
+                    }
+                  }
+                }
+              } catch (e) {
+                debugLog("Auth", "SIGNED_OUT recovery: AsyncStorage fallback error:", e);
+              }
+            }
+
+            if (recoveredSession?.user && mountedRef.current) {
+              // Recovery succeeded — restore session, keep user in app
+              debugLog("Auth", "SIGNED_OUT recovery SUCCEEDED — restoring session");
+              setSession(recoveredSession);
+              setUser(recoveredSession.user);
+              await setAuthFlag();
+              setIsRecovering(false);
+
+              // Restart auto-refresh now that recovery is done
+              supabase.auth.startAutoRefresh();
+
+              // Verify bridge is still valid
+              if (Platform.OS !== "web") {
+                const existingToken = await Auth.getSessionToken();
+                if (!existingToken) {
+                  debugLog("Auth", "SIGNED_OUT recovery: custom JWT missing — re-bridging...");
+                  performBridge(recoveredSession.access_token).catch((err) => {
+                    console.warn("[Auth] Bridge after SIGNED_OUT recovery failed:", err);
+                  });
+                }
+              }
+
+              return; // Don't process the SIGNED_OUT event — session was recovered
+            } else {
+              // Recovery failed — session truly expired. Process the SIGNED_OUT normally.
+              debugLog("Auth", "SIGNED_OUT recovery FAILED — all attempts exhausted, processing logout");
+              await clearAuthFlag();
+              if (mountedRef.current) setIsRecovering(false);
+
+              // Restart auto-refresh for clean state
+              supabase.auth.startAutoRefresh();
+              // Fall through to process the SIGNED_OUT event normally below
+            }
+          } finally {
+            // Guarantee recoveryActiveRef is always cleared, even on unexpected errors
+            recoveryActiveRef.current = false;
+          }
+        } else {
+          // No auth flag — this is a legitimate SIGNED_OUT (e.g., user never logged in, or flag was cleared)
+          debugLog("Auth", "Processing SIGNED_OUT (no auth flag, not user-initiated)");
+        }
       }
 
       setSession(newSession);
@@ -424,7 +581,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // which awaits ALL onAuthStateChange callbacks before returning.
       // If we await performBridge (which calls the production server with 15s timeout),
       // signInWithPassword hangs until bridge completes → our 20s raceTimeout fires
-      // → user sees "Login took too long" even though Supabase auth succeeded.
+      // → user sees "ההתחברות נמשכה יותר מדי" even though Supabase auth succeeded.
       //
       // Instead, we fire performBridge without awaiting. The bridge runs in the background:
       // - If it succeeds: isBridgeReady → true → isAuthenticated → true → user enters app
@@ -471,77 +628,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // auto-refresh cycle when the app transitions between foreground/background
   // so the token is refreshed immediately upon returning to the foreground.
   //
-  // FIX: Do NOT call startAutoRefresh() on mount — it causes a race condition.
-  // When the app reopens after 1-2h, startAutoRefresh fires immediately, tries to
-  // refresh the expired access_token, fails (network/timing), and clears Supabase's
-  // internal session memory BEFORE initAuth can call getSession().
-  // Instead, we only start auto-refresh AFTER initAuth has finished (2s delay on foreground).
+  // FIX 2: Do NOT call startAutoRefresh() until initAuth has COMPLETED (not just started).
+  // Previously we used a fixed 2s timer, but initAuth can take up to 20s in worst case
+  // (getSession 6s + refreshSession 8s + setSession 8s). If startAutoRefresh fires
+  // before initAuth reads from storage, it can clear Supabase's internal session memory
+  // and cause all recovery attempts to fail.
+  //
+  // Now we use initAuthCompletedRef (set to true in initAuth's finally block) as the gate.
   useEffect(() => {
-    // Delayed initial start — give initAuth time to complete first
-    const initialTimer = setTimeout(() => {
-      if (!initAuthRunningRef.current) {
-        console.log("[Auth] Initial delayed startAutoRefresh (initAuth done)");
+    // Poll for initAuth completion instead of using a fixed timer.
+    // Check every 500ms, give up after 25s (safety net).
+    let pollCount = 0;
+    const maxPolls = 50; // 50 × 500ms = 25s
+    const pollTimer = setInterval(() => {
+      pollCount++;
+      if (initAuthCompletedRef.current && !recoveryActiveRef.current) {
+        clearInterval(pollTimer);
+        debugLog("Auth", `startAutoRefresh — initAuth completed, no recovery active (after ${pollCount * 500}ms)`);
         supabase.auth.startAutoRefresh();
-      } else {
-        // initAuth still running — wait a bit more
-        const retryTimer = setTimeout(() => {
-          console.log("[Auth] Retry startAutoRefresh after initAuth");
-          supabase.auth.startAutoRefresh();
-        }, 3000);
-        return () => clearTimeout(retryTimer);
+      } else if (pollCount >= maxPolls) {
+        clearInterval(pollTimer);
+        debugLog("Auth", "startAutoRefresh — safety: initAuth did not complete in 25s, starting anyway");
+        supabase.auth.startAutoRefresh();
       }
-    }, 2000);
+    }, 500);
 
     const appStateSubscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
-        // Delay startAutoRefresh on foreground to let initAuth run first
-        // This prevents the race condition where auto-refresh clears the session
-        // from Supabase's internal memory before initAuth can read it.
-        setTimeout(() => {
-          if (!initAuthRunningRef.current) {
-            console.log("[Auth] App foregrounded — starting auto-refresh (delayed)");
-            supabase.auth.startAutoRefresh();
-          } else {
-            console.log("[Auth] App foregrounded — deferring auto-refresh (initAuth still running)");
-            // Will be started after initAuth completes via the initial timer logic
-          }
-        }, 2000);
+        // Only start auto-refresh if initAuth has completed AND no recovery is active.
+        // If initAuth is still running or SIGNED_OUT recovery is in progress,
+        // auto-refresh will be started when recovery finishes.
+        if (initAuthCompletedRef.current && !recoveryActiveRef.current) {
+          debugLog("Auth", "App foregrounded — starting auto-refresh (initAuth done, no recovery)");
+          supabase.auth.startAutoRefresh();
+        } else {
+          debugLog("Auth", "App foregrounded — deferring auto-refresh (initAuth or recovery still running)");
+        }
       } else {
-        console.log("[Auth] App backgrounded — stopping auto-refresh");
+        debugLog("Auth", "App backgrounded — stopping auto-refresh");
         supabase.auth.stopAutoRefresh();
       }
     });
 
     return () => {
-      clearTimeout(initialTimer);
+      clearInterval(pollTimer);
       appStateSubscription.remove();
     };
   }, []);
 
-  // Safety net: if isLoading is still true after 15 seconds, force it to false.
+  // Safety net: if isLoading is still true after 20 seconds, force it to false.
   // This guarantees the spinner never stays forever, even if everything else fails.
-  // Increased from 8s to 15s because initAuth can take up to 12s in worst case:
-  // getSession timeout (6s) + refreshSession timeout (6s) + buffer.
+  // Increased from 15s to 25s because initAuth can take up to 22s in worst case:
+  // getSession timeout (6s) + refreshSession timeout (8s) + setSession timeout (8s) + buffer.
   // Also checks initAuthRunningRef to avoid firing while initAuth is still actively running.
   useEffect(() => {
     if (!isLoading) return;
     const timer = setTimeout(() => {
       if (mountedRef.current && isLoading) {
         if (initAuthRunningRef.current) {
-          console.log("[Auth] Safety timeout — initAuth still running, waiting 5s more...");
-          // Give initAuth 5 more seconds to finish
+          debugLog("Auth", "Safety timeout at 20s — initAuth still running, waiting 10s more...");
+          // Give initAuth 10 more seconds to finish
           setTimeout(() => {
             if (mountedRef.current && isLoading) {
-              console.warn("[Auth] Extended safety timeout — forcing isLoading to false after 20s");
+              debugLog("Auth", "SAFETY TIMEOUT — forcing isLoading to false after 30s");
               setIsLoading(false);
+              setIsRecovering(false);
             }
-          }, 5000);
+          }, 10000);
         } else {
-          console.warn("[Auth] Safety timeout — forcing isLoading to false after 15s");
+          debugLog("Auth", "SAFETY TIMEOUT — forcing isLoading to false after 20s");
           setIsLoading(false);
+          setIsRecovering(false);
         }
       }
-    }, 15000);
+    }, 20000);
     return () => clearTimeout(timer);
   }, [isLoading]);
 
@@ -556,12 +716,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Only mark ready if a real JWT exists in SecureStore
       const existingToken = await Auth.getSessionToken();
       if (existingToken) {
-        console.warn("[Auth] Bridge safety timeout — JWT exists in SecureStore, marking ready");
+        debugLog("Bridge", "Safety timeout — JWT exists in SecureStore, marking ready");
         if (mountedRef.current) setIsBridgeReady(true);
       } else if (!bridgeFailedRef.current) {
         // No JWT and bridge didn't explicitly fail — trigger bridge failed state
         // so BridgeRetryScreen is shown instead of silently breaking
-        console.warn("[Auth] Bridge safety timeout — no JWT found, showing retry screen");
+        debugLog("Bridge", "Safety timeout — no JWT found, showing retry screen");
         if (mountedRef.current) {
           setBridgeFailed(true);
           setBridgeRetrying(false);
@@ -575,7 +735,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = useCallback(async (email: string, password: string, fullName: string) => {
     // Redirect to the standalone confirmation page on Cloudflare
-    const confirmRedirectUrl = "https://confirm-en.cateringmanager.app";
+    const confirmRedirectUrl = "https://confirm.cateringmanager.app";
 
     // Security: Use only official Supabase signUp.
     // We intentionally do NOT check identities or detect duplicate emails.
@@ -586,7 +746,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
       options: {
         data: { full_name: fullName.trim() },
-        emailRedirectTo: confirmRedirectUrl } });
+        emailRedirectTo: confirmRedirectUrl,
+      },
+    });
 
     // Fire-and-forget: notify server to check if this is a re-registration
     // of a verified user and send security alert email if so.
@@ -600,8 +762,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetch(PRODUCTION_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ json: { email: alertEmail, lang: "en" } }),
-        signal: controller.signal })
+        body: JSON.stringify({ json: { email: alertEmail } }),
+        signal: controller.signal,
+      })
         .catch(() => {}) // Silently swallow any error
         .finally(() => clearTimeout(timeoutId));
     } catch {
@@ -621,7 +784,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // If Supabase client hangs (rare edge case), the user sees a clear error.
     const signInPromise = supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
-      password });
+      password,
+    });
 
     const result = await raceTimeout(signInPromise, 20000);
     if (!result) {
@@ -641,7 +805,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             : undefined,
           queryParams: {
             access_type: "offline",
-            prompt: "consent" } } });
+            prompt: "consent",
+          },
+        },
+      });
       return { error };
     } catch (err: any) {
       return { error: { message: err.message } as AuthError };
@@ -663,6 +830,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setBridgeFailed(false);
     setBridgeRetrying(false);
+    setIsRecovering(false);
     bridgeAutoRetriedRef.current = false;
     if (Platform.OS !== "web") {
       setIsBridgeReady(false);
@@ -683,9 +851,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${customToken}` },
+            "Authorization": `Bearer ${customToken}`,
+          },
           body: JSON.stringify({ json: { deviceId } }),
-          signal: controller.signal }).catch(() => {});
+          signal: controller.signal,
+        }).catch(() => {});
         clearTimeout(timeoutId);
       }
     } catch {
@@ -733,16 +903,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       type: "signup",
       email: email.trim().toLowerCase(),
       options: {
-        emailRedirectTo: "https://confirm-en.cateringmanager.app" } });
+        emailRedirectTo: "https://confirm.cateringmanager.app",
+      },
+    });
     return { error };
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
     // Redirect to the standalone confirmation page on Cloudflare
-    const confirmRedirectUrl = "https://confirm-en.cateringmanager.app";
+    const confirmRedirectUrl = "https://confirm.cateringmanager.app";
 
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: confirmRedirectUrl });
+      redirectTo: confirmRedirectUrl,
+    });
     return { error };
   }, []);
 
@@ -820,6 +993,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: !!session?.user && isBridgeReady,
     bridgeFailed,
     bridgeRetrying,
+    isRecovering,
     signUp,
     signIn,
     signInWithGoogle,
@@ -828,7 +1002,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     resendConfirmation,
     refreshProfile,
     updateProfile,
-    retryBridge };
+    retryBridge,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

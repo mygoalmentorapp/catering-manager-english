@@ -3,9 +3,9 @@ import * as ReactNative from "react-native";
 
 // Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
 // e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
-const bundleId = "space.manus.catering.manager.en.t20260411205951";
+const bundleId = "space.manus.catering.manager.t20260411205951";
 const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
-const schemeFromBundleId = `manusen${timestamp}`;
+const schemeFromBundleId = `manus${timestamp}`;
 
 const env = {
   portal: process.env.EXPO_PUBLIC_OAUTH_PORTAL_URL ?? "",
@@ -14,7 +14,8 @@ const env = {
   ownerId: process.env.EXPO_PUBLIC_OWNER_OPEN_ID ?? "",
   ownerName: process.env.EXPO_PUBLIC_OWNER_NAME ?? "",
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? "",
-  deepLinkScheme: schemeFromBundleId };
+  deepLinkScheme: schemeFromBundleId,
+};
 
 export const OAUTH_PORTAL_URL = env.portal;
 export const OAUTH_SERVER_URL = env.server;
@@ -72,7 +73,8 @@ export const getRedirectUri = () => {
     return `${getApiBaseUrl()}/api/oauth/callback`;
   } else {
     return Linking.createURL("/oauth/callback", {
-      scheme: env.deepLinkScheme });
+      scheme: env.deepLinkScheme,
+    });
   }
 };
 

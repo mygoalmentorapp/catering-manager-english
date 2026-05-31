@@ -18,5 +18,6 @@ export {
   type RemoteCampaign,
   type RuleContext,
   type RuleResult,
-  type CampaignState } from "./experience-rule-engine";
+  type CampaignState,
+} from "./experience-rule-engine";
 export { CampaignSelectorService } from "./campaign-selector-service";

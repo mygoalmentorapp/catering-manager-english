@@ -47,8 +47,8 @@ export interface Product {
   customerPrice: number; // price charged to customer for this product
   markupType: MarkupType;
   markupValue: number;
-  baseLabel?: string; // custom label for base ingredients section (default: "Base ingredients")
-  spiceLabel?: string; // custom label for spices section (default: "Spices")
+  baseLabel?: string; // custom label for base ingredients section (default: "מרכיבי בסיס")
+  spiceLabel?: string; // custom label for spices section (default: "תבלינים")
   createdAt: string;
   updatedAt: string;
 }

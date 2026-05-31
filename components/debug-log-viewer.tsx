@@ -42,7 +42,7 @@ export function DebugLogViewer({ visible, onClose }: DebugLogViewerProps) {
     try {
       await Share.share({ message: text, title: "Auth Debug Logs" });
     } catch {
-      Alert.alert("Error", "Could not share logs");
+      Alert.alert("שגיאה", "לא ניתן לשתף את הלוגים");
     }
   }, []);
 
@@ -55,7 +55,7 @@ export function DebugLogViewer({ visible, onClose }: DebugLogViewerProps) {
     try {
       await Share.share({ message: text, title: "Auth Debug Logs" });
     } catch {
-      Alert.alert("Error", "Could not share logs");
+      Alert.alert("שגיאה", "לא ניתן לשתף את הלוגים");
     }
   }, []);
 
@@ -84,7 +84,7 @@ export function DebugLogViewer({ visible, onClose }: DebugLogViewerProps) {
             <Text style={s.actionBtnText}>🔄 רענן</Text>
           </Pressable>
           <Pressable onPress={handleCopy} style={({ pressed }) => [s.actionBtn, pressed && { opacity: 0.6 }]}>
-            <Text style={s.actionBtnText}>📋 העתק</Text>
+            <Text style={s.actionBtnText}>📋 שתף</Text>
           </Pressable>
           <Pressable onPress={handleShare} style={({ pressed }) => [s.actionBtn, pressed && { opacity: 0.6 }]}>
             <Text style={s.actionBtnText}>📤 שתף</Text>

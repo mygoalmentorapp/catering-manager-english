@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { setOneSignalScreenTrigger } from "@/lib/onesignal-bootstrap";
 import {
   Text,
   View,
@@ -12,7 +13,8 @@ import {
   Platform,
   Modal,
   Linking,
-  Share } from "react-native";
+  Share,
+} from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -24,14 +26,16 @@ import {
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
-  DS_SHADOW } from "@/lib/design-system";
+  DS_SHADOW,
+} from "@/lib/design-system";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { generatePriceQuoteHtml, generateExecutionListHtml } from "@/lib/print-documents";
 import { imageUriToBase64, getDefaultLogoBase64 } from "@/lib/image-to-base64";
 import {
   analyzeOrderChanges,
 
-  generateShoppingListRows } from "@/lib/order-logic";
+  generateShoppingListRows,
+} from "@/lib/order-logic";
 import { useThemeContext } from "@/lib/theme-provider";
 
 // ============ Smart decimal formatting ============
@@ -84,7 +88,8 @@ function OrderDetailView({
   products,
   onClose,
   onEdit,
-  fromShoppingList }: {
+  fromShoppingList,
+}: {
   order: Order;
   products: Product[];
   onClose: () => void;
@@ -100,7 +105,8 @@ function OrderDetailView({
     updateOrder,
     archiveOrder,
     savedShoppingLists,
-    refreshOrders } = useData();
+    refreshOrders,
+  } = useData();
   const { guardMutation } = useMutationGuard();
   const [activeTab, setActiveTab] = useState<"customer" | "cost" | "profit">("customer");
   const [printing, setPrinting] = useState(false);
@@ -165,10 +171,10 @@ function OrderDetailView({
         // Archive directly
         try {
           await archiveOrder(order.id);
-          Alert.alert("Success", "Order moved to archive.");
+          Alert.alert("הצלחה", "ההזמנה הועברה לארכיון.");
           onClose();
         } catch {
-          Alert.alert("Error", "Archiving failed. No changes were made.");
+          Alert.alert("שגיאה", "ההעברה לארכיון נכשלה. לא בוצעו שינויים.");
         }
         setDialogStep(null);
       }
@@ -190,7 +196,8 @@ function OrderDetailView({
       setDialogStep(null);
       router.push({
         pathname: "/changes-review",
-        params: { orderId: order.id, fromShoppingList: fromShoppingList ? "1" : "0" } } as any);
+        params: { orderId: order.id, fromShoppingList: fromShoppingList ? "1" : "0" },
+      } as any);
     } finally {
       setNoButtonLoading(false);
     }
@@ -205,10 +212,10 @@ function OrderDetailView({
     if (!allowed) return;
     try {
       await archiveOrder(order.id);
-      Alert.alert("Success", "Order moved to archive.");
+      Alert.alert("הצלחה", "ההזמנה הועברה לארכיון.");
       onClose();
     } catch {
-      Alert.alert("Error", "Archiving failed. No changes were made.");
+      Alert.alert("שגיאה", "ההעברה לארכיון נכשלה. לא בוצעו שינויים.");
     }
     setDialogStep(null);
   }, [order.id, archiveOrder, onClose, guardMutation]);
@@ -225,7 +232,7 @@ function OrderDetailView({
       } else {
         logoBase64 = await getDefaultLogoBase64();
       }
-      const displayName = businessName.trim() || "Your business name";
+      const displayName = businessName.trim() || "שם העסק שלך";
       const opts = { order, products, businessName: displayName, logoBase64 };
       const html = type === "quote"
         ? generatePriceQuoteHtml(opts)
@@ -245,17 +252,18 @@ function OrderDetailView({
         const { uri } = await Print.printToFileAsync({ html });
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
-          const docName = type === "quote" ? "Price_suggestion" : "execution_list";
+          const docName = type === "quote" ? "הצעת_מחיר" : "רשימת_ביצוע";
           await Sharing.shareAsync(uri, {
             mimeType: "application/pdf",
             dialogTitle: docName,
-            UTI: "com.adobe.pdf" });
+            UTI: "com.adobe.pdf",
+          });
         } else {
           await Print.printAsync({ html });
         }
       }
     } catch (e: any) {
-      Alert.alert("Error", "Unable to print: " + (e.message || ""));
+      Alert.alert("שגיאה", "לא ניתן להדפיס: " + (e.message || ""));
     } finally {
       setPrinting(false);
     }
@@ -263,54 +271,54 @@ function OrderDetailView({
 
   // ── WhatsApp Handler ──
   const handleWhatsApp = useCallback(async (type: "quote" | "execution") => {
-    const displayName = businessName.trim() || "Your business name";
+    const displayName = businessName.trim() || "שם העסק שלך";
     const dateStr = order.eventDate ? formatDate(order.eventDate) : "";
     let text = "";
 
     if (type === "quote") {
       // Price quote format
       const lines: string[] = [];
-      lines.push(`📋 *Order with Prices*`);
+      lines.push(`📋 *הזמנה עם מחירים*`);
       lines.push(`🏢 ${displayName}`);
       lines.push(``);
-      lines.push(`👤 *Customer:* ${order.customerName}`);
-      if (dateStr) lines.push(`📅 *Event date:* ${dateStr}`);
-      if (order.customerPhone) lines.push(`📞 *Phone:* ${order.customerPhone}`);
-      if (order.customerAddress) lines.push(`📍 *Address:* ${order.customerAddress}`);
+      lines.push(`👤 *לקוח:* ${order.customerName}`);
+      if (dateStr) lines.push(`📅 *תאריך אירוע:* ${dateStr}`);
+      if (order.customerPhone) lines.push(`📞 *טלפון:* ${order.customerPhone}`);
+      if (order.customerAddress) lines.push(`📍 *כתובת:* ${order.customerAddress}`);
       lines.push(``);
-      lines.push(`*Details:*`);
+      lines.push(`*פירוט:*`);
       let total = 0;
       order.products.forEach((op, idx) => {
         const prod = products.find((p) => p.id === op.productId);
         const unitPrice = prod ? (prod.customerPrice ?? 0) : op.customerPriceAtAdd;
         const lineTotal = Math.round(unitPrice * op.quantity * 10) / 10;
         total += lineTotal;
-        lines.push(`${idx + 1}. ${op.productNameAtAdd} × ${op.quantity} — $${formatPrice(unitPrice)} = *$${formatPrice(lineTotal)}*`);
+        lines.push(`${idx + 1}. ${op.productNameAtAdd} × ${op.quantity} — ₪${formatPrice(unitPrice)} = *₪${formatPrice(lineTotal)}*`);
       });
       total = Math.round(total * 10) / 10;
       lines.push(``);
-      lines.push(`💰 *Total: $${formatPrice(total)}*`);
+      lines.push(`💰 *סה"כ לתשלום: ₪${formatPrice(total)}*`);
       if (order.notes) {
         lines.push(``);
-        lines.push(`📝 *Notes:* ${order.notes}`);
+        lines.push(`📝 *הערות:* ${order.notes}`);
       }
       text = lines.join("\n");
     } else {
       // Execution list format (no prices)
       const lines: string[] = [];
-      lines.push(`📋 *Order for Execution*`);
+      lines.push(`📋 *הזמנה לביצוע*`);
       lines.push(`🏢 ${displayName}`);
       lines.push(``);
-      lines.push(`👤 *Customer:* ${order.customerName}`);
-      if (dateStr) lines.push(`📅 *Event date:* ${dateStr}`);
+      lines.push(`👤 *לקוח:* ${order.customerName}`);
+      if (dateStr) lines.push(`📅 *תאריך אירוע:* ${dateStr}`);
       lines.push(``);
-      lines.push(`*Products:*`);
+      lines.push(`*מוצרים:*`);
       order.products.forEach((op, idx) => {
-        lines.push(`${idx + 1}. ${op.productNameAtAdd} — Qty: ${op.quantity}`);
+        lines.push(`${idx + 1}. ${op.productNameAtAdd} — כמות: ${op.quantity}`);
       });
       if (order.notes) {
         lines.push(``);
-        lines.push(`📝 *Notes:* ${order.notes}`);
+        lines.push(`📝 *הערות:* ${order.notes}`);
       }
       text = lines.join("\n");
     }
@@ -328,7 +336,7 @@ function OrderDetailView({
       try {
         await Share.share({ message: text });
       } catch {
-        Alert.alert("Error", "Unable to share right now");
+        Alert.alert("שגיאה", "לא ניתן לשתף כרגע");
       }
     }
   }, [order, products, businessName]);
@@ -354,13 +362,13 @@ function OrderDetailView({
           {!isLocked && !isArchived ? (
             <TouchableOpacity onPress={onEdit} style={s.editHeaderBtn} activeOpacity={0.8}>
               <MaterialIcons name="edit" size={18} color={DS_COLORS.accent} />
-              <Text style={s.editHeaderBtnText}>Edit</Text>
+              <Text style={s.editHeaderBtnText}>עריכה</Text>
             </TouchableOpacity>
           ) : (
             <View style={{ width: 40 }} />
           )}
           <Text style={s.headerTitle} numberOfLines={1}>
-            Order details
+            פרטי הזמנה
           </Text>
           <TouchableOpacity onPress={onClose} style={s.headerBtn} activeOpacity={0.7}>
             <MaterialIcons name="arrow-back" size={22} color={DS_COLORS.textPrimary} />
@@ -374,10 +382,11 @@ function OrderDetailView({
             activeOpacity={0.7}
             onPress={() => router.push({
               pathname: "/changes-review",
-              params: { orderId: order.id, fromShoppingList: fromShoppingList ? "1" : "0" } } as any)}
+              params: { orderId: order.id, fromShoppingList: fromShoppingList ? "1" : "0" },
+            } as any)}
           >
             <MaterialIcons name="lock" size={18} color={DS_COLORS.warning} />
-            <Text style={s.lockedBannerText}>This order requires a refresh — tap to update</Text>
+            <Text style={s.lockedBannerText}>ההזמנה דורשת רענון — לחץ לעדכון</Text>
             <MaterialIcons name="chevron-left" size={18} color={DS_COLORS.warning} />
           </TouchableOpacity>
         )}
@@ -386,7 +395,7 @@ function OrderDetailView({
         {isArchived && (
           <View style={s.archivedBanner}>
             <MaterialIcons name="archive" size={18} color={DS_COLORS.textSecondary} />
-            <Text style={s.archivedBannerText}>Archived order</Text>
+            <Text style={s.archivedBannerText}>הזמנה בארכיון</Text>
           </View>
         )}
 
@@ -396,7 +405,7 @@ function OrderDetailView({
           <View style={s.purpleBannerDateRow}>
             <MaterialIcons name="event" size={16} color="rgba(255,255,255,0.85)" />
             <Text style={s.purpleBannerDate}>
-              Event date: {formatDate(order.eventDate)}
+              תאריך אירוע: {formatDate(order.eventDate)}
             </Text>
           </View>
         </View>
@@ -409,33 +418,33 @@ function OrderDetailView({
               style={[s.tabBtn, activeTab === "customer" && s.tabBtnActive]}
               activeOpacity={0.8}
             >
-              <Text style={[s.tabBtnText, activeTab === "customer" && s.tabBtnTextActive]}>Customer price</Text>
+              <Text style={[s.tabBtnText, activeTab === "customer" && s.tabBtnTextActive]}>מחיר ללקוח</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setActiveTab("cost")}
               style={[s.tabBtn, activeTab === "cost" && s.tabBtnActive]}
               activeOpacity={0.8}
             >
-              <Text style={[s.tabBtnText, activeTab === "cost" && s.tabBtnTextActive]}>Price Cost</Text>
+              <Text style={[s.tabBtnText, activeTab === "cost" && s.tabBtnTextActive]}>מחיר עלות</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setActiveTab("profit")}
               style={[s.tabBtn, activeTab === "profit" && s.tabBtnActive]}
               activeOpacity={0.8}
             >
-              <Text style={[s.tabBtnText, activeTab === "profit" && s.tabBtnTextActive]}>Our profit</Text>
+              <Text style={[s.tabBtnText, activeTab === "profit" && s.tabBtnTextActive]}>ריווח שלנו</Text>
             </TouchableOpacity>
           </View>
 
           <View style={s.tabContentRow}>
             <View style={s.tabContentCell}>
               {activeTab === "customer" && (
-                <Text style={s.tabValueAmount}>${formatPrice(customerTotal)}</Text>
+                <Text style={s.tabValueAmount}>₪{formatPrice(customerTotal)}</Text>
               )}
             </View>
             <View style={s.tabContentCell}>
               {activeTab === "cost" && (
-                <Text style={s.tabValueAmount}>${formatPrice(orderCost)}</Text>
+                <Text style={s.tabValueAmount}>₪{formatPrice(orderCost)}</Text>
               )}
             </View>
             <View style={s.tabContentCell}>
@@ -443,7 +452,7 @@ function OrderDetailView({
                 <Text style={[
                   s.tabValueAmount,
                   orderProfit < 0 && { color: DS_COLORS.error },
-                ]}>${formatPrice(orderProfit)}</Text>
+                ]}>₪{formatPrice(orderProfit)}</Text>
               )}
             </View>
           </View>
@@ -456,7 +465,7 @@ function OrderDetailView({
             <View style={s.detailCustomerCard}>
               <View style={s.detailCustomerRow}>
                 <MaterialIcons name="person-outline" size={18} color={DS_COLORS.accent} />
-                <Text style={s.detailCustomerLabel}>Customer details</Text>
+                <Text style={s.detailCustomerLabel}>פרטי לקוח</Text>
               </View>
               {order.customerPhone ? (
                 <View style={s.detailCustomerInfoRow}>
@@ -499,7 +508,7 @@ function OrderDetailView({
                   )}
                 </View>
                 <Text style={s.detailProductCalc}>
-                  {op.quantity} × ${formatPrice(displayPrice)} = ${formatPrice(displayTotal)}
+                  {op.quantity} × ₪{formatPrice(displayPrice)} = ₪{formatPrice(displayTotal)}
                 </Text>
               </View>
             );
@@ -510,7 +519,7 @@ function OrderDetailView({
             <View style={s.detailNotesCard}>
               <View style={s.detailCustomerRow}>
                 <MaterialIcons name="notes" size={18} color={DS_COLORS.accent} />
-                <Text style={s.detailCustomerLabel}>Notes</Text>
+                <Text style={s.detailCustomerLabel}>הערות</Text>
               </View>
               <Text style={s.detailNotesText}>{order.notes}</Text>
             </View>
@@ -518,7 +527,7 @@ function OrderDetailView({
 
           {/* Print & WhatsApp Buttons — always available */}
           <View style={s.printSection}>
-            <Text style={s.printSectionTitle}>Generate documents</Text>
+            <Text style={s.printSectionTitle}>הפקת מסמכים</Text>
             {/* PDF Buttons Row */}
             <View style={s.printBtnRow}>
               <TouchableOpacity
@@ -532,7 +541,7 @@ function OrderDetailView({
                 ) : (
                   <>
                     <MaterialIcons name="picture-as-pdf" size={20} color={DS_COLORS.white} />
-                    <Text style={s.printBtnText}>Order with prices</Text>
+                    <Text style={s.printBtnText}>הזמנה עם מחירים</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -547,7 +556,7 @@ function OrderDetailView({
                 ) : (
                   <>
                     <MaterialIcons name="picture-as-pdf" size={20} color={DS_COLORS.white} />
-                    <Text style={s.printBtnText}>Order for execution</Text>
+                    <Text style={s.printBtnText}>הזמנה לביצוע</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -560,7 +569,7 @@ function OrderDetailView({
                 activeOpacity={0.8}
               >
                 <MaterialIcons name="send" size={20} color={DS_COLORS.white} />
-                <Text style={s.whatsappBtnText}>Order with prices</Text>
+                <Text style={s.whatsappBtnText}>הזמנה עם מחירים</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => handleWhatsApp("execution")}
@@ -568,7 +577,7 @@ function OrderDetailView({
                 activeOpacity={0.8}
               >
                 <MaterialIcons name="send" size={20} color={DS_COLORS.white} />
-                <Text style={s.whatsappBtnText}>Order for execution</Text>
+                <Text style={s.whatsappBtnText}>הזמנה לביצוע</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -583,15 +592,15 @@ function OrderDetailView({
       <Modal visible={dialogStep?.type === "was_completed"} transparent animationType="fade">
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
-            <Text style={s.modalTitle}>Was the order completed?</Text>
+            <Text style={s.modalTitle}>האם ההזמנה כבר בוצעה?</Text>
             <Text style={s.modalBody}>
-              Product changes related to this order were made.{"\n"}
-              If the order was already completed — it will be archived and all its shopping lists will be deleted.{"\n"}
-              If not yet completed — you can update the data.
+              בוצעו שינויים במוצרים הקשורים להזמנה זו.{"\n"}
+              אם ההזמנה כבר בוצעה — היא תועבר לארכיון וכל רשימות הקניות שלה יימחקו.{"\n"}
+              אם עדיין לא בוצעה — תוכל לעדכן את הנתונים.
             </Text>
             <View style={s.modalBtnCol}>
               <TouchableOpacity style={s.modalBtnPrimary} onPress={() => handleWasCompleted("yes")} activeOpacity={0.8} disabled={noButtonLoading}>
-                <Text style={s.modalBtnPrimaryText}>Yes, completed</Text>
+                <Text style={s.modalBtnPrimaryText}>כן, בוצעה</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.modalBtnOutline, noButtonLoading && { opacity: 0.7 }]}
@@ -601,12 +610,12 @@ function OrderDetailView({
               >
                 <Text style={s.modalBtnOutlineText}>
                   {noButtonLoading
-                    ? `Loading${".".repeat(dotCount)}${"\u00A0".repeat(3 - dotCount)}`
-                    : "No, not completed yet"}
+                    ? `טוען${".".repeat(dotCount)}${"\u00A0".repeat(3 - dotCount)}`
+                    : "לא, עדיין לא בוצעה"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.modalBtnGhost} onPress={() => handleWasCompleted("cancel")} activeOpacity={0.8} disabled={noButtonLoading}>
-                <Text style={s.modalBtnGhostText}>Cancel</Text>
+                <Text style={s.modalBtnGhostText}>ביטול</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -617,16 +626,16 @@ function OrderDetailView({
       <Modal visible={dialogStep?.type === "archive_confirm"} transparent animationType="fade">
         <View style={s.modalOverlay}>
           <View style={s.modalCard}>
-            <Text style={s.modalTitle}>Archive order</Text>
+            <Text style={s.modalTitle}>העברת הזמנה לארכיון</Text>
             <Text style={s.modalBody}>
-              All shopping lists containing this order will be permanently deleted — even if shared with other orders. This action cannot be undone.
+              כל רשימות הקניות שמכילות את ההזמנה יימחקו לצמיתות — גם אם הן משותפות להזמנות אחרות. פעולה זו אינה ניתנת לשחזור.
             </Text>
             <View style={s.modalBtnCol}>
               <TouchableOpacity style={[s.modalBtnPrimary, { backgroundColor: DS_COLORS.error }]} onPress={() => handleArchiveConfirm(true)} activeOpacity={0.8}>
-                <Text style={s.modalBtnPrimaryText}>Move to archive</Text>
+                <Text style={s.modalBtnPrimaryText}>העבר לארכיון</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.modalBtnGhost} onPress={() => handleArchiveConfirm(false)} activeOpacity={0.8}>
-                <Text style={s.modalBtnGhostText}>Cancel</Text>
+                <Text style={s.modalBtnGhostText}>ביטול</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -645,7 +654,8 @@ function OrderCard({
   onToggle,
   onView,
   onDelete,
-  onArchive }: {
+  onArchive,
+}: {
   item: Order;
   isSelected: boolean;
   onToggle: () => void;
@@ -667,13 +677,15 @@ function OrderCard({
           Animated.timing(scaleAnim, {
             toValue: 0.97,
             duration: 80,
-            useNativeDriver: true }).start()
+            useNativeDriver: true,
+          }).start()
         }
         onPressOut={() =>
           Animated.timing(scaleAnim, {
             toValue: 1,
             duration: 150,
-            useNativeDriver: true }).start()
+            useNativeDriver: true,
+          }).start()
         }
         activeOpacity={1}
         style={[
@@ -708,7 +720,7 @@ function OrderCard({
               <MaterialIcons name="event" size={14} color={DS_COLORS.textSecondary} />
               <Text style={s.orderDate}>{formatDate(item.eventDate)}</Text>
               <Text style={s.orderDot}>•</Text>
-              <Text style={s.customerPrice}>${formatPrice(calcOrderCustomerTotal(item))}</Text>
+              <Text style={s.customerPrice}>₪{formatPrice(calcOrderCustomerTotal(item))}</Text>
             </View>
           </View>
 
@@ -739,7 +751,8 @@ function OrderCard({
 function ArchiveCard({
   item,
   onView,
-  onUnarchive }: {
+  onUnarchive,
+}: {
   item: Order;
   onView: () => void;
   onUnarchive: () => void;
@@ -756,20 +769,20 @@ function ArchiveCard({
             <MaterialIcons name="event" size={14} color={DS_COLORS.textSecondary} />
             <Text style={s.orderDate}>{formatDate(item.eventDate)}</Text>
             <Text style={s.orderDot}>•</Text>
-            <Text style={s.customerPrice}>${formatPrice(calcOrderCustomerTotal(item))}</Text>
+            <Text style={s.customerPrice}>₪{formatPrice(calcOrderCustomerTotal(item))}</Text>
           </View>
           {item.archivedAt && (
-            <Text style={s.archivedAtText}>Archived: {formatDate(item.archivedAt)}</Text>
+            <Text style={s.archivedAtText}>ארכוב: {formatDate(item.archivedAt)}</Text>
           )}
         </View>
         <View style={s.archiveActions}>
           <TouchableOpacity onPress={onView} style={s.archiveActionBtn} activeOpacity={0.7}>
             <MaterialIcons name="visibility" size={18} color={DS_COLORS.accent} />
-            <Text style={s.archiveActionText}>Open</Text>
+            <Text style={s.archiveActionText}>פתח</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={onUnarchive} style={s.archiveActionBtn} activeOpacity={0.7}>
-            <MaterialIcons name="unarchive" size={18} color={DS_COLORS.success} />
-            <Text style={[s.archiveActionText, { color: DS_COLORS.success }]}>Restore</Text>
+            <MaterialIcons name="unarchive" size={18} color={DS_COLORS.accent} />
+            <Text style={[s.archiveActionText, { color: DS_COLORS.accent }]}>החזר</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -781,8 +794,10 @@ function ArchiveCard({
 export default function OrdersScreen() {
   const { colorScheme } = useThemeContext();
   const s = React.useMemo(() => _make_s(), [DS_COLORS.accent, colorScheme]);
-
   const router = useRouter();
+
+  // OneSignal in-app message trigger
+  useEffect(() => { setOneSignalScreenTrigger("orders"); }, []);
   const params = useLocalSearchParams<{ fromShoppingList?: string }>();
   const {
     orders,
@@ -794,7 +809,8 @@ export default function OrdersScreen() {
     deleteSavedShoppingList,
     updateOrder,
     refreshOrders,
-    refreshShoppingLists } = useData();
+    refreshShoppingLists,
+  } = useData();
   const { guardMutation } = useMutationGuard();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
@@ -845,12 +861,12 @@ export default function OrdersScreen() {
       );
       if (linkedLists.length > 0) {
         Alert.alert(
-          "Move to archive",
-          "This order has a linked shopping list.\nArchiving will also delete the related shopping lists.",
+          "העברה לארכיון",
+          "להזמנה זו קיימת רשימת קניות מקושרת.\nהעברה לארכיון תמחק גם את רשימות הקניות הרלוונטיות.",
           [
-            { text: "Cancel", style: "cancel" },
+            { text: "ביטול", style: "cancel" },
             {
-              text: "Move to archive",
+              text: "העבר לארכיון",
               style: "destructive",
               onPress: async () => {
                 const allowed = await guardMutation();
@@ -860,31 +876,33 @@ export default function OrdersScreen() {
                     await deleteSavedShoppingList(sl.id);
                   }
                   await archiveOrder(order.id);
-                  Alert.alert("Success", "Order moved to archive.");
+                  Alert.alert("הצלחה", "ההזמנה הועברה לארכיון.");
                 } catch {
-                  Alert.alert("Error", "Archiving failed.");
+                  Alert.alert("שגיאה", "ההעברה לארכיון נכשלה.");
                 }
-              } },
+              },
+            },
           ]
         );
       } else {
         Alert.alert(
-          "Move to archive",
-          `Archive the order for "${order.customerName}"?`,
+          "העברה לארכיון",
+          `האם להעביר את ההזמנה של "${order.customerName}" לארכיון?`,
           [
-            { text: "Cancel", style: "cancel" },
+            { text: "ביטול", style: "cancel" },
             {
-              text: "Move to archive",
+              text: "העבר לארכיון",
               onPress: async () => {
                 const allowed = await guardMutation();
                 if (!allowed) return;
                 try {
                   await archiveOrder(order.id);
-                  Alert.alert("Success", "Order moved to archive.");
+                  Alert.alert("הצלחה", "ההזמנה הועברה לארכיון.");
                 } catch {
-                  Alert.alert("Error", "Archiving failed.");
+                  Alert.alert("שגיאה", "ההעברה לארכיון נכשלה.");
                 }
-              } },
+              },
+            },
           ]
         );
       }
@@ -894,10 +912,10 @@ export default function OrdersScreen() {
 
   const handleDelete = useCallback(
     (order: Order) => {
-      Alert.alert("Delete order", "Are you sure you want to delete?", [
-        { text: "Cancel", style: "cancel" },
+      Alert.alert("מחיקת הזמנה", "האם אתה בטוח שברצונך למחוק?", [
+        { text: "ביטול", style: "cancel" },
         {
-          text: "Delete",
+          text: "מחיקה",
           style: "destructive",
           onPress: async () => {
             const allowed = await guardMutation();
@@ -910,9 +928,10 @@ export default function OrdersScreen() {
                 return next;
               });
             } catch (e: any) {
-              Alert.alert("Error", e.message);
+              Alert.alert("שגיאה", e.message);
             }
-          } },
+          },
+        },
       ]);
     },
     [deleteOrder, guardMutation]
@@ -920,7 +939,7 @@ export default function OrdersScreen() {
 
   const handleShoppingList = useCallback(() => {
     if (selectedIds.size === 0) {
-      Alert.alert("Error", "Please select at least one order");
+      Alert.alert("שגיאה", "יש לבחור לפחות הזמנה אחת");
       return;
     }
 
@@ -931,7 +950,7 @@ export default function OrdersScreen() {
       return o && o.status !== "open";
     });
     if (lockedOrders.length > 0) {
-      Alert.alert("Error", "Cannot create a shopping list from locked or archived orders.");
+      Alert.alert("שגיאה", "לא ניתן ליצור רשימת קניות מהזמנות נעולות או בארכיון.");
       return;
     }
 
@@ -942,7 +961,7 @@ export default function OrdersScreen() {
       );
       if (existingList) {
         const order = orders.find((o) => o.id === orderId);
-        duplicateOrders.push(order?.customerName || "Order");
+        duplicateOrders.push(order?.customerName || "הזמנה");
       }
     }
 
@@ -953,9 +972,9 @@ export default function OrdersScreen() {
 
     if (duplicateOrders.length > 0) {
       Alert.alert(
-        "Shopping list Already exists",
-        "A shopping list was already created from this order. Cannot create another list from the same order.",
-        [{ text: "Got it" }]
+        "רשימת קניות כבר קיימת",
+        "כבר נוצרה רשימת קניות מהזמנה זו. לא ניתן ליצור רשימה נוספת מאותה הזמנה.",
+        [{ text: "הבנתי" }]
       );
       return;
     }
@@ -965,12 +984,12 @@ export default function OrdersScreen() {
 
   const handleUnarchive = useCallback(async (order: Order) => {
     Alert.alert(
-      "Restore order to active",
-      "The order will be restored to active status.\nNote: Shopping lists deleted during archiving are not restored — they need to be recreated if needed.",
+      "החזרת הזמנה לפעילה",
+      "ההזמנה תועבר חזרה לסטטוס פעיל.\nשים לב: רשימות הקניות שנמחקו בעת הארכוב אינן משוחזרות — יש ליצור אותן מחדש אם נדרש.",
       [
-        { text: "Cancel", style: "cancel" },
+        { text: "ביטול", style: "cancel" },
         {
-          text: "Restore to active",
+          text: "החזר לפעילה",
           onPress: async () => {
             const allowed = await guardMutation();
             if (!allowed) return;
@@ -981,25 +1000,26 @@ export default function OrdersScreen() {
               // Check for product changes
               const analysis = analyzeOrderChanges(result, products);
               if (analysis.allChanges.length === 0) {
-                Alert.alert("Success", "Order restored to active successfully.");
+                Alert.alert("הצלחה", "ההזמנה הוחזרה לפעילה בהצלחה.");
               } else if (analysis.hasAnyIngredientChanges) {
                 await updateOrder(result.id, { status: "needs_refresh_locked" });
                 await refreshOrders();
-                Alert.alert("Success", "The order was restored to active and requires a refresh due to product changes.");
+                Alert.alert("הצלחה", "ההזמנה הוחזרה לפעילה ודורשת רענון עקב שינויים במוצרים.");
                 // Open the order to trigger refresh dialog
                 const freshOrder = orders.find((o) => o.id === result.id) ?? result;
                 setShowArchive(false);
                 setViewingOrder(freshOrder);
               } else {
-                Alert.alert("Success", "The order was restored to active. Price/name changes were found that require attention.");
+                Alert.alert("הצלחה", "ההזמנה הוחזרה לפעילה. נמצאו שינויי מחיר/שם הדורשים טיפול.");
                 const freshOrder = orders.find((o) => o.id === result.id) ?? result;
                 setShowArchive(false);
                 setViewingOrder(freshOrder);
               }
             } catch {
-              Alert.alert("Error", "Operation failed. No changes were made. The order remains in the archive.");
+              Alert.alert("שגיאה", "הפעולה נכשלה. לא בוצעו שינויים. ההזמנה נשארת בארכיון.");
             }
-          } },
+          },
+        },
       ]
     );
   }, [unarchiveOrder, updateOrder, refreshOrders, products, orders, guardMutation]);
@@ -1030,7 +1050,7 @@ export default function OrdersScreen() {
             <TouchableOpacity onPress={() => setShowArchive(false)} style={s.headerBtn} activeOpacity={0.7}>
               <MaterialIcons name="arrow-back" size={22} color={DS_COLORS.textPrimary} />
             </TouchableOpacity>
-            <Text style={s.headerTitle}>Archive Orders</Text>
+            <Text style={s.headerTitle}>ארכיון הזמנות</Text>
             <View style={{ width: 40 }} />
           </View>
 
@@ -1039,8 +1059,8 @@ export default function OrdersScreen() {
               <View style={s.emptyIconCircle}>
                 <MaterialIcons name="archive" size={40} color={DS_COLORS.accent} />
               </View>
-              <Text style={s.emptyTitle}>No archived orders</Text>
-              <Text style={s.emptySubtitle}>Orders you archive will appear here</Text>
+              <Text style={s.emptyTitle}>אין הזמנות בארכיון</Text>
+              <Text style={s.emptySubtitle}>הזמנות שתעביר לארכיון יופיעו כאן</Text>
             </View>
           ) : (
             <FlatList
@@ -1075,9 +1095,9 @@ export default function OrdersScreen() {
             activeOpacity={0.7}
           >
             <MaterialIcons name="archive" size={16} color={DS_COLORS.accent} />
-            <Text style={s.archiveHeaderBtnText}>Archive</Text>
+            <Text style={s.archiveHeaderBtnText}>ארכיון</Text>
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Orders list</Text>
+          <Text style={s.headerTitle}>רשימת הזמנות</Text>
           <TouchableOpacity
             onPress={() => router.back()}
             style={s.headerBtn}
@@ -1092,8 +1112,8 @@ export default function OrdersScreen() {
             <View style={s.emptyIconCircle}>
               <MaterialIcons name="list-alt" size={40} color={DS_COLORS.accent} />
             </View>
-            <Text style={s.emptyTitle}>No orders</Text>
-            <Text style={s.emptySubtitle}>Orders you create will appear here</Text>
+            <Text style={s.emptyTitle}>אין הזמנות</Text>
+            <Text style={s.emptySubtitle}>הזמנות שתיצור יופיעו כאן</Text>
           </View>
         ) : (
           <>
@@ -1102,7 +1122,7 @@ export default function OrdersScreen() {
               <View style={s.selectionBadge}>
                 <MaterialIcons name="check-circle" size={16} color={DS_COLORS.accent} />
                 <Text style={s.selectionText}>
-                  {selectedIds.size} orders selected
+                  {selectedIds.size} הזמנות נבחרו
                 </Text>
               </View>
             )}
@@ -1134,7 +1154,7 @@ export default function OrdersScreen() {
               activeOpacity={0.8}
             >
               <MaterialIcons name="shopping-cart" size={22} color={DS_COLORS.white} />
-              <Text style={s.shoppingBtnText}>Create shopping list</Text>
+              <Text style={s.shoppingBtnText}>צור רשימת קניות</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -1157,7 +1177,7 @@ function _make_s() { return StyleSheet.create({
     paddingHorizontal: DS_SPACING.xl,
     paddingVertical: DS_SPACING.md,
     backgroundColor: DS_COLORS.background,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   headerBtn: {
     width: 40,
@@ -1176,7 +1196,7 @@ function _make_s() { return StyleSheet.create({
   },
   editHeaderBtn: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     gap: 4,
     paddingHorizontal: DS_SPACING.md,
@@ -1191,7 +1211,7 @@ function _make_s() { return StyleSheet.create({
   },
   archiveHeaderBtn: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center" as const,
     gap: 4,
     paddingHorizontal: DS_SPACING.sm + 2,
@@ -1208,7 +1228,7 @@ function _make_s() { return StyleSheet.create({
   // ── Banners ──
   lockedBanner: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "center",
     gap: DS_SPACING.sm,
@@ -1228,7 +1248,7 @@ function _make_s() { return StyleSheet.create({
   },
   archivedBanner: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "center",
     gap: DS_SPACING.sm,
@@ -1279,7 +1299,7 @@ function _make_s() { return StyleSheet.create({
     alignItems: "center",
     gap: DS_SPACING.xs,
     alignSelf: "flex-start",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     marginHorizontal: DS_SPACING.xl,
     marginTop: DS_SPACING.sm,
     paddingHorizontal: DS_SPACING.md,
@@ -1321,7 +1341,7 @@ function _make_s() { return StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: DS_SPACING.md,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   checkboxWrap: {
     padding: DS_SPACING.xs,
@@ -1348,7 +1368,7 @@ function _make_s() { return StyleSheet.create({
   orderNameRow: {
     flexDirection: "row",
     alignItems: "center",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   customerName: {
     fontSize: DS_FONT.titleCard,
@@ -1360,7 +1380,7 @@ function _make_s() { return StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   orderDate: {
     fontSize: DS_FONT.bodySmall,
@@ -1379,7 +1399,7 @@ function _make_s() { return StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: DS_SPACING.sm,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   archiveBtn: {
     width: 34,
@@ -1410,7 +1430,7 @@ function _make_s() { return StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: DS_SPACING.md,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   archiveActions: {
     flexDirection: "column",
@@ -1418,7 +1438,7 @@ function _make_s() { return StyleSheet.create({
   },
   archiveActionBtn: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     gap: 4,
     paddingHorizontal: DS_SPACING.md,
@@ -1446,7 +1466,7 @@ function _make_s() { return StyleSheet.create({
   },
   shoppingBtn: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: DS_SPACING.lg,
@@ -1485,7 +1505,7 @@ function _make_s() { return StyleSheet.create({
   },
   purpleBannerDateRow: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center" as const,
     gap: DS_SPACING.xs,
   },
@@ -1509,7 +1529,7 @@ function _make_s() { return StyleSheet.create({
     flexDirection: "row" as const,
     borderBottomWidth: 1,
     borderBottomColor: DS_COLORS.border,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   tabBtn: {
     flex: 1,
@@ -1535,7 +1555,7 @@ function _make_s() { return StyleSheet.create({
   },
   tabContentRow: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   tabContentCell: {
     flex: 1,
@@ -1547,7 +1567,7 @@ function _make_s() { return StyleSheet.create({
     flexDirection: "row" as const,
     alignItems: "center" as const,
     justifyContent: "flex-start" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     gap: DS_SPACING.sm,
   },
   tabValueLabel: {
@@ -1567,12 +1587,12 @@ function _make_s() { return StyleSheet.create({
     borderRadius: DS_RADIUS.lg,
     padding: DS_SPACING.lg,
     gap: DS_SPACING.xs,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     ...DS_SHADOW.card,
   },
   detailProductTitleRow: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center" as const,
     gap: DS_SPACING.sm,
   },
@@ -1609,7 +1629,7 @@ function _make_s() { return StyleSheet.create({
   },
   detailCustomerRow: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center" as const,
     gap: DS_SPACING.sm,
     marginBottom: DS_SPACING.xs,
@@ -1621,7 +1641,7 @@ function _make_s() { return StyleSheet.create({
   },
   detailCustomerInfoRow: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center" as const,
     gap: DS_SPACING.sm,
     paddingRight: DS_SPACING.md,
@@ -1653,7 +1673,7 @@ function _make_s() { return StyleSheet.create({
   printSection: {
     marginTop: DS_SPACING.lg,
     gap: DS_SPACING.md,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   printSectionTitle: {
     fontSize: DS_FONT.titleCard,
@@ -1662,13 +1682,13 @@ function _make_s() { return StyleSheet.create({
   },
   printBtnRow: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     gap: DS_SPACING.md,
   },
   printBtn: {
     flex: 1,
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: DS_SPACING.sm,
@@ -1684,19 +1704,19 @@ function _make_s() { return StyleSheet.create({
   },
   whatsappBtnRow: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     gap: DS_SPACING.md,
   },
   whatsappBtn: {
     flex: 1,
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
     gap: DS_SPACING.sm,
     paddingVertical: DS_SPACING.lg,
     borderRadius: DS_RADIUS.md,
-    backgroundColor: "#25D366",
+    backgroundColor: DS_COLORS.accent,
     ...DS_SHADOW.button,
   },
   whatsappBtnText: {
@@ -1720,7 +1740,7 @@ function _make_s() { return StyleSheet.create({
     width: "100%",
     maxWidth: 400,
     maxHeight: "85%",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     ...DS_SHADOW.card,
   },
   modalTitle: {

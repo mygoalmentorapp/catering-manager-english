@@ -12,7 +12,8 @@ import type {
   SavedShoppingList,
   ShoppingListIngredientRow,
   OrderStatus,
-  MarkupType } from "./types";
+  MarkupType,
+} from "./types";
 
 // ============ Snapshot Helpers ============
 
@@ -27,7 +28,8 @@ export function buildIngredientsSnapshot(product: Product): IngredientSnapshot[]
       quantity: ing.quantity,
       unit: ing.unit,
       price: ing.price,
-      category: "base" });
+      category: "base",
+    });
   }
 
   for (const spice of product.spices) {
@@ -37,7 +39,8 @@ export function buildIngredientsSnapshot(product: Product): IngredientSnapshot[]
       quantity: spice.quantity,
       unit: spice.unit,
       price: spice.price,
-      category: "spice" });
+      category: "spice",
+    });
   }
 
   for (const cat of product.categories ?? []) {
@@ -48,7 +51,8 @@ export function buildIngredientsSnapshot(product: Product): IngredientSnapshot[]
         quantity: item.quantity,
         unit: item.unit,
         price: item.price,
-        category: cat.categoryName });
+        category: cat.categoryName,
+      });
     }
   }
 
@@ -89,7 +93,8 @@ export function createOrderProductRow(
     ingredientsSnapshotAtAdd: buildIngredientsSnapshot(product),
     productUpdatedAtAtAdd: now,
     lastHandledProductChangeAt: now,
-    quantity };
+    quantity,
+  };
 }
 
 // ============ Change Detection ============
@@ -223,7 +228,8 @@ export function detectProductChanges(
     oldMarkupValue: row.markupValueAtAdd,
     newMarkupValue: currentProduct.markupValue,
     oldName: row.productNameAtAdd,
-    newName: currentProduct.name };
+    newName: currentProduct.name,
+  };
 }
 
 /** Compare two ingredient snapshots — match by ingredientId, detect unit changes */
@@ -263,7 +269,8 @@ function compareIngredients(
           ...(priceChanged ? { oldPrice: oldIng.price, newPrice: newIng.price } : {}),
           ...(unitChanged ? { oldUnit: oldIng.unit, newUnit: newIng.unit } : {}),
           ...(nameChanged ? { oldName: oldIng.name, newName: newIng.name } : {}),
-          unit: newIng.unit });
+          unit: newIng.unit,
+        });
       }
     }
   }
@@ -318,7 +325,8 @@ export function analyzeOrderChanges(
     hasAnyIngredientPriceChanges: allChanges.some((c) => c.hasIngredientPriceChanges),
     customerPriceChanges: allChanges.filter((c) => c.hasCustomerPriceChange),
     markupChanges: allChanges.filter((c) => c.hasMarkupChange),
-    nameChanges: allChanges.filter((c) => c.hasNameChange) };
+    nameChanges: allChanges.filter((c) => c.hasNameChange),
+  };
 }
 
 // ============ Refresh Logic ============
@@ -354,7 +362,8 @@ export function refreshOrderProducts(
       markupTypeAtAdd: currentProduct.markupType,
       markupValueAtAdd: currentProduct.markupValue,
       productUpdatedAtAtAdd: now,
-      lastHandledProductChangeAt: now };
+      lastHandledProductChangeAt: now,
+    };
 
     if (refreshType === "full") {
       updated.customerPriceAtAdd = currentProduct.customerPrice;
@@ -411,7 +420,8 @@ export function selectiveRefreshOrderProducts(
       for (const s of row.ingredientsSnapshotAtAdd) oldPriceMap.set(s.ingredientId, s.price);
       updated.ingredientsSnapshotAtAdd = newSnap.map((s) => ({
         ...s,
-        price: oldPriceMap.has(s.ingredientId) ? oldPriceMap.get(s.ingredientId)! : s.price }));
+        price: oldPriceMap.has(s.ingredientId) ? oldPriceMap.get(s.ingredientId)! : s.price,
+      }));
       // Recalculate cost from updated snapshot
       updated.costAtAdd = computeSnapshotCost(updated.ingredientsSnapshotAtAdd);
     } else if (options.updateIngredientPrice) {
@@ -421,7 +431,8 @@ export function selectiveRefreshOrderProducts(
       for (const s of newSnap) newPriceMap.set(s.ingredientId, s.price);
       updated.ingredientsSnapshotAtAdd = row.ingredientsSnapshotAtAdd.map((s) => ({
         ...s,
-        price: newPriceMap.has(s.ingredientId) ? newPriceMap.get(s.ingredientId)! : s.price }));
+        price: newPriceMap.has(s.ingredientId) ? newPriceMap.get(s.ingredientId)! : s.price,
+      }));
       updated.costAtAdd = computeSnapshotCost(updated.ingredientsSnapshotAtAdd);
     }
 
@@ -459,7 +470,8 @@ export function markAllChangesHandled(
     return {
       ...row,
       productUpdatedAtAtAdd: currentProduct.updatedAt,
-      lastHandledProductChangeAt: currentProduct.updatedAt };
+      lastHandledProductChangeAt: currentProduct.updatedAt,
+    };
   });
 }
 
@@ -512,7 +524,8 @@ export function applyDelta(
         totalQty: 0,
         sourceBreakdown: {},
         manualDelta: 0,
-        finalQty: 0 };
+        finalQty: 0,
+      };
       rows.push(row);
     }
 
@@ -563,7 +576,8 @@ function flattenOrderIngredients(
           name: ing.name,
           qty,
           unit: ing.unit,
-          category: ing.category });
+          category: ing.category,
+        });
       }
     }
   }
@@ -604,7 +618,8 @@ export function generateShoppingListRows(
             totalQty: 0,
             sourceBreakdown: {},
             manualDelta: 0,
-            finalQty: 0 };
+            finalQty: 0,
+          };
           rowMap.set(key, row);
         }
 

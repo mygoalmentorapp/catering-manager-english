@@ -17,13 +17,12 @@ import { z } from "zod";
 import { protectedProcedure, deviceProtectedProcedure, router } from "./_core/trpc";
 import { createClient } from "@supabase/supabase-js";
 import { TRPCError } from "@trpc/server";
-import { SUPABASE_URL as SUPABASE_URL_RESOLVED, SUPABASE_SERVICE_ROLE_KEY as SUPABASE_SERVICE_ROLE_KEY_RESOLVED } from './supabase-config';
 
 // ============ HELPERS ============
 
 function getAdminClient() {
-  const url = SUPABASE_URL_RESOLVED;
-  const key = SUPABASE_SERVICE_ROLE_KEY_RESOLVED;
+  const url = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
   if (!url || !key) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
@@ -47,14 +46,14 @@ function getUserId(ctx: { user: { openId: string } }): string {
 // ============ DEFAULT UNITS ============
 
 const DEFAULT_UNITS = [
-  { singular: "kg", plural: "kg" },
-  { singular: "g", plural: "g" },
-  { singular: "liter", plural: "liter" },
-  { singular: 'ml', plural: 'ml' },
-  { singular: "Unit", plural: "Units" },
-  { singular: "cup", plural: "cups" },
-  { singular: "tbsp", plural: "tbsp" },
-  { singular: "can", plural: "cans" },
+  { singular: "קילו", plural: "קילו" },
+  { singular: "גרם", plural: "גרם" },
+  { singular: "ליטר", plural: "ליטר" },
+  { singular: 'מ"ל', plural: 'מ"ל' },
+  { singular: "יחידה", plural: "יחידות" },
+  { singular: "כוס", plural: "כוסות" },
+  { singular: "כף", plural: "כפות" },
+  { singular: "קופסא", plural: "קופסאות" },
 ];
 
 // ============ ZOD SCHEMAS ============
@@ -82,7 +81,7 @@ const productCategorySchema = z.object({
 });
 
 const productInputSchema = z.object({
-  name: z.string().min(1, "Please enter a product name"),
+  name: z.string().min(1, "יש להזין שם מוצר"),
   baseIngredients: z.array(ingredientSchema),
   spices: z.array(ingredientSchema),
   categories: z.array(productCategorySchema),
@@ -238,7 +237,7 @@ const productsRouter = router({
       .order("created_at", { ascending: true });
     if (error) {
       console.error("[cloud-data] products.list error:", error);
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error loading products" });
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בטעינת מוצרים" });
     }
     return (data || []).map(dbProductToAppProduct);
   }),
@@ -255,7 +254,7 @@ const productsRouter = router({
       .ilike("name", input.name.trim())
       .limit(1);
     if (existing && existing.length > 0) {
-      throw new TRPCError({ code: "CONFLICT", message: "A product with this name already exists" });
+      throw new TRPCError({ code: "CONFLICT", message: "כבר קיים מוצר בשם זה" });
     }
 
     const now = new Date().toISOString();
@@ -280,9 +279,9 @@ const productsRouter = router({
     if (error) {
       console.error("[cloud-data] products.create error:", error);
       if (error.code === "23505") {
-        throw new TRPCError({ code: "CONFLICT", message: "A product with this name already exists" });
+        throw new TRPCError({ code: "CONFLICT", message: "כבר קיים מוצר בשם זה" });
       }
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error creating product" });
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה ביצירת מוצר" });
     }
     return dbProductToAppProduct(data);
   }),
@@ -302,7 +301,7 @@ const productsRouter = router({
         .neq("id", input.id)
         .limit(1);
       if (existing && existing.length > 0) {
-        throw new TRPCError({ code: "CONFLICT", message: "A product with this name already exists" });
+        throw new TRPCError({ code: "CONFLICT", message: "כבר קיים מוצר בשם זה" });
       }
 
       const now = new Date().toISOString();
@@ -327,12 +326,12 @@ const productsRouter = router({
       if (error) {
         console.error("[cloud-data] products.update error:", error);
         if (error.code === "23505") {
-          throw new TRPCError({ code: "CONFLICT", message: "A product with this name already exists" });
+          throw new TRPCError({ code: "CONFLICT", message: "כבר קיים מוצר בשם זה" });
         }
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error updating product" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בעדכון מוצר" });
       }
       if (!data) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Product not found" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "מוצר לא נמצא" });
       }
       return dbProductToAppProduct(data);
     }),
@@ -355,7 +354,7 @@ const productsRouter = router({
         if (isUsed) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
-            message: "Cannot delete this product because it is linked to existing orders",
+            message: "לא ניתן למחוק מוצר זה מכיוון שהוא משויך להזמנות קיימות",
           });
         }
       }
@@ -367,7 +366,7 @@ const productsRouter = router({
         .eq("user_id", userId);
       if (error) {
         console.error("[cloud-data] products.delete error:", error);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error deleting product" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה במחיקת מוצר" });
       }
       return { success: true };
     }),
@@ -386,7 +385,7 @@ const ordersRouter = router({
       .order("created_at", { ascending: true });
     if (error) {
       console.error("[cloud-data] orders.list error:", error);
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error loading orders" });
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בטעינת הזמנות" });
     }
     return (data || []).map(dbOrderToAppOrder);
   }),
@@ -415,7 +414,7 @@ const ordersRouter = router({
       .single();
     if (error) {
       console.error("[cloud-data] orders.create error:", error);
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error creating order" });
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה ביצירת הזמנה" });
     }
     return dbOrderToAppOrder(data);
   }),
@@ -464,10 +463,10 @@ const ordersRouter = router({
         .single();
       if (error) {
         console.error("[cloud-data] orders.update error:", error);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error updating order" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בעדכון הזמנה" });
       }
       if (!data) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "הזמנה לא נמצאה" });
       }
       return dbOrderToAppOrder(data);
     }),
@@ -484,7 +483,7 @@ const ordersRouter = router({
         .eq("user_id", userId);
       if (error) {
         console.error("[cloud-data] orders.delete error:", error);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error deleting order" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה במחיקת הזמנה" });
       }
       return { success: true };
     }),
@@ -504,7 +503,7 @@ const ordersRouter = router({
         .eq("user_id", userId)
         .single();
       if (fetchErr || !order) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "הזמנה לא נמצאה" });
       }
 
       // Soft-delete associated shopping lists
@@ -547,7 +546,7 @@ const ordersRouter = router({
         .single();
       if (error) {
         console.error("[cloud-data] orders.archive error:", error);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error archiving order" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בארכוב הזמנה" });
       }
       return dbOrderToAppOrder(data);
     }),
@@ -572,10 +571,10 @@ const ordersRouter = router({
         .single();
       if (error) {
         console.error("[cloud-data] orders.unarchive error:", error);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error restoring order" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בשחזור הזמנה" });
       }
       if (!data) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Order not found" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "הזמנה לא נמצאה" });
       }
       return dbOrderToAppOrder(data);
     }),
@@ -595,7 +594,7 @@ const shoppingListsRouter = router({
       .order("created_at", { ascending: true });
     if (error) {
       console.error("[cloud-data] shoppingLists.list error:", error);
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error loading shopping lists" });
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בטעינת רשימות קניות" });
     }
     return (data || []).map(dbShoppingListToApp);
   }),
@@ -619,7 +618,7 @@ const shoppingListsRouter = router({
       .single();
     if (error) {
       console.error("[cloud-data] shoppingLists.create error:", error);
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error creating shopping list" });
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה ביצירת רשימת קניות" });
     }
     return dbShoppingListToApp(data);
   }),
@@ -655,10 +654,10 @@ const shoppingListsRouter = router({
         .single();
       if (error) {
         console.error("[cloud-data] shoppingLists.update error:", error);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error updating shopping list" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בעדכון רשימת קניות" });
       }
       if (!data) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Shopping list not found" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "רשימת קניות לא נמצאה" });
       }
       return dbShoppingListToApp(data);
     }),
@@ -677,7 +676,7 @@ const shoppingListsRouter = router({
         .eq("user_id", userId);
       if (error) {
         console.error("[cloud-data] shoppingLists.delete error:", error);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error deleting shopping list" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה במחיקת רשימת קניות" });
       }
       return { success: true };
     }),
@@ -696,7 +695,7 @@ const unitsRouter = router({
       .order("created_at", { ascending: true });
     if (error) {
       console.error("[cloud-data] units.list error:", error);
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error loading measurement units" });
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בטעינת יחידות מידה" });
     }
     // If no units exist, seed defaults
     if (!data || data.length === 0) {
@@ -722,7 +721,7 @@ const unitsRouter = router({
   }),
 
   create: deviceProtectedProcedure
-    .input(z.object({ singular: z.string().min(1, "Please enter a unit name"), plural: z.string().min(1, "Please also enter the plural form") }))
+    .input(z.object({ singular: z.string().min(1, "יש להזין שם יחידה"), plural: z.string().min(1, "יש להזין גם צורת רבים") }))
     .mutation(async ({ ctx, input }) => {
       const userId = getUserId(ctx as any);
       const admin = getAdminClient();
@@ -735,7 +734,7 @@ const unitsRouter = router({
         .eq("singular", input.singular.trim())
         .limit(1);
       if (existing && existing.length > 0) {
-        throw new TRPCError({ code: "CONFLICT", message: "This unit already exists" });
+        throw new TRPCError({ code: "CONFLICT", message: "יחידה זו כבר קיימת" });
       }
 
       const { data, error } = await admin
@@ -751,9 +750,9 @@ const unitsRouter = router({
       if (error) {
         console.error("[cloud-data] units.create error:", error);
         if (error.code === "23505") {
-          throw new TRPCError({ code: "CONFLICT", message: "This unit already exists" });
+          throw new TRPCError({ code: "CONFLICT", message: "יחידה זו כבר קיימת" });
         }
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error creating unit" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה ביצירת יחידה" });
       }
       return dbUnitToApp(data);
     }),
@@ -783,10 +782,10 @@ const unitsRouter = router({
         }
         if (productsUsingUnit.length > 0) {
           const names = productsUsingUnit.slice(0, 3).join(", ");
-          const suffix = productsUsingUnit.length > 3 ? ` and ${productsUsingUnit.length - 3} more` : "";
+          const suffix = productsUsingUnit.length > 3 ? ` ועוד ${productsUsingUnit.length - 3}` : "";
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
-            message: `Cannot delete this unit — in use by products: ${names}${suffix}`,
+            message: `לא ניתן למחוק יחידה זו — בשימוש במוצרים: ${names}${suffix}`,
           });
         }
       }
@@ -798,7 +797,7 @@ const unitsRouter = router({
         .eq("singular", input.singular);
       if (error) {
         console.error("[cloud-data] units.delete error:", error);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error deleting unit" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה במחיקת יחידה" });
       }
       return { success: true };
     }),
@@ -817,13 +816,13 @@ const categoriesRouter = router({
       .order("created_at", { ascending: true });
     if (error) {
       console.error("[cloud-data] categories.list error:", error);
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error loading categories" });
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בטעינת קטגוריות" });
     }
     return (data || []).map(dbCategoryToApp);
   }),
 
   create: deviceProtectedProcedure
-    .input(z.object({ name: z.string().min(1, "Please enter a category name") }))
+    .input(z.object({ name: z.string().min(1, "יש להזין שם קטגוריה") }))
     .mutation(async ({ ctx, input }) => {
       const userId = getUserId(ctx as any);
       const admin = getAdminClient();
@@ -837,7 +836,7 @@ const categoriesRouter = router({
         .ilike("name", trimmed)
         .limit(1);
       if (existing && existing.length > 0) {
-        throw new TRPCError({ code: "CONFLICT", message: "This category already exists" });
+        throw new TRPCError({ code: "CONFLICT", message: "קטגוריה זו כבר קיימת" });
       }
 
       const { data, error } = await admin
@@ -852,15 +851,15 @@ const categoriesRouter = router({
       if (error) {
         console.error("[cloud-data] categories.create error:", error);
         if (error.code === "23505") {
-          throw new TRPCError({ code: "CONFLICT", message: "This category already exists" });
+          throw new TRPCError({ code: "CONFLICT", message: "קטגוריה זו כבר קיימת" });
         }
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error creating category" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה ביצירת קטגוריה" });
       }
       return dbCategoryToApp(data);
     }),
 
   rename: deviceProtectedProcedure
-    .input(z.object({ id: z.string(), name: z.string().min(1, "Please enter a category name") }))
+    .input(z.object({ id: z.string(), name: z.string().min(1, "יש להזין שם קטגוריה") }))
     .mutation(async ({ ctx, input }) => {
       const userId = getUserId(ctx as any);
       const admin = getAdminClient();
@@ -875,7 +874,7 @@ const categoriesRouter = router({
         .neq("id", input.id)
         .limit(1);
       if (existing && existing.length > 0) {
-        throw new TRPCError({ code: "CONFLICT", message: "A category with this name already exists" });
+        throw new TRPCError({ code: "CONFLICT", message: "קטגוריה בשם זה כבר קיימת" });
       }
 
       const { error } = await admin
@@ -885,7 +884,7 @@ const categoriesRouter = router({
         .eq("user_id", userId);
       if (error) {
         console.error("[cloud-data] categories.rename error:", error);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error renaming category" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בשינוי שם קטגוריה" });
       }
       return { success: true };
     }),
@@ -904,7 +903,7 @@ const categoriesRouter = router({
         .eq("user_id", userId)
         .single();
       if (!cat) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
+        throw new TRPCError({ code: "NOT_FOUND", message: "קטגוריה לא נמצאה" });
       }
 
       const { error } = await admin
@@ -914,7 +913,7 @@ const categoriesRouter = router({
         .eq("user_id", userId);
       if (error) {
         console.error("[cloud-data] categories.delete error:", error);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error deleting category" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה במחיקת קטגוריה" });
       }
       return { success: true };
     }),
@@ -934,7 +933,7 @@ const settingsRouter = router({
     if (error && error.code !== "PGRST116") {
       // PGRST116 = no rows found, which is fine for new users
       console.error("[cloud-data] settings.get error:", error);
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error loading settings" });
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בטעינת הגדרות" });
     }
     if (!data) {
       // Return defaults for new user
@@ -972,7 +971,7 @@ const settingsRouter = router({
         .single();
       if (error) {
         console.error("[cloud-data] settings.update error:", error);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error updating settings" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בעדכון הגדרות" });
       }
       return dbSettingsToApp(data);
     }),
@@ -1008,7 +1007,7 @@ const settingsRouter = router({
         });
       if (uploadErr) {
         console.error("[cloud-data] settings.uploadLogo error:", uploadErr);
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error uploading logo" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "שגיאה בהעלאת לוגו" });
       }
 
       // Get public URL with cache-busting timestamp

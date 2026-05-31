@@ -19,7 +19,6 @@
 import { createHash } from "crypto";
 import { Resend } from "resend";
 import { createClient } from "@supabase/supabase-js";
-import { SUPABASE_URL as SUPABASE_URL_RESOLVED, SUPABASE_SERVICE_ROLE_KEY as SUPABASE_SERVICE_ROLE_KEY_RESOLVED } from './supabase-config';
 
 const FROM_EMAIL = "support@cateringmanager.app";
 type Lang = "he" | "en";
@@ -46,8 +45,8 @@ const APP_SCHEME = ALERT_I18N.he.appScheme;
  */
 function getEnv() {
   return {
-    supabaseUrl: SUPABASE_URL_RESOLVED,
-    supabaseServiceRoleKey: SUPABASE_SERVICE_ROLE_KEY_RESOLVED,
+    supabaseUrl: process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || "",
+    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
     resendApiKey: process.env.RESEND_API_KEY ?? "",
   };
 }

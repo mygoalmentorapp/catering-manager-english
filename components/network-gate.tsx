@@ -43,17 +43,17 @@ export function NetworkGate({ children }: NetworkGateProps) {
             <MaterialIcons name="wifi-off" size={56} color={DS_COLORS.accent} />
           </View>
 
-          <Text style={s.title}>No internet connection</Text>
+          <Text style={s.title}>אין חיבור לאינטרנט</Text>
 
           <Text style={s.description}>
-            The app requires an active internet connection to work.{"\n\n"}
-            All your data is securely stored in the cloud.{"\n"}
-            please Check your internet connection and try again.
+            האפליקציה דורשת חיבור אינטרנט פעיל כדי לעבוד.{"\n\n"}
+            כל הנתונים שלך מאוחסנים בענן בצורה מאובטחת.{"\n"}
+            אנא בדוק את חיבור האינטרנט ונסה שוב.
           </Text>
 
           <View style={s.hintRow}>
             <MaterialIcons name="info-outline" size={18} color={DS_COLORS.textSecondary} />
-            <Text style={s.hintText}>The connection will resume automatically when the internet returns</Text>
+            <Text style={s.hintText}>החיבור יתחדש אוטומטית כשהאינטרנט יחזור</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -69,15 +69,18 @@ const s = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: DS_COLORS.background },
+    backgroundColor: DS_COLORS.background,
+  },
   container: {
     flex: 1,
-    backgroundColor: DS_COLORS.background },
+    backgroundColor: DS_COLORS.background,
+  },
   content: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: DS_SPACING.xxl },
+    paddingHorizontal: DS_SPACING.xxl,
+  },
   iconCircle: {
     width: 112,
     height: 112,
@@ -85,23 +88,29 @@ const s = StyleSheet.create({
     backgroundColor: DS_COLORS.accentLight,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: DS_SPACING.xxl },
+    marginBottom: DS_SPACING.xxl,
+  },
   title: {
     fontSize: 26,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
     marginBottom: DS_SPACING.lg,
-    textAlign: "center" },
+    textAlign: "center",
+  },
   description: {
     fontSize: DS_FONT.body,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
     lineHeight: 24,
-    marginBottom: DS_SPACING.xxl },
+    marginBottom: DS_SPACING.xxl,
+  },
   hintRow: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
-    gap: DS_SPACING.xs },
+    gap: DS_SPACING.xs,
+  },
   hintText: {
     fontSize: DS_FONT.bodySmall,
-    color: DS_COLORS.textSecondary } });
+    color: DS_COLORS.textSecondary,
+  },
+});

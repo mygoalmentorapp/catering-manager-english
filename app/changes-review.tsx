@@ -9,12 +9,12 @@
  * - Ingredients are split into 2 categories:
  *   1. "ingredientQtyUnit" — qty/unit changes (CRITICAL — causes locking)
  *   2. "ingredientPrice" — price changes (NON-CRITICAL — no locking)
- * - "Continue without updating" = cancel (nothing saved, all changes shown again on next entry)
- * - "Update" with unchecked items = dismissed (won't show again), only critical unresolved = stays locked
+ * - "המשך ללא עדכון" = cancel (nothing saved, all changes shown again on next entry)
+ * - "עדכן" with unchecked items = dismissed (won't show again), only critical unresolved = stays locked
  * - detectProductChanges still finds ALL changes (lastHandledProductChangeAt not bumped on partial)
  * - We filter OUT categories in order.dismissedChangeCategories
  * - "ingredientQtyUnit" is NEVER filtered — always shows until explicitly updated
- * - On "Update": selected categories get applied, unselected categories get dismissed
+ * - On "עדכן": selected categories get applied, unselected categories get dismissed
  *   (except ingredientQtyUnit which is never dismissed)
  * - When ALL changes resolved (including ingredientQtyUnit), lastHandledProductChangeAt is bumped
  */
@@ -27,7 +27,8 @@ import {
   Alert,
   StyleSheet,
   ActivityIndicator,
-  Modal } from "react-native";
+  Modal,
+} from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -37,14 +38,16 @@ import {
   selectiveRefreshOrderProducts,
   markAllChangesHandled,
   applyDelta,
-  type ProductChanges } from "@/lib/order-logic";
+  type ProductChanges,
+} from "@/lib/order-logic";
 import type { MarkupType } from "@/lib/types";
 import {
   DS_COLORS,
   DS_FONT,
   DS_WEIGHT,
   DS_SPACING,
-  DS_RADIUS } from "@/lib/design-system";
+  DS_RADIUS,
+} from "@/lib/design-system";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { useThemeContext } from "@/lib/theme-provider";
 
@@ -58,7 +61,7 @@ function formatPrice(value: number): string {
 
 function formatMarkup(type: MarkupType, value: number): string {
   if (type === "percent") return `${value}%`;
-  return `$${formatPrice(value)}`;
+  return `₪${formatPrice(value)}`;
 }
 
 // ============ Checkbox categories ============
@@ -95,7 +98,8 @@ function filterDismissedChanges(
       // Other categories: only show if NOT dismissed
       hasCustomerPriceChange: change.hasCustomerPriceChange && !dismissedCats.has("customerPrice"),
       hasMarkupChange: change.hasMarkupChange && !dismissedCats.has("markup"),
-      hasNameChange: change.hasNameChange && !dismissedCats.has("name") };
+      hasNameChange: change.hasNameChange && !dismissedCats.has("name"),
+    };
 
     // Only include if at least one category is still active
     if (
@@ -115,7 +119,8 @@ function filterDismissedChanges(
     hasAnyIngredientPriceChanges: filteredChanges.some((c) => c.hasIngredientPriceChanges),
     customerPriceChanges: filteredChanges.filter((c) => c.hasCustomerPriceChange),
     markupChanges: filteredChanges.filter((c) => c.hasMarkupChange),
-    nameChanges: filteredChanges.filter((c) => c.hasNameChange) };
+    nameChanges: filteredChanges.filter((c) => c.hasNameChange),
+  };
 }
 
 export default function ChangesReviewScreen() {
@@ -131,7 +136,8 @@ export default function ChangesReviewScreen() {
     savedShoppingLists,
     updateSavedShoppingList,
     refreshOrders,
-    refreshShoppingLists } = useData();
+    refreshShoppingLists,
+  } = useData();
   const { guardMutation } = useMutationGuard();
 
   const [checked, setChecked] = useState<Record<CheckKey, boolean>>({
@@ -139,7 +145,8 @@ export default function ChangesReviewScreen() {
     ingredientPrice: true,
     customerPrice: true,
     markup: true,
-    name: true });
+    name: true,
+  });
   const [loading, setLoading] = useState(false);
   const [showExplanation, setShowExplanation] = useState(true);
 
@@ -179,7 +186,8 @@ export default function ChangesReviewScreen() {
         updateIngredientPrice: checked.ingredientPrice,
         updateCustomerPrice: checked.customerPrice,
         updateMarkup: checked.markup,
-        updateName: checked.name });
+        updateName: checked.name,
+      });
 
       // Apply Delta to linked shopping list if ingredient qty/unit changed
       if (checked.ingredientQtyUnit) {
@@ -191,7 +199,8 @@ export default function ChangesReviewScreen() {
           await updateSavedShoppingList(linkedList.id, {
             rows: updatedRows,
             status: "valid",
-            updatedAt: new Date().toISOString() });
+            updatedAt: new Date().toISOString(),
+          });
         }
       }
 
@@ -257,7 +266,8 @@ export default function ChangesReviewScreen() {
         products: finalProducts,
         // Only critical (qty/unit) causes locking
         status: hasUnresolvedCritical ? "needs_refresh_locked" : "open",
-        dismissedChangeCategories: finalDismissed ?? {} });
+        dismissedChangeCategories: finalDismissed ?? {},
+      });
       await refreshOrders();
       await refreshShoppingLists();
 
@@ -265,20 +275,20 @@ export default function ChangesReviewScreen() {
         (sl) => sl.status !== "deleted" && sl.orderIds.includes(order.id)
       );
       if (linkedList && checked.ingredientQtyUnit) {
-        Alert.alert("Success", "Order updated successfully.\nThe shopping list has been updated according to your changes.");
+        Alert.alert("הצלחה", "ההזמנה עודכנה בהצלחה.\nרשימת הקניות עודכנה בהתאם לשינויים שביצעת.");
       } else {
-        Alert.alert("Success", "Order updated successfully.");
+        Alert.alert("הצלחה", "ההזמנה עודכנה בהצלחה.");
       }
 
       router.back();
     } catch (e: any) {
-      Alert.alert("Error", "Update failed. Please try again.");
+      Alert.alert("שגיאה", "העדכון נכשל. נסה שוב.");
     } finally {
       setLoading(false);
     }
   }, [order, analysis, rawAnalysis, products, checked, savedShoppingLists, updateOrder, updateSavedShoppingList, refreshOrders, refreshShoppingLists, router, guardMutation]);
 
-  // ── "Continue without updating" = CANCEL — nothing saved, all changes shown again next time ──
+  // ── "המשך ללא עדכון" = CANCEL — nothing saved, all changes shown again next time ──
   const handleSkip = useCallback(async () => {
     // Simply go back without saving anything — this is a cancel operation
     router.back();
@@ -293,11 +303,11 @@ export default function ChangesReviewScreen() {
             <TouchableOpacity onPress={() => router.back()} style={cs.headerBtn} activeOpacity={0.7}>
               <MaterialIcons name="close" size={22} color={DS_COLORS.textPrimary} />
             </TouchableOpacity>
-            <Text style={cs.headerTitle}>Product changes</Text>
+            <Text style={cs.headerTitle}>שינויים במוצרים</Text>
             <View style={{ width: 40 }} />
           </View>
           <View style={cs.emptyContainer}>
-            <Text style={cs.emptyText}>No changes to update</Text>
+            <Text style={cs.emptyText}>אין שינויים לעדכון</Text>
           </View>
         </View>
       </ScreenContainer>
@@ -317,19 +327,19 @@ export default function ChangesReviewScreen() {
           <Text style={cs.productName}>{change.productName}</Text>
           {change.ingredientQtyUnitDiffs.map((diff, i) => {
             if (diff.type === "added") {
-              return <Text key={i} style={cs.diffText}>• Added: {diff.name}</Text>;
+              return <Text key={i} style={cs.diffText}>• נוסף: {diff.name}</Text>;
             }
             if (diff.type === "removed") {
-              return <Text key={i} style={cs.diffText}>• Removed: {diff.name}</Text>;
+              return <Text key={i} style={cs.diffText}>• הוסר: {diff.name}</Text>;
             }
             const hasNameChange = diff.oldName != null && diff.newName != null && diff.oldName !== diff.newName;
             const hasUnitChange = diff.oldUnit != null && diff.newUnit != null && diff.oldUnit !== diff.newUnit;
             const hasQtyChange = diff.oldQty != null && diff.newQty != null && diff.oldQty !== diff.newQty;
             if (!hasNameChange && !hasUnitChange && !hasQtyChange) return null;
             const lines: string[] = [];
-            if (hasNameChange) lines.push(`Name changed from "${diff.oldName}" to "${diff.newName}"`);
-            if (hasUnitChange) lines.push(`Unit changed from ${diff.oldUnit} to ${diff.newUnit}`);
-            if (hasQtyChange) lines.push(`Quantity changed from ${diff.oldQty} to ${diff.newQty}`);
+            if (hasNameChange) lines.push(`שם השתנה מ-"${diff.oldName}" ל-"${diff.newName}"`);
+            if (hasUnitChange) lines.push(`יחידה השתנתה מ-${diff.oldUnit} ל-${diff.newUnit}`);
+            if (hasQtyChange) lines.push(`כמות השתנתה מ-${diff.oldQty} ל-${diff.newQty}`);
             return (
               <View key={i} style={cs.ingredientChangeBlock}>
                 <Text style={cs.ingredientName}>{diff.name}</Text>
@@ -342,7 +352,7 @@ export default function ChangesReviewScreen() {
         </View>
       );
     }
-    sections.push({ key: "ingredientQtyUnit", title: "Quantity / Unit of ingredients", icon: "restaurant", critical: true, items });
+    sections.push({ key: "ingredientQtyUnit", title: "כמות / יחידה של רכיבים", icon: "restaurant", critical: true, items });
   }
 
   // 2. Ingredient Price (NON-CRITICAL)
@@ -356,13 +366,13 @@ export default function ChangesReviewScreen() {
           {change.ingredientPriceDiffs.map((diff, i) => (
             <View key={i} style={cs.ingredientChangeBlock}>
               <Text style={cs.ingredientName}>{diff.name}</Text>
-              <Text style={cs.diffText}>  • Price changed from {formatPrice(diff.oldPrice!)}$ to {formatPrice(diff.newPrice!)}$</Text>
+              <Text style={cs.diffText}>  • מחיר השתנה מ-{formatPrice(diff.oldPrice!)}₪ ל-{formatPrice(diff.newPrice!)}₪</Text>
             </View>
           ))}
         </View>
       );
     }
-    sections.push({ key: "ingredientPrice", title: "Ingredient cost", icon: "attach-money", items });
+    sections.push({ key: "ingredientPrice", title: "מחיר רכיבים", icon: "attach-money", items });
   }
 
   // 3. Customer Price
@@ -370,10 +380,10 @@ export default function ChangesReviewScreen() {
     const items = analysis.customerPriceChanges.map((c) => (
       <View key={`cp-${c.productId}`} style={cs.changeGroup}>
         <Text style={cs.productName}>{c.productName}</Text>
-        <Text style={cs.diffText}>• Changed from {formatPrice(c.oldCustomerPrice)}$ to {formatPrice(c.newCustomerPrice)}$</Text>
+        <Text style={cs.diffText}>• השתנה מ-{formatPrice(c.oldCustomerPrice)}₪ ל-{formatPrice(c.newCustomerPrice)}₪</Text>
       </View>
     ));
-    sections.push({ key: "customerPrice", title: "Customer price", icon: "sell", items });
+    sections.push({ key: "customerPrice", title: "מחיר ללקוח", icon: "sell", items });
   }
 
   // 4. Markup
@@ -382,21 +392,21 @@ export default function ChangesReviewScreen() {
       <View key={`mk-${c.productId}`} style={cs.changeGroup}>
         <Text style={cs.productName}>{c.productName}</Text>
         <Text style={cs.diffText}>
-          • Changed from {formatMarkup(c.oldMarkupType, c.oldMarkupValue)} to {formatMarkup(c.newMarkupType, c.newMarkupValue)}
+          • השתנה מ-{formatMarkup(c.oldMarkupType, c.oldMarkupValue)} ל-{formatMarkup(c.newMarkupType, c.newMarkupValue)}
         </Text>
       </View>
     ));
-    sections.push({ key: "markup", title: "Price markup", icon: "trending-up", items });
+    sections.push({ key: "markup", title: "תוספת מחיר", icon: "trending-up", items });
   }
 
   // 5. Name
   if (analysis.nameChanges.length > 0) {
     const items = analysis.nameChanges.map((c) => (
       <View key={`nm-${c.productId}`} style={cs.changeGroup}>
-        <Text style={cs.diffText}>• Changed from "{c.oldName}" to "{c.newName}"</Text>
+        <Text style={cs.diffText}>• השתנה מ-"{c.oldName}" ל-"{c.newName}"</Text>
       </View>
     ));
-    sections.push({ key: "name", title: "Name Product", icon: "label", items });
+    sections.push({ key: "name", title: "שם מוצר", icon: "label", items });
   }
 
   return (
@@ -407,7 +417,7 @@ export default function ChangesReviewScreen() {
           <TouchableOpacity onPress={() => router.back()} style={cs.headerBtn} activeOpacity={0.7}>
             <MaterialIcons name="close" size={22} color={DS_COLORS.textPrimary} />
           </TouchableOpacity>
-          <Text style={cs.headerTitle}>Product changes</Text>
+          <Text style={cs.headerTitle}>שינויים במוצרים</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -418,7 +428,7 @@ export default function ChangesReviewScreen() {
           activeOpacity={0.7}
         >
           <MaterialIcons name="info-outline" size={18} color={DS_COLORS.accent} />
-          <Text style={cs.explanationBtnText}>About this screen</Text>
+          <Text style={cs.explanationBtnText}>הסבר למסך זה</Text>
         </TouchableOpacity>
 
         {/* Explanation Modal */}
@@ -430,20 +440,20 @@ export default function ChangesReviewScreen() {
         >
           <View style={cs.modalOverlay}>
             <View style={cs.modalCard}>
-              <Text style={cs.modalTitle}>Explanation</Text>
+              <Text style={cs.modalTitle}>הסבר</Text>
               <View style={cs.modalBody}>
                 <Text style={cs.modalText}>
-                  Since the order was created, product changes were made that affect it.
+                  מאז שנוצרה ההזמנה, בוצעו שינויים במוצרים שמשפיעים עליה.
                 </Text>
                 <Text style={cs.modalText}>
-                  All changes are marked for automatic update. Press "Update" to apply them to the order.
+                  כל השינויים מסומנים לעדכון אוטומטי. לחץ "עדכן" כדי להחיל אותם על ההזמנה.
                 </Text>
                 <Text style={cs.modalText}>
-                  If you do not want to apply a specific change — uncheck it.
+                  אם אינך רוצה להחיל שינוי מסוים — בטל את הסימון שלו.
                 </Text>
-                <Text style={cs.modalWarningLabel}>Attention:</Text>
+                <Text style={cs.modalWarningLabel}>שים לב:</Text>
                 <Text style={cs.modalWarningText}>
-                  Changes in quantity or unit of ingredients are critical changes. As long as they are not updated, the order and shopping list will be locked for editing.
+                  שינויים בכמות או ביחידה של רכיבים הם שינויים קריטיים. כל עוד לא תעדכן אותם, ההזמנה ורשימת הקניות יהיו חסומות לעריכה.
                 </Text>
               </View>
               <TouchableOpacity
@@ -451,7 +461,7 @@ export default function ChangesReviewScreen() {
                 style={cs.modalOkBtn}
                 activeOpacity={0.8}
               >
-                <Text style={cs.modalOkBtnText}>Got it</Text>
+                <Text style={cs.modalOkBtnText}>הבנתי</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -477,7 +487,7 @@ export default function ChangesReviewScreen() {
                   <Text style={cs.sectionTitle}>{section.title}</Text>
                   {section.critical && (
                     <View style={cs.criticalBadge}>
-                      <Text style={cs.criticalBadgeText}>Critical</Text>
+                      <Text style={cs.criticalBadgeText}>קריטי</Text>
                     </View>
                   )}
                 </View>
@@ -504,7 +514,7 @@ export default function ChangesReviewScreen() {
             {loading ? (
               <ActivityIndicator size="small" color={DS_COLORS.white} />
             ) : (
-              <Text style={cs.updateBtnText}>Update</Text>
+              <Text style={cs.updateBtnText}>עדכן</Text>
             )}
           </TouchableOpacity>
 
@@ -583,7 +593,7 @@ function _make_cs() { return StyleSheet.create({
     marginBottom: DS_SPACING.md,
   },
   modalBody: {
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     gap: 6,
     marginBottom: DS_SPACING.lg,
   },
@@ -633,7 +643,7 @@ function _make_cs() { return StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center" as const,
     justifyContent: "space-between" as const,
     paddingHorizontal: DS_SPACING.md,
@@ -648,7 +658,7 @@ function _make_cs() { return StyleSheet.create({
   },
   sectionHeaderLeft: {
     flexDirection: "row" as const,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center" as const,
     gap: DS_SPACING.sm,
   },
@@ -671,7 +681,7 @@ function _make_cs() { return StyleSheet.create({
     color: "#D97706",
   },
   sectionBody: {
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     paddingHorizontal: DS_SPACING.md,
     paddingVertical: DS_SPACING.sm,
   },

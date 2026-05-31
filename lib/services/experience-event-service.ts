@@ -52,11 +52,20 @@ export const EVENT_NAMES = {
   CAMPAIGN_CLICKED: "campaign_clicked",
   CAMPAIGN_DISMISSED: "campaign_dismissed",
 
-  // Premium (future)
+  // Premium / Paywall
   PREMIUM_FEATURE_CLICKED: "premium_feature_clicked",
   PAYWALL_VIEWED: "paywall_viewed",
   PAYWALL_DISMISSED: "paywall_dismissed",
+  PAYWALL_CTA_CLICKED: "paywall_cta_clicked",
+  PURCHASE_STARTED: "purchase_started",
   PURCHASE_COMPLETED: "purchase_completed",
+  PURCHASE_FAILED: "purchase_failed",
+  RESTORE_STARTED: "restore_started",
+  RESTORE_COMPLETED: "restore_completed",
+  RESTORE_FAILED: "restore_failed",
+  ENTITLEMENT_CHECKED: "entitlement_checked",
+  ENTITLEMENT_ACTIVE: "entitlement_active",
+  ENTITLEMENT_MISSING: "entitlement_missing",
 
   // System
   ERROR_ENCOUNTERED: "error_encountered",
@@ -67,7 +76,8 @@ export const EVENT_NAMES = {
   EXTERNAL_URL_OPENED: "external_url_opened",
   UNKNOWN_ACTION_RECEIVED: "unknown_action_received",
   UNKNOWN_CONDITION_RECEIVED: "unknown_condition_received",
-  EXTERNAL_URL_BLOCKED: "external_url_blocked" } as const;
+  EXTERNAL_URL_BLOCKED: "external_url_blocked",
+} as const;
 
 export type EventName = (typeof EVENT_NAMES)[keyof typeof EVENT_NAMES];
 
@@ -75,6 +85,7 @@ export type EventName = (typeof EVENT_NAMES)[keyof typeof EVENT_NAMES];
 
 const ALLOWED_METADATA_KEYS = new Set([
   "screen_name",
+  "screen_key",
   "campaign_key",
   "flow_key",
   "action",
@@ -90,6 +101,11 @@ const ALLOWED_METADATA_KEYS = new Set([
   "condition",
   "feature",
   "product_id",
+  "placement_key",
+  "entitlement_id",
+  "offering_id",
+  "subscription_status",
+  "error_message",
 ]);
 
 // ── Types ──
@@ -281,7 +297,8 @@ export const ExperienceEventService = {
         flow_key: payload.flow_key ?? null,
         action: payload.action ?? null,
         session_id: currentSessionId,
-        metadata: sanitizeMetadata(payload.metadata) };
+        metadata: sanitizeMetadata(payload.metadata),
+      };
 
       console.log(`[ExperienceEvent] Sending to server: ${payload.event_name}`);
       const result = await callLogEvent(row as unknown as Record<string, unknown>);
@@ -332,7 +349,8 @@ export const ExperienceEventService = {
     return this.logEvent({
       event_name: EVENT_NAMES.SCREEN_VIEWED,
       screen_key: screenName,
-      metadata: { screen_name: screenName } });
+      metadata: { screen_name: screenName },
+    });
   },
 
   async logProductCreated(): Promise<void> {
@@ -362,5 +380,7 @@ export const ExperienceEventService = {
   async logFeedbackSubmitted(source?: string): Promise<void> {
     return this.logEvent({
       event_name: EVENT_NAMES.FEEDBACK_SUBMITTED,
-      metadata: source ? { source } : undefined });
-  } };
+      metadata: source ? { source } : undefined,
+    });
+  },
+};

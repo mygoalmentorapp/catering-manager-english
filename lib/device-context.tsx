@@ -74,7 +74,8 @@ async function writeCache(status: "active" | "not_active"): Promise<void> {
   try {
     const cache: DeviceStatusCache = {
       status,
-      checkedAt: new Date().toISOString() };
+      checkedAt: new Date().toISOString(),
+    };
     await AsyncStorage.setItem(DEVICE_STATUS_CACHE_KEY, JSON.stringify(cache));
   } catch {
     // Non-critical
@@ -141,7 +142,8 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
         deviceUuid: uuid,
         deviceName,
         deviceOs,
-        appVersion });
+        appVersion,
+      });
 
       if (!mountedRef.current) return;
 
@@ -209,9 +211,9 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
 
     if (wasActive && Platform.OS !== "web") {
       Alert.alert(
-        "New device detected",
-        "Your account was activated on another device. To continue using this device, send a verification code to your email.",
-        [{ text: "Got it", style: "default" }],
+        "מכשיר חדש זוהה",
+        "החשבון שלך הופעל במכשיר אחר. כדי להמשיך להשתמש במכשיר הנוכחי, שלח קוד אימות למייל.",
+        [{ text: "הבנתי", style: "default" }],
       );
     }
   }, [gateStatus]);
@@ -316,7 +318,8 @@ export function DeviceProvider({ children }: { children: React.ReactNode }) {
     recheckDevice,
     setSkipAutoBackup,
     onVerificationComplete,
-    onDeviceBlocked };
+    onDeviceBlocked,
+  };
 
   return <DeviceContext.Provider value={value}>{children}</DeviceContext.Provider>;
 }

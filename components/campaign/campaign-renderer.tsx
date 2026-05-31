@@ -24,9 +24,14 @@
 
 import React, { useEffect, useRef, useCallback } from "react";
 import { CirclePopup } from "./circle-popup";
+import { CampaignBanner } from "./campaign-banner";
+import { CampaignBottomSheet } from "./campaign-bottom-sheet";
+import { CampaignModal } from "./campaign-modal";
+import { CampaignFullScreen } from "./campaign-full-screen";
 import { CampaignActionHandler, type ActionContext } from "@/lib/services/campaign-action-handler";
 import { ExperienceEventService, EVENT_NAMES } from "@/lib/services/experience-event-service";
 import { UserExperienceStateService } from "@/lib/services/user-experience-state-service";
+import { trackImpression, trackClick, trackDismiss, trackClose } from "@/lib/services/campaign-analytics-service";
 import { devLog, warnLog } from "@/lib/services/environment";
 import type { RemoteCampaign } from "@/lib/services/experience-rule-engine";
 
@@ -50,7 +55,8 @@ export function CampaignRenderer({
   userId,
   currentScreen,
   onClose,
-  onViewed }: CampaignRendererProps) {
+  onViewed,
+}: CampaignRendererProps) {
   const viewedRef = useRef<string | null>(null);
 
   // Log campaign_viewed on first render of this campaign
@@ -72,10 +78,16 @@ export function CampaignRenderer({
   const actionCtx: ActionContext = {
     campaignKey: campaign?.campaign_key ?? "",
     userId,
-    screenKey: currentScreen };
+    screenKey: currentScreen,
+    // Extract URL/route from button payloads for open_external_url / open_deep_link actions
+    actionUrl: (campaign?.primary_button_payload?.url as string) ?? (campaign?.secondary_button_payload?.url as string) ?? undefined,
+    actionRoute: (campaign?.primary_button_payload?.route as string) ?? (campaign?.secondary_button_payload?.route as string) ?? undefined,
+  };
 
   const handlePrimaryAction = useCallback(() => {
     if (!campaign) return;
+    // Track analytics: primary CTA click
+    trackClick(campaign.campaign_key, campaign.type, "primary");
     CampaignActionHandler.execute(
       campaign.primary_button_action,
       actionCtx,
@@ -85,6 +97,8 @@ export function CampaignRenderer({
 
   const handleSecondaryAction = useCallback(() => {
     if (!campaign) return;
+    // Track analytics: secondary CTA click
+    trackClick(campaign.campaign_key, campaign.type, "secondary");
     CampaignActionHandler.execute(
       campaign.secondary_button_action,
       actionCtx,
@@ -94,6 +108,12 @@ export function CampaignRenderer({
 
   const handleClose = useCallback(() => {
     if (!campaign) return;
+    // Track analytics: close/dismiss
+    if (campaign.dismissible) {
+      trackDismiss(campaign.campaign_key, campaign.type);
+    } else {
+      trackClose(campaign.campaign_key, campaign.type);
+    }
     // X button = close_campaign action
     CampaignActionHandler.execute(
       "close_campaign",
@@ -117,12 +137,49 @@ export function CampaignRenderer({
         />
       );
 
-    // Future types — skeleton-ready, not built yet
     case "banner":
+      return (
+        <CampaignBanner
+          campaign={campaign}
+          visible={visible}
+          onPrimaryAction={handlePrimaryAction}
+          onSecondaryAction={handleSecondaryAction}
+          onClose={handleClose}
+        />
+      );
+
     case "bottom_sheet":
+      return (
+        <CampaignBottomSheet
+          campaign={campaign}
+          visible={visible}
+          onPrimaryAction={handlePrimaryAction}
+          onSecondaryAction={handleSecondaryAction}
+          onClose={handleClose}
+        />
+      );
+
+    case "modal":
+      return (
+        <CampaignModal
+          campaign={campaign}
+          visible={visible}
+          onPrimaryAction={handlePrimaryAction}
+          onSecondaryAction={handleSecondaryAction}
+          onClose={handleClose}
+        />
+      );
+
     case "full_screen":
-      warnLog("CampaignRenderer", `Unsupported campaign type: ${campaign.type}`);
-      return null;
+      return (
+        <CampaignFullScreen
+          campaign={campaign}
+          visible={visible}
+          onPrimaryAction={handlePrimaryAction}
+          onSecondaryAction={handleSecondaryAction}
+          onClose={handleClose}
+        />
+      );
 
     default:
       warnLog("CampaignRenderer", `Unknown campaign type: ${campaign.type}`);
@@ -148,7 +205,11 @@ async function _logCampaignViewed(
     event_name: EVENT_NAMES.CAMPAIGN_VIEWED,
     campaign_key: campaign.campaign_key,
     screen_key: screenKey,
-    metadata: { type: campaign.type } }).catch(() => {});
+    metadata: { type: campaign.type },
+  }).catch(() => {});
+
+  // 1b. Track impression in campaign_analytics (A/B testing metrics)
+  trackImpression(campaign.campaign_key, campaign.type);
 
   // 2. Update impressions in user_campaign_state (via tRPC)
   try {
@@ -163,7 +224,8 @@ async function _logCampaignViewed(
       {
         _increment_impressions: true, // Signal to server to increment
         impressions_today_date: todayStr,
-        last_viewed_at: new Date().toISOString() },
+        last_viewed_at: new Date().toISOString(),
+      },
     );
 
     devLog("CampaignRenderer", "Impressions update sent via tRPC");

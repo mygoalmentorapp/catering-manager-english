@@ -2,9 +2,9 @@
  * DotsButton — Premium auth button with animated dots loading.
  *
  * States:
- * 1. idle: Teal-green background, white text (e.g. "Sign in")
+ * 1. idle: Teal-green background, white text (e.g. "התחבר")
  * 2. loading: Same background, text changes to loadingLabel + animated dots
- *    cycling: "Connecting." → "Connecting.." → "Connecting..."
+ *    cycling: "מתחבר." → "מתחבר.." → "מתחבר..."
  * 3. success: Same appearance as loading (auth navigation handles transition)
  * 4. error: Resets back to idle
  *
@@ -17,7 +17,8 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  Easing } from "react-native-reanimated";
+  Easing,
+} from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { DS_SPACING, DS_RADIUS, DS_FONT, DS_WEIGHT, DS_SHADOW } from "@/lib/design-system";
 
@@ -26,9 +27,9 @@ type ButtonState = "idle" | "loading" | "success" | "error";
 interface DotsButtonProps {
   /** Current state of the button */
   state: ButtonState;
-  /** Button label text shown in idle state (e.g. "Sign in") */
+  /** Button label text shown in idle state (e.g. "התחבר") */
   label: string;
-  /** Text shown during loading state before dots (e.g. "Connecting") */
+  /** Text shown during loading state before dots (e.g. "מתחבר") */
   loadingLabel: string;
   /** Called when the button is pressed (only in idle/error state) */
   onPress: () => void;
@@ -44,7 +45,8 @@ export function DotsButton({
   state,
   label,
   loadingLabel,
-  onPress }: DotsButtonProps) {
+  onPress,
+}: DotsButtonProps) {
   const [dotCount, setDotCount] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -82,7 +84,8 @@ export function DotsButton({
   }, [state]);
 
   const textStyle = useAnimatedStyle(() => ({
-    opacity: textOpacity.value }));
+    opacity: textOpacity.value,
+  }));
 
   const isLoading = state === "loading" || state === "success";
   const isDisabled = isLoading;
@@ -125,9 +128,12 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: DS_SPACING.sm,
-    ...DS_SHADOW.button },
+    ...DS_SHADOW.button,
+  },
   buttonText: {
     color: "#FFFFFF",
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.bold as any,
-    textAlign: "center" } });
+    textAlign: "center",
+  },
+});

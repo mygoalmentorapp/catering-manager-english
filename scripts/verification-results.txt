@@ -1,0 +1,15 @@
+== VERIFICATION RESULTS ==
+
+== 5a. paywall_placements columns (10 rows) ==
+✓ id - bigint, NOT NULL
+✓ app_key - text, NOT NULL
+✓ app_language - text, NOT NULL, default 'he'
+✓ placement_key - text, NOT NULL
+✓ display_name - text, NOT NULL (was "name")
+✓ description - text, NULLABLE, default ''
+✓ is_enabled - boolean, NOT NULL, default true (was "is_active")
+✓ created_at - timestamptz, NOT NULL, default now()
+✓ updated_at - timestamptz, NOT NULL, default now()
+✓ default_offering_id - text, NULLABLE, default '' (NEW column)
+
+All 10 columns match code expectations.

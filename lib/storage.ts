@@ -47,14 +47,14 @@ export async function setPrimaryColor(color: string): Promise<void> {
 }
 
 const DEFAULT_UNITS: UnitDef[] = [
-  { singular: "kg", plural: "kg" },
-  { singular: "g", plural: "g" },
-  { singular: "liter", plural: "liter" },
-  { singular: "ml", plural: "ml" },
-  { singular: "Unit", plural: "Units" },
-  { singular: "cup", plural: "cups" },
-  { singular: "tbsp", plural: "tbsp" },
-  { singular: "can", plural: "cans" },
+  { singular: "קילו", plural: "קילו" },
+  { singular: "גרם", plural: "גרם" },
+  { singular: "ליטר", plural: "ליטר" },
+  { singular: "מ\"ל", plural: "מ\"ל" },
+  { singular: "יחידה", plural: "יחידות" },
+  { singular: "כוס", plural: "כוסות" },
+  { singular: "כף", plural: "כפות" },
+  { singular: "קופסא", plural: "קופסאות" },
 ];
 
 // ============ Migration ============
@@ -132,7 +132,7 @@ export async function runMigrations(): Promise<void> {
               const product = productMap.get(op.productId);
               const row: any = {
                 productId: op.productId,
-                productNameAtAdd: op.productName || (product?.name ?? "Unknown product"),
+                productNameAtAdd: op.productName || (product?.name ?? "מוצר לא ידוע"),
                 customerPriceAtAdd: product?.customerPrice ?? 0,
                 costAtAdd: 0,
                 markupTypeAtAdd: product?.markupType ?? "percent",
@@ -140,7 +140,8 @@ export async function runMigrations(): Promise<void> {
                 ingredientsSnapshotAtAdd: [],
                 productUpdatedAtAtAdd: product?.updatedAt ?? now,
                 lastHandledProductChangeAt: product?.updatedAt ?? now,
-                quantity: op.quantity ?? 1 };
+                quantity: op.quantity ?? 1,
+              };
               // Build snapshot from product if available
               if (product) {
                 const snaps: any[] = [];
@@ -191,7 +192,8 @@ export async function runMigrations(): Promise<void> {
             totalQty: r.quantity,
             sourceBreakdown: {},
             manualDelta: 0,
-            finalQty: r.quantity }));
+            finalQty: r.quantity,
+          }));
           delete list.originalRows;
           delete list.editedRows;
           changed = true;
@@ -219,16 +221,19 @@ export async function getProducts(): Promise<Product[]> {
       ...p,
       categories: (p.categories ?? []).map((cat: any) => ({
         ...cat,
-        items: (cat.items ?? []).map((item: any) => ({ ...item, price: item.price ?? 0 })) })),
+        items: (cat.items ?? []).map((item: any) => ({ ...item, price: item.price ?? 0 })),
+      })),
       baseIngredients: (p.baseIngredients ?? []).map((ing: any) => ({ ...ing, price: ing.price ?? 0 })),
       spices: (p.spices ?? []).map((s: any) => ({
         ...s,
         quantity: s.quantity ?? 0,
         unit: s.unit ?? "",
-        price: s.price ?? 0 })),
+        price: s.price ?? 0,
+      })),
       customerPrice: p.customerPrice ?? 0,
       markupType: (p as any).markupType ?? "percent",
-      markupValue: (p as any).markupValue ?? 0 }));
+      markupValue: (p as any).markupValue ?? 0,
+    }));
   } catch {
     return [];
   }
@@ -246,7 +251,7 @@ export async function addProduct(
     (p) => p.name.trim().toLowerCase() === product.name.trim().toLowerCase()
   );
   if (exists) {
-    throw new Error("A product with this name already exists");
+    throw new Error("כבר קיים מוצר בשם זה");
   }
   const now = new Date().toISOString();
   const newProduct: Product = {
@@ -254,7 +259,8 @@ export async function addProduct(
     categories: product.categories ?? [],
     id: generateId(),
     createdAt: now,
-    updatedAt: now };
+    updatedAt: now,
+  };
   products.push(newProduct);
   await saveProducts(products);
   return newProduct;
@@ -266,7 +272,7 @@ export async function updateProduct(
 ): Promise<Product> {
   const products = await getProducts();
   const index = products.findIndex((p) => p.id === id);
-  if (index === -1) throw new Error("Product not found");
+  if (index === -1) throw new Error("מוצר לא נמצא");
 
   const nameExists = products.some(
     (p) =>
@@ -274,13 +280,14 @@ export async function updateProduct(
       p.name.trim().toLowerCase() === updates.name.trim().toLowerCase()
   );
   if (nameExists) {
-    throw new Error("A product with this name already exists");
+    throw new Error("כבר קיים מוצר בשם זה");
   }
 
   const updated: Product = {
     ...products[index],
     ...updates,
-    updatedAt: new Date().toISOString() };
+    updatedAt: new Date().toISOString(),
+  };
   products[index] = updated;
   await saveProducts(products);
   return updated;
@@ -293,7 +300,7 @@ export async function deleteProduct(id: string): Promise<void> {
   );
   if (isUsed) {
     throw new Error(
-      "Cannot delete this product because it is linked to existing orders"
+      "לא ניתן למחוק מוצר זה מכיוון שהוא משויך להזמנות קיימות"
     );
   }
   const products = await getProducts();
@@ -316,7 +323,9 @@ export async function getOrders(): Promise<Order[]> {
         products: (rest.products ?? []).map((p: any) => ({
           ...p,
           ingredientsSnapshotAtAdd: p.ingredientsSnapshotAtAdd ?? [],
-          lastHandledProductChangeAt: p.lastHandledProductChangeAt ?? p.productUpdatedAtAtAdd ?? "" })) } as Order;
+          lastHandledProductChangeAt: p.lastHandledProductChangeAt ?? p.productUpdatedAtAtAdd ?? "",
+        })),
+      } as Order;
     });
   } catch {
     return [];
@@ -336,7 +345,8 @@ export async function addOrder(
     ...order,
     id: generateId(),
     createdAt: now,
-    updatedAt: now };
+    updatedAt: now,
+  };
   orders.push(newOrder);
   await saveOrders(orders);
   return newOrder;
@@ -348,12 +358,13 @@ export async function updateOrder(
 ): Promise<Order> {
   const orders = await getOrders();
   const index = orders.findIndex((o) => o.id === id);
-  if (index === -1) throw new Error("Order not found");
+  if (index === -1) throw new Error("הזמנה לא נמצאה");
 
   const updated: Order = {
     ...orders[index],
     ...updates,
-    updatedAt: new Date().toISOString() };
+    updatedAt: new Date().toISOString(),
+  };
   orders[index] = updated;
   await saveOrders(orders);
   return updated;
@@ -372,7 +383,7 @@ export async function deleteOrder(id: string): Promise<void> {
 export async function archiveOrder(id: string): Promise<void> {
   const orders = await getOrders();
   const index = orders.findIndex((o) => o.id === id);
-  if (index === -1) throw new Error("Order not found");
+  if (index === -1) throw new Error("הזמנה לא נמצאה");
 
   const order = orders[index];
 
@@ -404,7 +415,8 @@ export async function archiveOrder(id: string): Promise<void> {
     ...order,
     status: "archived",
     archivedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString() };
+    updatedAt: new Date().toISOString(),
+  };
   await saveOrders(orders);
 }
 
@@ -415,14 +427,15 @@ export async function archiveOrder(id: string): Promise<void> {
 export async function unarchiveOrder(id: string): Promise<Order> {
   const orders = await getOrders();
   const index = orders.findIndex((o) => o.id === id);
-  if (index === -1) throw new Error("Order not found");
+  if (index === -1) throw new Error("הזמנה לא נמצאה");
 
   const updated: Order = {
     ...orders[index],
     status: "open",
     archivedAt: undefined,
     shoppingListId: undefined,
-    updatedAt: new Date().toISOString() };
+    updatedAt: new Date().toISOString(),
+  };
   orders[index] = updated;
   await saveOrders(orders);
   return updated;
@@ -471,10 +484,10 @@ export async function getUnits(): Promise<UnitDef[]> {
 
 export async function addUnit(unit: UnitDef): Promise<UnitDef[]> {
   const units = await getUnits();
-  if (!unit.singular.trim()) throw new Error("Please enter a unit name");
-  if (!unit.plural.trim()) throw new Error("Please also enter the plural form");
+  if (!unit.singular.trim()) throw new Error("יש להזין שם יחידה");
+  if (!unit.plural.trim()) throw new Error("יש להזין גם צורת רבים");
   if (units.some((u) => u.singular === unit.singular.trim())) {
-    throw new Error("This unit already exists");
+    throw new Error("יחידה זו כבר קיימת");
   }
   const updated = [...units, { singular: unit.singular.trim(), plural: unit.plural.trim() }];
   await AsyncStorage.setItem(UNITS_KEY, JSON.stringify(updated));
@@ -502,14 +515,15 @@ export async function getCustomCategories(): Promise<CustomCategory[]> {
 export async function addCustomCategory(name: string): Promise<CustomCategory[]> {
   const categories = await getCustomCategories();
   const trimmed = name.trim();
-  if (!trimmed) throw new Error("Please enter a category name");
+  if (!trimmed) throw new Error("יש להזין שם קטגוריה");
   if (categories.some((c) => c.name.trim().toLowerCase() === trimmed.toLowerCase())) {
-    throw new Error("This category already exists");
+    throw new Error("קטגוריה זו כבר קיימת");
   }
   const newCat: CustomCategory = {
     id: generateId(),
     name: trimmed,
-    createdAt: new Date().toISOString() };
+    createdAt: new Date().toISOString(),
+  };
   const updated = [...categories, newCat];
   await AsyncStorage.setItem(CATEGORIES_KEY, JSON.stringify(updated));
   return updated;
@@ -559,7 +573,8 @@ export async function addSavedShoppingList(
     ...list,
     id: generateId(),
     createdAt: now,
-    updatedAt: now };
+    updatedAt: now,
+  };
   lists.push(newList);
   await saveSavedShoppingLists(lists);
   return newList;
@@ -571,11 +586,12 @@ export async function updateSavedShoppingList(
 ): Promise<SavedShoppingList> {
   const lists = await getAllSavedShoppingLists();
   const index = lists.findIndex((l) => l.id === id);
-  if (index === -1) throw new Error("Shopping list not found");
+  if (index === -1) throw new Error("רשימת קניות לא נמצאה");
   const updated: SavedShoppingList = {
     ...lists[index],
     ...updates,
-    updatedAt: new Date().toISOString() };
+    updatedAt: new Date().toISOString(),
+  };
   lists[index] = updated;
   await saveSavedShoppingLists(lists);
   return updated;
@@ -623,7 +639,8 @@ export async function exportAllData(): Promise<ExportData> {
     try {
       if (Platform.OS !== "web") {
         const base64 = await FileSystem.readAsStringAsync(logoForExport, {
-          encoding: FileSystem.EncodingType.Base64 });
+          encoding: FileSystem.EncodingType.Base64,
+        });
         logoForExport = `data:image/png;base64,${base64}`;
       }
     } catch (e) {
@@ -642,15 +659,16 @@ export async function exportAllData(): Promise<ExportData> {
     businessName: businessName || undefined,
     businessLogo: logoForExport,
     primaryColor: primaryColor !== DEFAULT_PRIMARY_COLOR ? primaryColor : undefined,
-    savedShoppingLists };
+    savedShoppingLists,
+  };
 }
 
 export async function importAllData(data: ExportData): Promise<void> {
   if (!data || !data.version) {
-    throw new Error("Invalid file");
+    throw new Error("קובץ לא תקין");
   }
   if (!Array.isArray(data.products) || !Array.isArray(data.orders)) {
-    throw new Error("Invalid file — missing data");
+    throw new Error("קובץ לא תקין — חסרים נתונים");
   }
   await AsyncStorage.setItem(PRODUCTS_KEY, JSON.stringify(data.products));
   await AsyncStorage.setItem(ORDERS_KEY, JSON.stringify(data.orders));
@@ -673,7 +691,8 @@ export async function importAllData(data: ExportData): Promise<void> {
         const base64Data = logoUri.split(",")[1] || "";
         const filePath = `${FileSystem.documentDirectory}imported_logo.png`;
         await FileSystem.writeAsStringAsync(filePath, base64Data, {
-          encoding: FileSystem.EncodingType.Base64 });
+          encoding: FileSystem.EncodingType.Base64,
+        });
         logoUri = filePath;
       } catch (e) {
         console.warn("Failed to save imported logo to file:", e);

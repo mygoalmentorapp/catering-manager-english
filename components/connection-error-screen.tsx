@@ -4,8 +4,8 @@
  *
  * This screen does NOT grant access to the app but does NOT sign the user out.
  * Shows a clear message in Hebrew with:
- * - "Try again" button (manual retry)
- * - "Sign out" button
+ * - "נסה שוב" button (manual retry)
+ * - "התנתק" button
  * - Auto-retry every 10 seconds
  *
  * Variants:
@@ -29,18 +29,22 @@ interface ConnectionErrorScreenProps {
 const VARIANT_CONTENT = {
   network: {
     icon: "📡",
-    title: "No server connection",
-    message: "Unable to verify the session.\nCheck your internet connection and try again." },
+    title: "אין חיבור לשרת",
+    message: "לא ניתן לאמת את הסשן.\nבדוק את חיבור האינטרנט ונסה שוב.",
+  },
   profile: {
     icon: "⚠️",
-    title: "Temporary issue loading account",
-    message: "There was a temporary issue loading your account.\nPlease try again in a moment." } };
+    title: "בעיה זמנית בטעינת החשבון",
+    message: "הייתה בעיה זמנית בטעינת החשבון.\nנסה שוב בעוד רגע.",
+  },
+};
 
 export function ConnectionErrorScreen({
   onRetry,
   onLogout,
   isRetrying,
-  variant = "network" }: ConnectionErrorScreenProps) {
+  variant = "network",
+}: ConnectionErrorScreenProps) {
   const content = VARIANT_CONTENT[variant];
 
   // Auto-retry every 10 seconds
@@ -73,7 +77,7 @@ export function ConnectionErrorScreen({
         <Text style={s.message}>{content.message}</Text>
 
         {/* Auto-retry indicator */}
-        <Text style={s.autoRetryText}>Retrying automatically every 10 seconds...</Text>
+        <Text style={s.autoRetryText}>מנסה אוטומטית כל 10 שניות...</Text>
 
         {/* Retry button */}
         <Pressable
@@ -88,7 +92,7 @@ export function ConnectionErrorScreen({
           {isRetrying ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={s.retryButtonText}>Try again</Text>
+            <Text style={s.retryButtonText}>נסה שוב</Text>
           )}
         </Pressable>
 
@@ -100,7 +104,7 @@ export function ConnectionErrorScreen({
             pressed && { opacity: 0.8 },
           ]}
         >
-          <Text style={s.logoutButtonText}>Sign out</Text>
+          <Text style={s.logoutButtonText}>התנתק</Text>
         </Pressable>
       </View>
     </View>
@@ -113,7 +117,8 @@ const s = StyleSheet.create({
     backgroundColor: DS_COLORS.background,
     alignItems: "center",
     justifyContent: "center",
-    padding: DS_SPACING.lg },
+    padding: DS_SPACING.lg,
+  },
   card: {
     backgroundColor: DS_COLORS.card,
     borderRadius: DS_RADIUS.lg,
@@ -125,28 +130,34 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 3 },
+    elevation: 3,
+  },
   iconContainer: {
-    marginBottom: DS_SPACING.md },
+    marginBottom: DS_SPACING.md,
+  },
   icon: {
-    fontSize: 48 },
+    fontSize: 48,
+  },
   title: {
     fontSize: DS_FONT.titleCard,
     fontWeight: "700",
     color: DS_COLORS.textPrimary,
     textAlign: "center",
-    marginBottom: DS_SPACING.sm },
+    marginBottom: DS_SPACING.sm,
+  },
   message: {
     fontSize: DS_FONT.body,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
     lineHeight: 24,
-    marginBottom: DS_SPACING.sm },
+    marginBottom: DS_SPACING.sm,
+  },
   autoRetryText: {
     fontSize: DS_FONT.caption,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
-    marginBottom: DS_SPACING.lg },
+    marginBottom: DS_SPACING.lg,
+  },
   retryButton: {
     backgroundColor: DS_COLORS.accent,
     borderRadius: DS_RADIUS.md,
@@ -154,11 +165,13 @@ const s = StyleSheet.create({
     paddingHorizontal: 32,
     width: "100%",
     alignItems: "center",
-    marginBottom: DS_SPACING.sm },
+    marginBottom: DS_SPACING.sm,
+  },
   retryButtonText: {
     color: "#fff",
     fontSize: DS_FONT.body,
-    fontWeight: "600" },
+    fontWeight: "600",
+  },
   logoutButton: {
     borderRadius: DS_RADIUS.md,
     paddingVertical: 14,
@@ -166,8 +179,11 @@ const s = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: DS_COLORS.border },
+    borderColor: DS_COLORS.border,
+  },
   logoutButtonText: {
     color: DS_COLORS.textSecondary,
     fontSize: DS_FONT.body,
-    fontWeight: "500" } });
+    fontWeight: "500",
+  },
+});

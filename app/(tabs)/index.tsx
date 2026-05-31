@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from "react";
+import React, { useRef, useCallback, useEffect } from "react";
 import { Text, View, TouchableOpacity, StyleSheet, Animated, Image, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -10,43 +10,51 @@ import {
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
-  DS_SHADOW } from "@/lib/design-system";
+  DS_SHADOW,
+} from "@/lib/design-system";
 import { usePastDueCheck } from "@/hooks/use-past-due-check";
 import { GlobalMessageBanner } from "@/components/global-message-banner";
 import { useThemeContext } from "@/lib/theme-provider";
+import { setOneSignalScreenTrigger } from "@/lib/onesignal-bootstrap";
 
 
 const menuItems = [
   {
     route: "/products",
     icon: "inventory-2" as const,
-    title: "Menu data entry",
-    subtitle: "Product planning and management" },
+    title: "הזנת נתוני תפריט",
+    subtitle: "תכנון וניהול מוצרים",
+  },
   {
     route: "/order",
     icon: "add-shopping-cart" as const,
-    title: "Create order",
-    subtitle: "Plan order for customer" },
+    title: "יצירת הזמנה",
+    subtitle: "תכנון הזמנה ללקוח",
+  },
   {
     route: "/orders",
     icon: "list-alt" as const,
-    title: "Orders list",
-    subtitle: "Manage orders and generate shopping lists" },
+    title: "רשימת הזמנות",
+    subtitle: "ניהול הזמנות והפקת רשימת קניות",
+  },
   {
     route: "/shopping-lists",
     icon: "shopping-cart" as const,
-    title: "Shopping lists",
-    subtitle: "Manage shopping lists" },
+    title: "רשימות קניות",
+    subtitle: "ניהול רשימות קניות",
+  },
   {
     route: "/settings",
     icon: "settings" as const,
-    title: "Settings",
-    subtitle: "Business name, logo, and customization" },
+    title: "הגדרות",
+    subtitle: "שם העסק, לוגו והתאמות",
+  },
 ];
 
 function MenuCard({
   item,
-  onPress }: {
+  onPress,
+}: {
   item: (typeof menuItems)[0];
   onPress: () => void;
 }) {
@@ -59,14 +67,16 @@ function MenuCard({
     Animated.timing(scaleAnim, {
       toValue: 0.97,
       duration: 80,
-      useNativeDriver: true }).start();
+      useNativeDriver: true,
+    }).start();
   }, [scaleAnim]);
 
   const handlePressOut = useCallback(() => {
     Animated.timing(scaleAnim, {
       toValue: 1,
       duration: 150,
-      useNativeDriver: true }).start();
+      useNativeDriver: true,
+    }).start();
   }, [scaleAnim]);
 
   return (
@@ -101,7 +111,7 @@ function MenuCard({
   );
 }
 
-const DEFAULT_BUSINESS_NAME = "Your business name";
+const DEFAULT_BUSINESS_NAME = "שם העסק שלך";
 
 export default function HomeScreen() {
   const { colorScheme } = useThemeContext();
@@ -116,14 +126,19 @@ export default function HomeScreen() {
     savedShoppingLists,
     loading,
     archiveOrder,
-    deleteSavedShoppingList } = useData();
+    deleteSavedShoppingList,
+  } = useData();
 
   usePastDueCheck({
     orders,
     savedShoppingLists,
     loading,
     archiveOrder,
-    deleteSavedShoppingList });
+    deleteSavedShoppingList,
+  });
+
+  // OneSignal in-app message trigger
+  useEffect(() => { setOneSignalScreenTrigger("home"); }, []);
 
   const displayName = businessName.trim() || DEFAULT_BUSINESS_NAME;
 
@@ -169,11 +184,11 @@ export default function HomeScreen() {
           >
             <Text style={styles.headerTitle}>{displayName}</Text>
             {!businessName.trim() && (
-              <Text style={styles.headerTitleHint}>Tap to update business name</Text>
+              <Text style={styles.headerTitleHint}>לחץ לעדכון שם העסק</Text>
             )}
           </TouchableOpacity>
           <Text style={styles.headerSubtitle}>
-            Product management, Orders and Shopping lists
+            ניהול מוצרים, הזמנות ורשימות קניות
           </Text>
         </View>
 
@@ -197,13 +212,16 @@ const LOGO_SIZE = 80;
 function _make_styles() { return StyleSheet.create({
   scrollContent: {
     gap: DS_SPACING.xxl,
-    paddingBottom: DS_SPACING.xxl },
+    paddingBottom: DS_SPACING.xxl + 32,
+  },
   header: {
     alignItems: "center",
     gap: DS_SPACING.sm,
-    paddingTop: DS_SPACING.md },
+    paddingTop: DS_SPACING.md,
+  },
   logoWrap: {
-    marginBottom: DS_SPACING.sm },
+    marginBottom: DS_SPACING.sm,
+  },
   logoCircle: {
     width: LOGO_SIZE,
     height: LOGO_SIZE,
@@ -214,40 +232,49 @@ function _make_styles() { return StyleSheet.create({
     borderColor: DS_COLORS.accent,
     alignItems: "center",
     justifyContent: "center",
-    ...DS_SHADOW.card },
+    ...DS_SHADOW.card,
+  },
   logoImage: {
     width: LOGO_SIZE - 5,
     height: LOGO_SIZE - 5,
-    borderRadius: (LOGO_SIZE - 5) / 2 },
+    borderRadius: (LOGO_SIZE - 5) / 2,
+  },
   headerTitleWrap: {
-    alignItems: "center" },
+    alignItems: "center",
+  },
   headerTitle: {
     fontSize: 28,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
-    textAlign: "center" },
+    textAlign: "center",
+  },
   headerTitleHint: {
     fontSize: DS_FONT.caption,
     color: DS_COLORS.accent,
     fontWeight: DS_WEIGHT.bold,
     textAlign: "center",
-    marginTop: 2 },
+    marginTop: 2,
+  },
   headerSubtitle: {
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.regular,
     color: DS_COLORS.textSecondary,
-    textAlign: "center" },
+    textAlign: "center",
+  },
   cardsContainer: {
-    gap: DS_SPACING.lg },
+    gap: DS_SPACING.lg,
+  },
   card: {
     backgroundColor: DS_COLORS.card,
     borderRadius: DS_RADIUS.lg,
     padding: DS_SPACING.xl,
-    ...DS_SHADOW.card },
+    ...DS_SHADOW.card,
+  },
   cardContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: DS_SPACING.lg
+    gap: DS_SPACING.lg,
+    direction: "rtl",
   },
   iconContainer: {
     width: 48,
@@ -255,18 +282,23 @@ function _make_styles() { return StyleSheet.create({
     borderRadius: DS_RADIUS.md,
     backgroundColor: DS_COLORS.accentLight,
     alignItems: "center",
-    justifyContent: "center" },
+    justifyContent: "center",
+  },
   textContainer: {
     flex: 1,
     alignItems: "flex-start",
-    gap: 2 },
+    gap: 2,
+  },
   cardTitle: {
     fontSize: DS_FONT.titleCard,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
-    textAlign: "left" },
+    textAlign: "right",
+  },
   cardSubtitle: {
     fontSize: DS_FONT.bodySmall,
     fontWeight: DS_WEIGHT.regular,
     color: DS_COLORS.textSecondary,
-    textAlign: "left" } }); }
+    textAlign: "right",
+  },
+}); }

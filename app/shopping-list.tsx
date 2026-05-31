@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
+import { setOneSignalScreenTrigger } from "@/lib/onesignal-bootstrap";
 import {
   Text,
   View,
@@ -7,14 +8,16 @@ import {
   StyleSheet,
   Linking,
   Alert,
-  Share } from "react-native";
+  Share,
+} from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useData } from "@/lib/data-context";
 import {
   generateShoppingList,
-  formatShoppingListText } from "@/lib/shopping-list";
+  formatShoppingListText,
+} from "@/lib/shopping-list";
 import type { ShoppingListItem } from "@/lib/types";
 import {
   DS_COLORS,
@@ -22,12 +25,14 @@ import {
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
-  DS_SHADOW } from "@/lib/design-system";
+  DS_SHADOW,
+} from "@/lib/design-system";
 import { useThemeContext } from "@/lib/theme-provider";
 
 function ItemRow({
   item,
-  isLast }: {
+  isLast,
+}: {
   item: ShoppingListItem;
   isLast: boolean;
 }) {
@@ -51,7 +56,8 @@ function ItemRow({
 function SectionCard({
   emoji,
   title,
-  items }: {
+  items,
+}: {
   emoji: string;
   title: string;
   items: ShoppingListItem[];
@@ -82,9 +88,11 @@ function SectionCard({
 export default function ShoppingListScreen() {
   const { colorScheme } = useThemeContext();
   const s = React.useMemo(() => _make_s(), [DS_COLORS.accent, colorScheme]);
-
   const router = useRouter();
   const params = useLocalSearchParams<{ ids: string }>();
+
+  // OneSignal in-app message trigger
+  useEffect(() => { setOneSignalScreenTrigger("shopping_list"); }, []);
   const { orders, products } = useData();
 
   const selectedOrders = useMemo(() => {
@@ -116,7 +124,7 @@ export default function ShoppingListScreen() {
       try {
         await Share.share({ message: formattedText });
       } catch {
-        Alert.alert("Error", "Unable to share right now");
+        Alert.alert("שגיאה", "לא ניתן לשתף כרגע");
       }
     }
   };
@@ -125,7 +133,7 @@ export default function ShoppingListScreen() {
     try {
       await Share.share({ message: formattedText });
     } catch {
-      Alert.alert("Error", "Unable to share right now");
+      Alert.alert("שגיאה", "לא ניתן לשתף כרגע");
     }
   };
 
@@ -143,7 +151,7 @@ export default function ShoppingListScreen() {
         {/* Header */}
         <View style={s.header}>
           <View style={{ width: 40 }} />
-          <Text style={s.headerTitle}>Shopping list</Text>
+          <Text style={s.headerTitle}>רשימת קניות</Text>
           <TouchableOpacity
             onPress={() => router.back()}
             style={s.headerBtn}
@@ -161,21 +169,21 @@ export default function ShoppingListScreen() {
           <View style={s.badge}>
             <MaterialIcons name="receipt-long" size={16} color={DS_COLORS.accent} />
             <Text style={s.badgeText}>
-              {shoppingList.orderCount} Orders
+              {shoppingList.orderCount} הזמנות
             </Text>
           </View>
 
           {/* Base Ingredients */}
           <SectionCard
             emoji="🛒"
-            title="Base ingredients"
+            title="מרכיבי בסיס"
             items={shoppingList.baseIngredients}
           />
 
           {/* Spices */}
           <SectionCard
             emoji="🧂"
-            title="Spices"
+            title="תבלינים"
             items={shoppingList.spices}
           />
 
@@ -194,7 +202,7 @@ export default function ShoppingListScreen() {
               <View style={s.emptyIconCircle}>
                 <MaterialIcons name="shopping-cart" size={40} color={DS_COLORS.accent} />
               </View>
-              <Text style={s.emptyTitle}>The shopping list is empty</Text>
+              <Text style={s.emptyTitle}>רשימת הקניות ריקה</Text>
             </View>
           )}
         </ScrollView>
@@ -208,7 +216,7 @@ export default function ShoppingListScreen() {
               activeOpacity={0.8}
             >
               <MaterialIcons name="send" size={20} color={DS_COLORS.white} />
-              <Text style={s.whatsappBtnText}>Share via WhatsApp</Text>
+              <Text style={s.whatsappBtnText}>שתף ב-WhatsApp</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleShare}
@@ -216,7 +224,7 @@ export default function ShoppingListScreen() {
               activeOpacity={0.8}
             >
               <MaterialIcons name="share" size={20} color={DS_COLORS.accent} />
-              <Text style={s.shareBtnText}>Share</Text>
+              <Text style={s.shareBtnText}>שתף</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -237,7 +245,7 @@ function _make_s() { return StyleSheet.create({
     paddingHorizontal: DS_SPACING.xl,
     paddingVertical: DS_SPACING.md,
     backgroundColor: DS_COLORS.background,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   headerBtn: {
     width: 40,
@@ -260,7 +268,7 @@ function _make_s() { return StyleSheet.create({
   },
   badge: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     gap: DS_SPACING.xs,
     alignSelf: "flex-end",
@@ -283,7 +291,7 @@ function _make_s() { return StyleSheet.create({
   },
   sectionHeader: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     gap: DS_SPACING.sm,
     marginBottom: DS_SPACING.xs,
@@ -306,7 +314,7 @@ function _make_s() { return StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     paddingVertical: DS_SPACING.md,
   },
   ingredientRowBorder: {
@@ -360,12 +368,12 @@ function _make_s() { return StyleSheet.create({
   },
   whatsappBtn: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: DS_SPACING.lg,
     borderRadius: DS_RADIUS.md,
-    backgroundColor: "#25D366",
+    backgroundColor: DS_COLORS.accent,
     gap: DS_SPACING.sm,
     ...DS_SHADOW.button,
   },
@@ -376,7 +384,7 @@ function _make_s() { return StyleSheet.create({
   },
   shareBtn: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: DS_SPACING.md,

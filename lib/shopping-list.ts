@@ -64,20 +64,23 @@ export function generateShoppingList(
   const roundItems = (items: ShoppingListItem[]) =>
     items.map((item) => ({
       ...item,
-      quantity: Math.round(item.quantity * 10) / 10 }));
+      quantity: Math.round(item.quantity * 10) / 10,
+    }));
 
   const categories: ShoppingListCategory[] = [];
   for (const [catName, catMap] of categoryMaps) {
     categories.push({
       categoryName: catName,
-      items: roundItems(Array.from(catMap.values())) });
+      items: roundItems(Array.from(catMap.values())),
+    });
   }
 
   return {
     baseIngredients: roundItems(Array.from(ingredientMap.values())),
     spices: roundItems(Array.from(spiceMap.values())),
     categories,
-    orderCount: orders.length };
+    orderCount: orders.length,
+  };
 }
 
 function accumulateItem(
@@ -95,7 +98,8 @@ function accumulateItem(
     map.set(key, {
       name: item.name.trim(),
       quantity: calculatedQty,
-      unit: item.unit.trim() });
+      unit: item.unit.trim(),
+    });
   }
 }
 
@@ -103,17 +107,17 @@ function accumulateItem(
  * Format shopping list as a readable text string for sharing
  */
 export function formatShoppingListText(list: ShoppingList): string {
-  let text = `Shopping List — ${list.orderCount} orders\n\n`;
+  let text = `רשימת קניות — ${list.orderCount} הזמנות\n\n`;
 
   if (list.baseIngredients.length > 0) {
-    text += "🛒 Base ingredients:\n";
+    text += "🛒 מרכיבי בסיס:\n";
     for (const item of list.baseIngredients) {
       text += `${item.name} — ${item.quantity} ${item.unit}\n`;
     }
   }
 
   if (list.spices.length > 0) {
-    text += "\n🧂 Spices:\n";
+    text += "\n🧂 תבלינים:\n";
     for (const item of list.spices) {
       if (item.quantity > 0 && item.unit) {
         text += `${item.name} — ${item.quantity} ${item.unit}\n`;
@@ -148,7 +152,8 @@ export function shoppingListToRows(list: ShoppingList): ShoppingListRow[] {
       name: item.name,
       quantity: item.quantity,
       unit: item.unit,
-      category: "base" });
+      category: "base",
+    });
   }
 
   for (const item of list.spices) {
@@ -157,7 +162,8 @@ export function shoppingListToRows(list: ShoppingList): ShoppingListRow[] {
       name: item.name,
       quantity: item.quantity,
       unit: item.unit,
-      category: "spice" });
+      category: "spice",
+    });
   }
 
   for (const cat of list.categories) {
@@ -167,7 +173,8 @@ export function shoppingListToRows(list: ShoppingList): ShoppingListRow[] {
         name: item.name,
         quantity: item.quantity,
         unit: item.unit,
-        category: cat.categoryName });
+        category: cat.categoryName,
+      });
     }
   }
 

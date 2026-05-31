@@ -24,7 +24,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert } from "react-native";
+  Alert,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDevice } from "@/lib/device-context";
 import { useAuth } from "@/lib/auth-context";
@@ -83,7 +84,7 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
     try {
       const result = await requestCodeMutation.mutateAsync({
         deviceUuid,
-        lang: "en" });
+      });
 
       if (result.success) {
         setVerifyStep("code_sent");
@@ -101,7 +102,7 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (err: any) {
-      setError("Error sending the code. Please try again.");
+      setError("שגיאה בשליחת הקוד. נסה שוב.");
       console.error("[DeviceGate] Send code error:", err);
     } finally {
       setIsSending(false);
@@ -118,7 +119,7 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
       const result = await verifyCodeMutation.mutateAsync({
         deviceUuid,
         code,
-        lang: "en" });
+      });
 
       if (result.success) {
         if (Platform.OS !== "web") {
@@ -140,7 +141,7 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (err: any) {
-      setError("Error verifying the code. Please try again.");
+      setError("שגיאה באימות הקוד. נסה שוב.");
       console.error("[DeviceGate] Verify code error:", err);
     } finally {
       setIsVerifying(false);
@@ -194,14 +195,14 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
                 <MaterialIcons name="smartphone" size={48} color={DS_COLORS.accent} />
               </View>
 
-              <Text style={s.title}>Device not recognized</Text>
+              <Text style={s.title}>מכשיר לא מזוהה</Text>
 
               <Text style={s.description}>
-                Your account is currently active on another device.
+                החשבון שלך פעיל כרגע במכשיר אחר.
                 {"\n\n"}
-                If you want to activate the account on this device, please note: only data that was synced to the cloud will be available. Data saved only on the old device that was not synced cannot be recovered.
+                אם ברצונך להפעיל את החשבון במכשיר הנוכחי, שים לב: רק נתונים שסונכרנו לענן יהיו זמינים. נתונים שנשמרו רק במכשיר הישן ולא סונכרנו — לא ניתן יהיה לשחזר.
                 {"\n\n"}
-                Before you continue, We recommend opening the app on the old device and verifying in settings that all data is synced.
+                לפני שתמשיך, מומלץ לפתוח את האפליקציה במכשיר הישן ולוודא בהגדרות שכל הנתונים מסונכרנים.
               </Text>
 
               <View style={s.emailBox}>
@@ -224,7 +225,7 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
                 ]}
               >
                 <MaterialIcons name="send" size={20} color="#FFF" style={{ marginLeft: 8, transform: [{ scaleX: -1 }] }} />
-                <Text style={s.primaryButtonText}>Send verification code</Text>
+                <Text style={s.primaryButtonText}>שלח קוד אימות</Text>
               </Pressable>
 
               <Pressable
@@ -234,7 +235,7 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
                   pressed && { opacity: 0.6 },
                 ]}
               >
-                <Text style={s.linkButtonText}>Sign in with a different account</Text>
+                <Text style={s.linkButtonText}>התחבר עם חשבון אחר</Text>
               </Pressable>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -254,25 +255,25 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
               <MaterialIcons name="warning" size={48} color={DS_COLORS.warning} />
             </View>
 
-            <Text style={s.title}>Attention before you continue</Text>
+            <Text style={s.title}>שים לב לפני שתמשיך</Text>
 
             <View style={s.warningCard}>
               <View style={s.warningRow}>
                 <MaterialIcons name="cloud-off" size={22} color={DS_COLORS.warning} />
                 <Text style={s.warningText}>
-                  After the transfer, the previous device will be disconnected.
+                  לאחר ההפעלה, המכשיר הקודם ינותק.
                 </Text>
               </View>
               <View style={s.warningRow}>
                 <MaterialIcons name="sync-problem" size={22} color={DS_COLORS.warning} />
                 <Text style={s.warningText}>
-                  Data that was not synced to the cloud from the previous device cannot be recovered.
+                  נתונים שלא סונכרנו לענן מהמכשיר הקודם — לא ניתן יהיה לשחזר.
                 </Text>
               </View>
               <View style={s.warningRow}>
                 <MaterialIcons name="info-outline" size={22} color={DS_COLORS.accent} />
                 <Text style={s.warningText}>
-                  We recommend opening the app on the old device and verifying in settings that all data is synced.
+                  מומלץ לפתוח את האפליקציה במכשיר הישן ולוודא בהגדרות שכל הנתונים מסונכרנים.
                 </Text>
               </View>
             </View>
@@ -291,7 +292,7 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
               ) : (
                 <>
                   <MaterialIcons name="send" size={20} color="#FFF" style={{ marginLeft: 8, transform: [{ scaleX: -1 }] }} />
-                  <Text style={s.primaryButtonText}>Got it, Send verification code</Text>
+                  <Text style={s.primaryButtonText}>הבנתי, שלח קוד אימות</Text>
                 </>
               )}
             </Pressable>
@@ -305,7 +306,7 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
               ]}
             >
               <MaterialIcons name="logout" size={20} color={DS_COLORS.error} style={{ marginLeft: 8 }} />
-              <Text style={[s.secondaryButtonText, { color: DS_COLORS.error }]}>Cancel device transfer</Text>
+              <Text style={[s.secondaryButtonText, { color: DS_COLORS.error }]}>בטל העברת מכשיר</Text>
             </Pressable>
           </ScrollView>
         </SafeAreaView>
@@ -328,10 +329,10 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
                 <MaterialIcons name="mark-email-read" size={48} color={DS_COLORS.accent} />
               </View>
 
-              <Text style={s.title}>Enter the verification code</Text>
+              <Text style={s.title}>הזן את קוד האימות</Text>
 
               <Text style={s.description}>
-                We sent a 6-digit verification code to:
+                שלחנו קוד אימות בן 6 ספרות לכתובת:
               </Text>
 
               <View style={s.emailBox}>
@@ -383,7 +384,7 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
 
               {attemptsLeft < 5 && attemptsLeft > 0 && (
                 <Text style={s.attemptsText}>
-                  remaining {attemptsLeft} attempts
+                  נותרו {attemptsLeft} ניסיונות
                 </Text>
               )}
 
@@ -401,7 +402,7 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
                 ) : (
                   <>
                     <MaterialIcons name="verified-user" size={20} color="#FFF" style={{ marginLeft: 8 }} />
-                    <Text style={s.primaryButtonText}>Verify code</Text>
+                    <Text style={s.primaryButtonText}>אמת קוד</Text>
                   </>
                 )}
               </Pressable>
@@ -418,8 +419,8 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
               >
                 <Text style={s.linkButtonText}>
                   {resendTimer > 0
-                    ? `Resend (${resendTimer}s)`
-                    : "Send new code"}
+                    ? `שלח שוב (${resendTimer}s)`
+                    : "שלח קוד חדש"}
                 </Text>
               </Pressable>
             </ScrollView>
@@ -436,16 +437,16 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
             <MaterialIcons name="check-circle" size={48} color={DS_COLORS.success} />
           </View>
 
-          <Text style={s.title}>Device verified successfully!</Text>
+          <Text style={s.title}>המכשיר אומת בהצלחה!</Text>
 
           <Text style={s.description}>
-            Your account is now active on this device.
+            החשבון שלך פעיל כעת במכשיר הנוכחי.
             {"\n"}
-            The previous device was disconnected automatically.
+            המכשיר הקודם נותק אוטומטית.
           </Text>
 
           <ActivityIndicator size="small" color={DS_COLORS.accent} style={{ marginTop: 24 }} />
-          <Text style={s.redirectText}>Loading the app...</Text>
+          <Text style={s.redirectText}>טוען את האפליקציה...</Text>
         </View>
       </SafeAreaView>
     );
@@ -459,11 +460,11 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
           <View style={s.iconCircle}>
             <MaterialIcons name="wifi-off" size={48} color={DS_COLORS.textSecondary} />
           </View>
-          <Text style={s.title}>Internet connection required</Text>
+          <Text style={s.title}>נדרש חיבור לאינטרנט</Text>
           <Text style={s.description}>
-            An internet connection is required to verify the device.
+            נדרש חיבור לאינטרנט כדי לאמת את המכשיר.
             {"\n"}
-            please Check your connection and try again.
+            אנא בדוק את החיבור ונסה שוב.
           </Text>
           <Pressable
             onPress={() => recheckDevice()}
@@ -473,7 +474,7 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
             ]}
           >
             <MaterialIcons name="refresh" size={20} color={DS_COLORS.accent} style={{ marginLeft: 8 }} />
-            <Text style={s.secondaryButtonText}>Try again</Text>
+            <Text style={s.secondaryButtonText}>נסה שוב</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -487,11 +488,11 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
         <View style={s.iconCircle}>
           <MaterialIcons name="error-outline" size={48} color={DS_COLORS.error} />
         </View>
-        <Text style={s.title}>Error checking device</Text>
+        <Text style={s.title}>שגיאה בבדיקת מכשיר</Text>
         <Text style={s.description}>
-          Could not check the device status.
+          לא הצלחנו לבדוק את סטטוס המכשיר.
           {"\n"}
-          please Try again.
+          אנא נסה שוב.
         </Text>
         <Pressable
           onPress={() => recheckDevice()}
@@ -501,7 +502,7 @@ export function DeviceGate({ children }: { children: React.ReactNode }) {
           ]}
         >
           <MaterialIcons name="refresh" size={20} color={DS_COLORS.accent} style={{ marginLeft: 8 }} />
-          <Text style={s.secondaryButtonText}>Try again</Text>
+          <Text style={s.secondaryButtonText}>נסה שוב</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -528,21 +529,25 @@ const s = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: DS_COLORS.background },
+    backgroundColor: DS_COLORS.background,
+  },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
     color: DS_COLORS.textSecondary,
-    fontWeight: "500" },
+    fontWeight: "500",
+  },
   container: {
     flex: 1,
-    backgroundColor: DS_COLORS.background },
+    backgroundColor: DS_COLORS.background,
+  },
   scrollContent: {
     flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 28,
-    paddingVertical: 40 },
+    paddingVertical: 40,
+  },
   iconCircle: {
     width: 96,
     height: 96,
@@ -555,21 +560,24 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 3 },
+    elevation: 3,
+  },
   title: {
     fontSize: 22,
     fontWeight: "700",
     color: DS_COLORS.textPrimary,
     textAlign: "center",
-    marginBottom: 12 },
+    marginBottom: 12,
+  },
   description: {
     fontSize: 15,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
     lineHeight: 24,
-    marginBottom: 16 },
+    marginBottom: 16,
+  },
   emailBox: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     backgroundColor: DS_COLORS.card,
     paddingVertical: 12,
@@ -578,14 +586,16 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: DS_COLORS.border,
     marginBottom: 16,
-    gap: 8 },
+    gap: 8,
+  },
   emailText: {
     fontSize: 15,
     color: DS_COLORS.textPrimary,
     fontWeight: "600",
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+  },
   errorBox: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     backgroundColor: "#2D1215",
     paddingVertical: 10,
@@ -594,14 +604,16 @@ const s = StyleSheet.create({
     marginBottom: 16,
     gap: 8,
     width: "100%",
-    maxWidth: 320 },
+    maxWidth: 320,
+  },
   errorText: {
     fontSize: 13,
     color: DS_COLORS.error,
     flex: 1,
-    textAlign: "left" },
+    textAlign: "right",
+  },
   primaryButton: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: DS_COLORS.accent,
@@ -610,13 +622,15 @@ const s = StyleSheet.create({
     borderRadius: 12,
     width: "100%",
     maxWidth: 320,
-    marginBottom: 12 },
+    marginBottom: 12,
+  },
   primaryButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#FFF" },
+    color: "#FFF",
+  },
   secondaryButton: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: DS_COLORS.card,
@@ -626,34 +640,41 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: DS_COLORS.border,
     width: "100%",
-    maxWidth: 320 },
+    maxWidth: 320,
+  },
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: DS_COLORS.accent },
+    color: DS_COLORS.accent,
+  },
   linkButton: {
-    paddingVertical: 10 },
+    paddingVertical: 10,
+  },
   linkButtonText: {
     fontSize: 14,
     color: DS_COLORS.accent,
-    fontWeight: "500" },
+    fontWeight: "500",
+  },
   otpContainer: {
     width: "100%",
     maxWidth: 320,
     marginBottom: 20,
-    position: "relative" },
+    position: "relative",
+  },
   otpHiddenInput: {
     position: "absolute",
     width: 1,
     height: 1,
     opacity: 0,
     textAlign: "left" as const,
-    writingDirection: "ltr" as const },
+    writingDirection: "ltr" as const,
+  },
   otpBoxRow: {
     flexDirection: "row",
     justifyContent: "center",
     gap: 8,
-    writingDirection: "ltr" as const },
+    direction: "ltr" as const,
+  },
   otpBox: {
     width: 46,
     height: 56,
@@ -662,27 +683,33 @@ const s = StyleSheet.create({
     borderColor: DS_COLORS.border,
     backgroundColor: DS_COLORS.card,
     alignItems: "center",
-    justifyContent: "center" },
+    justifyContent: "center",
+  },
   otpBoxActive: {
-    borderColor: DS_COLORS.accent },
+    borderColor: DS_COLORS.accent,
+  },
   otpBoxError: {
-    borderColor: DS_COLORS.error },
+    borderColor: DS_COLORS.error,
+  },
   otpDigit: {
     fontSize: 24,
     fontWeight: "700",
     color: DS_COLORS.textPrimary,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     writingDirection: "ltr" as const,
-    textAlign: "center" as const },
+    textAlign: "center" as const,
+  },
   attemptsText: {
     fontSize: 13,
     color: DS_COLORS.warning,
     textAlign: "center",
-    marginBottom: 12 },
+    marginBottom: 12,
+  },
   redirectText: {
     fontSize: 14,
     color: DS_COLORS.textSecondary,
-    marginTop: 8 },
+    marginTop: 8,
+  },
   warningCard: {
     width: "100%",
     maxWidth: 320,
@@ -692,14 +719,18 @@ const s = StyleSheet.create({
     borderColor: DS_COLORS.border,
     padding: 16,
     marginBottom: 24,
-    gap: 14 },
+    gap: 14,
+  },
   warningRow: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "flex-start",
-    gap: 10 },
+    gap: 10,
+  },
   warningText: {
     flex: 1,
     fontSize: 14,
     color: DS_COLORS.textPrimary,
     lineHeight: 22,
-    textAlign: "left" } });
+    textAlign: "right",
+  },
+});

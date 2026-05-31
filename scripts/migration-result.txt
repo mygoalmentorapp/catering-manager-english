@@ -1,0 +1,4 @@
+Migration executed: 2026-05-17
+Result: "Success. No rows returned"
+All ALTER TABLE, RENAME COLUMN, ADD COLUMN, DROP COLUMN, DROP/CREATE POLICY, CREATE INDEX, and ADD CONSTRAINT statements executed without error.
+Now running verification queries.

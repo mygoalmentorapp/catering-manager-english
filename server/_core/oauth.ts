@@ -3,7 +3,6 @@ import type { Express, Request, Response } from "express";
 import { getUserByOpenId, upsertUser } from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
-import { SUPABASE_URL as RESOLVED_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY as RESOLVED_SERVICE_ROLE_KEY } from "../supabase-config";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -159,8 +158,8 @@ export function registerOAuthRoutes(app: Express) {
       }
 
       // Validate the Supabase token using service role
-      const supabaseUrl = RESOLVED_SUPABASE_URL;
-      const supabaseKey = RESOLVED_SERVICE_ROLE_KEY;
+      const supabaseUrl = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
       if (!supabaseUrl || !supabaseKey) {
         res.status(500).json({ error: "Supabase credentials not configured on server" });
         return;

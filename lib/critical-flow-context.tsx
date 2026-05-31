@@ -24,7 +24,8 @@ interface CriticalFlowContextType {
 
 const CriticalFlowContext = createContext<CriticalFlowContextType>({
   isInCriticalFlow: false,
-  setCriticalFlow: () => {} });
+  setCriticalFlow: () => {},
+});
 
 export function CriticalFlowProvider({ children }: { children: React.ReactNode }) {
   // Use a ref-backed counter so multiple flows can overlap

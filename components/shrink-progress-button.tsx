@@ -18,7 +18,8 @@ import Animated, {
   withDelay,
   runOnJS,
   Easing,
-  interpolate } from "react-native-reanimated";
+  interpolate,
+} from "react-native-reanimated";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { DS_COLORS, DS_SPACING, DS_RADIUS, DS_FONT, DS_WEIGHT, DS_SHADOW } from "@/lib/design-system";
 
@@ -44,7 +45,8 @@ export function ShrinkProgressButton({
   state,
   label,
   onPress,
-  onSuccessComplete }: ShrinkProgressButtonProps) {
+  onSuccessComplete,
+}: ShrinkProgressButtonProps) {
   // Animation values
   const scaleY = useSharedValue(1);
   const textOpacity = useSharedValue(1);
@@ -62,12 +64,14 @@ export function ShrinkProgressButton({
       textOpacity.value = withTiming(0, { duration: 150 });
       scaleY.value = withTiming(0.35, {
         duration: SHRINK_DURATION,
-        easing: Easing.out(Easing.cubic) });
+        easing: Easing.out(Easing.cubic),
+      });
       progressOpacity.value = withDelay(150, withTiming(1, { duration: 100 }));
       // Phase 2: Fill progress bar (indeterminate feel — fills to 90% then slows)
       progressWidth.value = withTiming(0.9, {
         duration: PROGRESS_DURATION,
-        easing: Easing.out(Easing.quad) });
+        easing: Easing.out(Easing.quad),
+      });
     } else if (state === "success") {
       // Complete the progress bar
       progressWidth.value = withTiming(1, { duration: 200 });
@@ -77,7 +81,8 @@ export function ShrinkProgressButton({
         300,
         withTiming(1, {
           duration: RESTORE_DURATION,
-          easing: Easing.out(Easing.cubic) })
+          easing: Easing.out(Easing.cubic),
+        })
       );
       // Show checkmark
       checkOpacity.value = withDelay(400, withTiming(1, { duration: 200 }));
@@ -102,17 +107,21 @@ export function ShrinkProgressButton({
 
   // Animated styles
   const buttonStyle = useAnimatedStyle(() => ({
-    transform: [{ scaleY: scaleY.value }] }));
+    transform: [{ scaleY: scaleY.value }],
+  }));
 
   const textStyle = useAnimatedStyle(() => ({
-    opacity: textOpacity.value }));
+    opacity: textOpacity.value,
+  }));
 
   const progressBarStyle = useAnimatedStyle(() => ({
     width: `${interpolate(progressWidth.value, [0, 1], [0, 100])}%` as any,
-    opacity: progressOpacity.value }));
+    opacity: progressOpacity.value,
+  }));
 
   const checkStyle = useAnimatedStyle(() => ({
-    opacity: checkOpacity.value }));
+    opacity: checkOpacity.value,
+  }));
 
   const isDisabled = state === "loading" || state === "success";
 
@@ -159,7 +168,8 @@ const s = StyleSheet.create({
   buttonOuter: {
     marginTop: DS_SPACING.sm,
     borderRadius: DS_RADIUS.md,
-    overflow: "hidden" },
+    overflow: "hidden",
+  },
   button: {
     backgroundColor: DS_COLORS.accent,
     borderRadius: DS_RADIUS.md,
@@ -167,7 +177,8 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    ...DS_SHADOW.button },
+    ...DS_SHADOW.button,
+  },
   buttonDisabled: {
     // Keep full opacity — the animation itself provides feedback
   },
@@ -177,16 +188,21 @@ const s = StyleSheet.create({
     top: 0,
     bottom: 0,
     backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: DS_RADIUS.md },
+    borderRadius: DS_RADIUS.md,
+  },
   contentWrap: {
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 24 },
+    minHeight: 24,
+  },
   buttonText: {
     color: DS_COLORS.white,
     fontSize: DS_FONT.body,
-    fontWeight: DS_WEIGHT.bold as any },
+    fontWeight: DS_WEIGHT.bold as any,
+  },
   checkWrap: {
     position: "absolute",
     alignItems: "center",
-    justifyContent: "center" } });
+    justifyContent: "center",
+  },
+});

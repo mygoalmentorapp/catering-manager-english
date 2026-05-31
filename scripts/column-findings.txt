@@ -1,0 +1,5 @@
+The SQL Editor still shows the information_schema results from the previous query.
+The current SQL in the editor is the GRANT + INSERT + VERIFY SQL.
+The results pane still shows the old column query results.
+Need to click Run button (element 58) to execute the new SQL.
+The role dropdown was closed. Role is set to "postgres" which bypasses RLS.

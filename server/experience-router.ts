@@ -10,20 +10,19 @@
  * 5. Campaigns returned only if: is_enabled=true, is_archived=false, valid date range, matching environment
  * 6. All operations are fire-and-forget from client perspective — failures don't crash the app
  *
- * Tables: user_experience_events, user_experience_state, user_campaign_state, remote_campaigns
+ * Tables: user_experience_events, user_experience_state, user_campaign_state, remote_campaigns, campaign_analytics
  */
 
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { createClient } from "@supabase/supabase-js";
 import { TRPCError } from "@trpc/server";
-import { SUPABASE_URL as SUPABASE_URL_RESOLVED, SUPABASE_SERVICE_ROLE_KEY as SUPABASE_SERVICE_ROLE_KEY_RESOLVED } from './supabase-config';
 
 // ============ HELPERS ============
 
 function getAdminClient() {
-  const url = SUPABASE_URL_RESOLVED;
-  const key = SUPABASE_SERVICE_ROLE_KEY_RESOLVED;
+  const url = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
   if (!url || !key) {
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
@@ -47,6 +46,7 @@ function getUserId(ctx: { user: { openId: string } }): string {
 function getDeviceInfo(ctx: { req?: { headers?: Record<string, string | string[] | undefined> } }): {
   platform: string;
   language: string;
+  app_key: string;
   app_version: string;
 } {
   const headers = ctx.req?.headers ?? {};
@@ -59,14 +59,18 @@ function getDeviceInfo(ctx: { req?: { headers?: Record<string, string | string[]
   else if (ua.includes("Expo")) platform = "expo";
   else if (ua.includes("Mozilla") || ua.includes("Chrome")) platform = "web";
 
-  // Language from Accept-Language header
+  // App key from x-app-key header (identifies which app product)
+  const appKey = typeof headers["x-app-key"] === "string" ? headers["x-app-key"] : "";
+
+  // Language: prefer x-app-language (app variant identity) over Accept-Language
+  const appLang = typeof headers["x-app-language"] === "string" ? headers["x-app-language"] : "";
   const acceptLang = typeof headers["accept-language"] === "string" ? headers["accept-language"] : "";
-  const language = acceptLang.split(",")[0]?.trim() || "unknown";
+  const language = appLang || acceptLang.split(",")[0]?.trim() || "unknown";
 
   // App version from custom header (set by tRPC client) or fallback
   const appVersion = typeof headers["x-app-version"] === "string" ? headers["x-app-version"] : "unknown";
 
-  return { platform, language, app_version: appVersion };
+  return { platform, language, app_key: appKey, app_version: appVersion };
 }
 
 /**
@@ -337,22 +341,38 @@ export const experienceRouter = router({
    *
    * Never returns disabled, archived, expired, or future campaigns.
    */
-  getActiveCampaigns: protectedProcedure.query(async (): Promise<Record<string, unknown>[]> => {
+  getActiveCampaigns: protectedProcedure.query(async ({ ctx }): Promise<Record<string, unknown>[]> => {
     const admin = getAdminClient();
     const env = getEnvironment();
     const now = new Date().toISOString();
+    const deviceInfo = getDeviceInfo(ctx);
+    const appKey = deviceInfo.app_key;
+    const appLanguage = deviceInfo.language;
 
-    // ── Gate 1: Check remote_config (single-row table with boolean columns) ──
+    // ── Gate 0: Require app_key and app_language ──
+    if (!appKey || !appLanguage || appLanguage === "unknown") {
+      console.log(`[Experience] getActiveCampaigns: BLOCKED — missing app_key (${appKey}) or app_language (${appLanguage})`);
+      return [];
+    }
+
+    // ── Gate 1: Check remote_config (filtered by app_key + app_language from headers) ──
     const { data: rcRows } = await admin
       .from("remote_config")
       .select("remote_campaigns_enabled, feedback_popup_enabled")
-      .limit(1)
+      .eq("app_key", appKey)
+      .eq("app_language", appLanguage)
       .single();
 
     const rc = rcRows as { remote_campaigns_enabled?: boolean; feedback_popup_enabled?: boolean } | null;
 
+    // If no matching config row found → use SAFE_DEFAULTS (everything off)
+    if (!rc) {
+      console.log(`[Experience] getActiveCampaigns: BLOCKED — no remote_config for app_key=${appKey}, app_language=${appLanguage}`);
+      return [];
+    }
+
     // If remote_campaigns_enabled is explicitly false → return no campaigns
-    if (rc && rc.remote_campaigns_enabled === false) {
+    if (rc.remote_campaigns_enabled === false) {
       console.log("[Experience] getActiveCampaigns: BLOCKED by remote_config.remote_campaigns_enabled=false");
       return [];
     }
@@ -375,11 +395,15 @@ export const experienceRouter = router({
     }
 
     // ── Fetch campaigns ──
+    // Filter by app_key and app_language at the DB level.
+    // Only return campaigns that match this app's key AND language (or "all").
     const { data, error } = await admin
       .from("remote_campaigns")
       .select("*")
       .eq("is_enabled", true)
       .eq("is_archived", false)
+      .eq("app_key", appKey)
+      .or(`app_language.eq.${appLanguage},app_language.eq.all`)
       .or(`start_at.is.null,start_at.lte.${now}`)
       .or(`end_at.is.null,end_at.gte.${now}`)
       .or(`environment.is.null,environment.eq.${env}`);
@@ -411,4 +435,128 @@ export const experienceRouter = router({
 
     return campaigns;
   }),
+
+  /**
+   * Log a batch of campaign analytics events.
+   * Client sends an array of events — server adds user_id, platform, language, app_version.
+   * Fire-and-forget pattern: returns { success: true } even on partial failure.
+   */
+  logAnalyticsBatch: protectedProcedure
+    .input(
+      z.object({
+        events: z.array(
+          z.object({
+            campaign_key: z.string(),
+            campaign_type: z.string(),
+            event: z.string(),
+            metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+          })
+        ).min(1).max(50),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = getUserId(ctx);
+      const deviceInfo = getDeviceInfo(ctx);
+      const admin = getAdminClient();
+
+      const rows = input.events.map((evt) => ({
+        user_id: userId,
+        campaign_key: evt.campaign_key,
+        campaign_type: evt.campaign_type,
+        event: evt.event,
+        metadata: evt.metadata ?? {},
+        platform: deviceInfo.platform,
+        language: deviceInfo.language,
+        app_version: deviceInfo.app_version,
+      }));
+
+      const { error } = await admin.from("campaign_analytics").insert(rows);
+
+      if (error) {
+        console.warn("[Experience] logAnalyticsBatch insert error:", error.message);
+        // Fire-and-forget: still return success to client
+      }
+
+      return { success: true, count: rows.length };
+    }),
+
+  /**
+   * Get campaign analytics report.
+   * Admin-only endpoint that aggregates events by campaign_key + event type.
+   * Returns summary with impressions, clicks, dismissals, completions, CTR, completion rate.
+   */
+  getCampaignAnalytics: adminProcedure
+    .input(
+      z.object({
+        campaign_key: z.string().optional(),
+        days: z.number().min(1).max(365).default(30),
+      }).optional()
+    )
+    .query(async ({ input }) => {
+      const admin = getAdminClient();
+      const days = input?.days ?? 30;
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+      let query = admin
+        .from("campaign_analytics")
+        .select("campaign_key, campaign_type, event")
+        .gte("created_at", since);
+
+      if (input?.campaign_key) {
+        query = query.eq("campaign_key", input.campaign_key);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.warn("[Experience] getCampaignAnalytics error:", error.message);
+        return [];
+      }
+
+      // Aggregate by campaign_key
+      const agg: Record<string, {
+        campaign_key: string;
+        campaign_type: string;
+        impressions: number;
+        clicks: number;
+        dismissals: number;
+        completions: number;
+        closes: number;
+        cta_primary: number;
+        cta_secondary: number;
+      }> = {};
+
+      for (const row of data ?? []) {
+        const key = row.campaign_key as string;
+        if (!agg[key]) {
+          agg[key] = {
+            campaign_key: key,
+            campaign_type: row.campaign_type as string,
+            impressions: 0,
+            clicks: 0,
+            dismissals: 0,
+            completions: 0,
+            closes: 0,
+            cta_primary: 0,
+            cta_secondary: 0,
+          };
+        }
+
+        const evt = row.event as string;
+        if (evt === "impression") agg[key].impressions++;
+        else if (evt === "click") agg[key].clicks++;
+        else if (evt === "dismiss") agg[key].dismissals++;
+        else if (evt === "complete") agg[key].completions++;
+        else if (evt === "close") agg[key].closes++;
+        else if (evt === "cta_primary") agg[key].cta_primary++;
+        else if (evt === "cta_secondary") agg[key].cta_secondary++;
+      }
+
+      // Calculate rates and return
+      return Object.values(agg).map((c) => ({
+        ...c,
+        ctr: c.impressions > 0 ? Math.round((c.clicks / c.impressions) * 10000) / 100 : 0,
+        completion_rate: c.impressions > 0 ? Math.round((c.completions / c.impressions) * 10000) / 100 : 0,
+      }));
+    }),
 });

@@ -32,7 +32,8 @@ export function useAuth(options?: UseAuthOptions) {
             name: apiUser.name,
             email: apiUser.email,
             loginMethod: apiUser.loginMethod,
-            lastSignedIn: new Date(apiUser.lastSignedIn) };
+            lastSignedIn: new Date(apiUser.lastSignedIn),
+          };
           setUser(userInfo);
           // Cache user info in localStorage for faster subsequent loads
           await Auth.setUserInfo(userInfo);
@@ -127,7 +128,8 @@ export function useAuth(options?: UseAuthOptions) {
       hasUser: !!user,
       loading,
       isAuthenticated,
-      error: error?.message });
+      error: error?.message,
+    });
   }, [user, loading, isAuthenticated, error]);
 
   return {
@@ -136,5 +138,6 @@ export function useAuth(options?: UseAuthOptions) {
     error,
     isAuthenticated,
     refresh: fetchUser,
-    logout };
+    logout,
+  };
 }

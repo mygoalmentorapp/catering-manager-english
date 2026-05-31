@@ -33,7 +33,8 @@ const MAPPING = {
   "calendar": "event",
   "person.fill": "person",
   "cube.box.fill": "inventory",
-  "fork.knife": "restaurant" } as IconMapping;
+  "fork.knife": "restaurant",
+} as IconMapping;
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
@@ -44,7 +45,8 @@ export function IconSymbol({
   name,
   size = 24,
   color,
-  style }: {
+  style,
+}: {
   name: IconSymbolName;
   size?: number;
   color: string | OpaqueColorValue;

@@ -6,7 +6,8 @@ import {
   StyleSheet,
   Linking,
   ScrollView,
-  Image } from "react-native";
+  Image,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -20,7 +21,8 @@ import {
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
-  DS_SHADOW } from "@/lib/design-system";
+  DS_SHADOW,
+} from "@/lib/design-system";
 
 export default function AboutScreen() {
   const router = useRouter();
@@ -31,16 +33,16 @@ export default function AboutScreen() {
   const s = useMemo(() => makeStyles(), [colorScheme]);
 
   const handleEmail = () => {
-    const subject = encodeURIComponent("Message from Catering Manager Pro app");
-    const userEmail = user?.email || "No Connected";
-    const userId = user?.id ? user.id.slice(0, 8) : "Unknown";
+    const subject = encodeURIComponent("פנייה מאפליקציית ניהול קייטרינג פרו");
+    const userEmail = user?.email || "לא מחובר";
+    const userId = user?.id ? user.id.slice(0, 8) : "לא ידוע";
     const bodyLines = [
       "",
       "",
       "---",
-      `Version: ${appVersion}`,
-      `User: ${userEmail}`,
-      `ID: ${userId}`,
+      `גרסה: ${appVersion}`,
+      `משתמש: ${userEmail}`,
+      `מזהה: ${userId}`,
     ];
     const body = encodeURIComponent(bodyLines.join("\n"));
     Linking.openURL(`mailto:support@cateringmanager.app?subject=${subject}&body=${body}`);
@@ -67,7 +69,7 @@ export default function AboutScreen() {
         {/* Header */}
         <View style={s.header}>
           <View style={{ width: 40 }} />
-          <Text style={s.headerTitle}>About</Text>
+          <Text style={s.headerTitle}>אודות</Text>
           <TouchableOpacity
             onPress={() => router.back()}
             style={s.headerBtn}
@@ -91,8 +93,8 @@ export default function AboutScreen() {
                 resizeMode="cover"
               />
             </View>
-            <Text style={s.appName}>Catering Manager Pro</Text>
-            <Text style={s.versionText}>Version {appVersion}</Text>
+            <Text style={s.appName}>ניהול קייטרינג פרו</Text>
+            <Text style={s.versionText}>גרסה {appVersion}</Text>
           </View>
 
           {/* Contact Info Card */}
@@ -103,7 +105,7 @@ export default function AboutScreen() {
                 <MaterialIcons name="language" size={20} color={DS_COLORS.accent} />
               </View>
               <View style={s.infoTextWrap}>
-                <Text style={s.infoLabel}>Website</Text>
+                <Text style={s.infoLabel}>אתר</Text>
                 <Text style={s.infoValue}>cateringmanager.app</Text>
               </View>
               <MaterialIcons name="open-in-new" size={16} color={DS_COLORS.textSecondary} />
@@ -117,7 +119,7 @@ export default function AboutScreen() {
                 <MaterialIcons name="email" size={20} color={DS_COLORS.accent} />
               </View>
               <View style={s.infoTextWrap}>
-                <Text style={s.infoLabel}>Contact us</Text>
+                <Text style={s.infoLabel}>יצירת קשר</Text>
                 <Text style={s.infoValue}>support@cateringmanager.app</Text>
               </View>
               <MaterialIcons name="open-in-new" size={16} color={DS_COLORS.textSecondary} />
@@ -128,7 +130,7 @@ export default function AboutScreen() {
           <View style={s.legalSection}>
             <TouchableOpacity onPress={handleTerms} activeOpacity={0.7} style={s.legalRow}>
               <MaterialIcons name="description" size={18} color={DS_COLORS.textSecondary} />
-              <Text style={s.legalText}>Terms of use</Text>
+              <Text style={s.legalText}>תנאי שימוש</Text>
               <MaterialIcons name="chevron-left" size={18} color={DS_COLORS.textSecondary} />
             </TouchableOpacity>
 
@@ -136,14 +138,14 @@ export default function AboutScreen() {
 
             <TouchableOpacity onPress={handlePrivacy} activeOpacity={0.7} style={s.legalRow}>
               <MaterialIcons name="shield" size={18} color={DS_COLORS.textSecondary} />
-              <Text style={s.legalText}>Privacy policy</Text>
+              <Text style={s.legalText}>מדיניות פרטיות</Text>
               <MaterialIcons name="chevron-left" size={18} color={DS_COLORS.textSecondary} />
             </TouchableOpacity>
           </View>
 
           {/* Footer */}
           <Text style={s.footerText}>
-            Built with love for catering businesses in Israel
+            נבנה באהבה עבור עסקי קייטרינג בישראל
           </Text>
         </ScrollView>
       </View>
@@ -228,7 +230,7 @@ function makeStyles() {
       backgroundColor: DS_COLORS.card,
       borderRadius: DS_RADIUS.lg,
       padding: DS_SPACING.lg,
-      writingDirection: "rtl" as const,
+      direction: "rtl" as const,
       ...DS_SHADOW.card,
     },
     infoRow: {
@@ -268,7 +270,7 @@ function makeStyles() {
       backgroundColor: DS_COLORS.card,
       borderRadius: DS_RADIUS.lg,
       padding: DS_SPACING.lg,
-      writingDirection: "rtl" as const,
+      direction: "rtl" as const,
       ...DS_SHADOW.card,
     },
     legalRow: {

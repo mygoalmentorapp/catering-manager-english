@@ -9,10 +9,10 @@
  * The screen shows:
  * - Clear message that login succeeded but account loading failed
  * - The user's email (so they know they don't need to re-enter credentials)
- * - "Try again" button → retryBridge() with existing access_token
- * - "Sign out" button → full signOut
+ * - "נסה שוב" button → retryBridge() with existing access_token
+ * - "התנתק" button → full signOut
  *
- * During auto-retry (first 3s after failure), shows a loading state with "Loading your account..."
+ * During auto-retry (first 3s after failure), shows a loading state with "טוענים את החשבון..."
  */
 
 import React from "react";
@@ -26,9 +26,9 @@ interface BridgeRetryScreenProps {
   email: string;
   /** Whether a bridge retry is currently in progress */
   isRetrying: boolean;
-  /** Called when user taps "Try again" */
+  /** Called when user taps "נסה שוב" */
   onRetry: () => void;
-  /** Called when user taps "Sign out" */
+  /** Called when user taps "התנתק" */
   onLogout: () => void;
 }
 
@@ -36,19 +36,20 @@ export function BridgeRetryScreen({
   email,
   isRetrying,
   onRetry,
-  onLogout }: BridgeRetryScreenProps) {
+  onLogout,
+}: BridgeRetryScreenProps) {
   // During auto-retry, show a simpler loading state
   if (isRetrying) {
     return (
       <View style={s.container}>
         <View style={s.card}>
           <ActivityIndicator size="large" color={DS_COLORS.accent} style={s.spinner} />
-          <Text style={s.loadingTitle}>Loading your account...</Text>
+          <Text style={s.loadingTitle}>טוענים את החשבון...</Text>
           <Text style={s.loadingSubtitle}>
-            Sign in successful, waiting for server response
+            ההתחברות הצליחה, ממתינים לתגובת השרת
           </Text>
           {email ? (
-            <Text style={s.emailText}>Connected as {email}</Text>
+            <Text style={s.emailText}>מחובר כ־{email}</Text>
           ) : null}
         </View>
       </View>
@@ -65,17 +66,17 @@ export function BridgeRetryScreen({
         </View>
 
         {/* Title */}
-        <Text style={s.title}>Account loading failed</Text>
+        <Text style={s.title}>טעינת החשבון נכשלה</Text>
 
         {/* Message */}
         <Text style={s.message}>
-          Sign in was successful, but loading the account is taking{"\n"}
-          too long. Please try again in a moment.
+          ההתחברות הצליחה, אבל טעינת החשבון נמשכת{"\n"}
+          יותר מדי. נסה שוב בעוד רגע.
         </Text>
 
         {/* Email info */}
         {email ? (
-          <Text style={s.emailText}>Connected as {email}</Text>
+          <Text style={s.emailText}>מחובר כ־{email}</Text>
         ) : null}
 
         {/* Retry button */}
@@ -88,7 +89,7 @@ export function BridgeRetryScreen({
             isRetrying && { opacity: 0.6 },
           ]}
         >
-          <Text style={s.retryButtonText}>Try again</Text>
+          <Text style={s.retryButtonText}>נסה שוב</Text>
         </Pressable>
 
         {/* Logout button */}
@@ -99,7 +100,7 @@ export function BridgeRetryScreen({
             pressed && { opacity: 0.8 },
           ]}
         >
-          <Text style={s.logoutButtonText}>Sign out</Text>
+          <Text style={s.logoutButtonText}>התנתק</Text>
         </Pressable>
       </View>
     </View>
@@ -112,7 +113,8 @@ const s = StyleSheet.create({
     backgroundColor: DS_COLORS.background,
     alignItems: "center",
     justifyContent: "center",
-    padding: DS_SPACING.lg },
+    padding: DS_SPACING.lg,
+  },
   card: {
     backgroundColor: DS_COLORS.card,
     borderRadius: DS_RADIUS.lg,
@@ -124,41 +126,49 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 3 },
+    elevation: 3,
+  },
   iconContainer: {
-    marginBottom: DS_SPACING.md },
+    marginBottom: DS_SPACING.md,
+  },
   spinner: {
-    marginBottom: DS_SPACING.md },
+    marginBottom: DS_SPACING.md,
+  },
   loadingTitle: {
     fontSize: DS_FONT.titleCard,
     fontWeight: "700",
     color: DS_COLORS.textPrimary,
     textAlign: "center",
-    marginBottom: DS_SPACING.xs },
+    marginBottom: DS_SPACING.xs,
+  },
   loadingSubtitle: {
     fontSize: DS_FONT.body,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
     lineHeight: 24,
-    marginBottom: DS_SPACING.sm },
+    marginBottom: DS_SPACING.sm,
+  },
   title: {
     fontSize: DS_FONT.titleCard,
     fontWeight: "700",
     color: DS_COLORS.textPrimary,
     textAlign: "center",
-    marginBottom: DS_SPACING.sm },
+    marginBottom: DS_SPACING.sm,
+  },
   message: {
     fontSize: DS_FONT.body,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
     lineHeight: 24,
-    marginBottom: DS_SPACING.sm },
+    marginBottom: DS_SPACING.sm,
+  },
   emailText: {
     fontSize: DS_FONT.bodySmall,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
     marginBottom: DS_SPACING.md,
-    fontStyle: "italic" },
+    fontStyle: "italic",
+  },
   retryButton: {
     backgroundColor: DS_COLORS.accent,
     borderRadius: DS_RADIUS.md,
@@ -166,11 +176,13 @@ const s = StyleSheet.create({
     paddingHorizontal: 32,
     width: "100%",
     alignItems: "center",
-    marginBottom: DS_SPACING.sm },
+    marginBottom: DS_SPACING.sm,
+  },
   retryButtonText: {
     color: "#fff",
     fontSize: DS_FONT.body,
-    fontWeight: "600" },
+    fontWeight: "600",
+  },
   logoutButton: {
     borderRadius: DS_RADIUS.md,
     paddingVertical: 14,
@@ -178,8 +190,11 @@ const s = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: DS_COLORS.border },
+    borderColor: DS_COLORS.border,
+  },
   logoutButtonText: {
     color: DS_COLORS.textSecondary,
     fontSize: DS_FONT.body,
-    fontWeight: "500" } });
+    fontWeight: "500",
+  },
+});

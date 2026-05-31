@@ -21,7 +21,8 @@ import {
   Animated,
   StyleSheet,
   Dimensions,
-  Platform } from "react-native";
+  Platform,
+} from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { DS_COLORS, DS_FONT, DS_WEIGHT, DS_SPACING, DS_RADIUS, DS_SHADOW } from "@/lib/design-system";
 import type { RemoteCampaign } from "@/lib/services/experience-rule-engine";
@@ -39,7 +40,7 @@ export interface CirclePopupProps {
 // ── Constants ──
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const POPUP_WIDTH = Math.min(SCREEN_WIDTH - 48, 340);
+const POPUP_SIZE = Math.min(SCREEN_WIDTH - 64, 300); // Circle diameter
 const ANIMATION_DURATION = 250;
 
 // ── Component ──
@@ -49,7 +50,8 @@ export function CirclePopup({
   visible,
   onPrimaryAction,
   onSecondaryAction,
-  onClose }: CirclePopupProps) {
+  onClose,
+}: CirclePopupProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
 
@@ -60,11 +62,13 @@ export function CirclePopup({
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: ANIMATION_DURATION,
-          useNativeDriver: true }),
+          useNativeDriver: true,
+        }),
         Animated.timing(scaleAnim, {
           toValue: 1,
           duration: ANIMATION_DURATION,
-          useNativeDriver: true }),
+          useNativeDriver: true,
+        }),
       ]).start();
     } else {
       // Reset for next show
@@ -100,7 +104,8 @@ export function CirclePopup({
             s.card,
             {
               opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }] },
+              transform: [{ scale: scaleAnim }],
+            },
           ]}
         >
           {/* X Close Button */}
@@ -202,7 +207,8 @@ function _resolveIcon(icon: string): React.ComponentProps<typeof MaterialIcons>[
     "emoji-events": "emoji-events",
     "lightbulb": "lightbulb",
     "info": "info",
-    "help": "help" };
+    "help": "help",
+  };
 
   return SAFE_ICONS[icon] || "campaign";
 }
@@ -214,20 +220,25 @@ const s = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
-    alignItems: "center" },
-  overlayTouch: {
-    ...StyleSheet.absoluteFillObject },
-  card: {
-    width: POPUP_WIDTH,
-    backgroundColor: DS_COLORS.card,
-    borderRadius: DS_RADIUS.xl,
-    paddingTop: DS_SPACING.xxxl,
-    paddingBottom: DS_SPACING.xxl,
-    paddingHorizontal: DS_SPACING.xxl,
     alignItems: "center",
+  },
+  overlayTouch: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  card: {
+    width: POPUP_SIZE,
+    height: POPUP_SIZE,
+    backgroundColor: DS_COLORS.card,
+    borderRadius: POPUP_SIZE / 2, // Perfect circle
+    paddingTop: DS_SPACING.xl,
+    paddingBottom: DS_SPACING.xl,
+    paddingHorizontal: DS_SPACING.xl,
+    alignItems: "center",
+    justifyContent: "center",
     ...DS_SHADOW.card,
     // Ensure card is above overlay touch
-    zIndex: 10 },
+    zIndex: 10,
+  },
   closeButton: {
     position: "absolute",
     top: DS_SPACING.md,
@@ -238,45 +249,52 @@ const s = StyleSheet.create({
     backgroundColor: DS_COLORS.background,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 20 },
+    zIndex: 20,
+  },
   iconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: DS_COLORS.accentLight,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: DS_SPACING.lg },
+    marginBottom: DS_SPACING.md,
+  },
   title: {
-    fontSize: DS_FONT.titleLarge,
+    fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
     textAlign: "center",
-    marginBottom: DS_SPACING.sm
+    marginBottom: DS_SPACING.xs,
+    writingDirection: "rtl",
   },
   subtitle: {
-    fontSize: DS_FONT.body,
+    fontSize: DS_FONT.caption,
     fontWeight: DS_WEIGHT.semibold,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
-    marginBottom: DS_SPACING.sm
+    marginBottom: DS_SPACING.xs,
+    writingDirection: "rtl",
   },
   message: {
-    fontSize: DS_FONT.bodySmall,
+    fontSize: DS_FONT.caption,
     fontWeight: DS_WEIGHT.regular,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
-    lineHeight: 22,
-    marginBottom: DS_SPACING.xl
+    lineHeight: 18,
+    marginBottom: DS_SPACING.md,
+    writingDirection: "rtl",
   },
   buttonContainer: {
     width: "100%",
-    gap: DS_SPACING.sm },
+    alignItems: "center",
+    gap: DS_SPACING.xs,
+  },
   primaryButton: {
-    width: "100%",
+    width: "80%",
     backgroundColor: DS_COLORS.accent,
-    borderRadius: DS_RADIUS.md,
-    paddingVertical: DS_SPACING.lg,
+    borderRadius: DS_RADIUS.full,
+    paddingVertical: DS_SPACING.md,
     alignItems: "center",
     justifyContent: "center",
     ...Platform.select({
@@ -284,24 +302,32 @@ const s = StyleSheet.create({
         shadowColor: DS_COLORS.accent,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
-        shadowRadius: 8 },
+        shadowRadius: 8,
+      },
       android: {
-        elevation: 4 },
-      default: {} }) },
+        elevation: 4,
+      },
+      default: {},
+    }),
+  },
   primaryButtonText: {
     color: DS_COLORS.white,
     fontSize: DS_FONT.body,
-    fontWeight: DS_WEIGHT.bold
+    fontWeight: DS_WEIGHT.bold,
+    writingDirection: "rtl",
   },
   secondaryButton: {
-    width: "100%",
+    width: "80%",
     backgroundColor: "transparent",
-    borderRadius: DS_RADIUS.md,
-    paddingVertical: DS_SPACING.md,
+    borderRadius: DS_RADIUS.full,
+    paddingVertical: DS_SPACING.sm,
     alignItems: "center",
-    justifyContent: "center" },
+    justifyContent: "center",
+  },
   secondaryButtonText: {
     color: DS_COLORS.textSecondary,
     fontSize: DS_FONT.bodySmall,
-    fontWeight: DS_WEIGHT.medium
-  } });
+    fontWeight: DS_WEIGHT.medium,
+    writingDirection: "rtl",
+  },
+});

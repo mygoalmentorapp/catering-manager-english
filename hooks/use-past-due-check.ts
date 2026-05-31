@@ -42,17 +42,19 @@ export function usePastDueCheck({
   savedShoppingLists,
   loading,
   archiveOrder,
-  deleteSavedShoppingList }: UsePastDueCheckParams) {
+  deleteSavedShoppingList,
+}: UsePastDueCheckParams) {
   const hasChecked = useRef(false);
   const { guardMutation } = useMutationGuard();
 
   const formatDate = useCallback((dateStr: string) => {
     try {
       const d = new Date(dateStr);
-      return d.toLocaleDateString("en-US", {
+      return d.toLocaleDateString("he-IL", {
         day: "numeric",
         month: "numeric",
-        year: "numeric" });
+        year: "numeric",
+      });
     } catch {
       return dateStr;
     }
@@ -68,15 +70,16 @@ export function usePastDueCheck({
         // Has linked shopping lists — ask for confirmation
         return new Promise<boolean>((resolve) => {
           Alert.alert(
-            "Move to archive",
-            "This order has a linked shopping list.\nArchiving will also delete the related shopping lists.",
+            "העברה לארכיון",
+            "להזמנה זו קיימת רשימת קניות מקושרת.\nהעברה לארכיון תמחק גם את רשימות הקניות הרלוונטיות.",
             [
               {
-                text: "Cancel",
+                text: "ביטול",
                 style: "cancel",
-                onPress: () => resolve(false) },
+                onPress: () => resolve(false),
+              },
               {
-                text: "Move to archive",
+                text: "העבר לארכיון",
                 style: "destructive",
                 onPress: async () => {
                   const allowed = await guardMutation();
@@ -88,10 +91,11 @@ export function usePastDueCheck({
                     await archiveOrder(order.id);
                     resolve(true);
                   } catch {
-                    Alert.alert("Error", "Archiving failed.");
+                    Alert.alert("שגיאה", "ההעברה לארכיון נכשלה.");
                     resolve(false);
                   }
-                } },
+                },
+              },
             ]
           );
         });
@@ -103,7 +107,7 @@ export function usePastDueCheck({
           await archiveOrder(order.id);
           return true;
         } catch {
-          Alert.alert("Error", "Archiving failed.");
+          Alert.alert("שגיאה", "ההעברה לארכיון נכשלה.");
           return false;
         }
       }
@@ -115,20 +119,23 @@ export function usePastDueCheck({
     (order: Order): Promise<"yes" | "no" | "cancel"> => {
       return new Promise((resolve) => {
         Alert.alert(
-          "Was the order completed?",
-          `The event date for this order has passed.\nWas the order completed?\n\nCustomer: ${order.customerName}\nEvent date: ${formatDate(order.eventDate)}`,
+          "האם ההזמנה בוצעה?",
+          `תאריך האירוע של הזמנה זו כבר עבר.\nהאם ההזמנה בוצעה?\n\nלקוח: ${order.customerName}\nתאריך אירוע: ${formatDate(order.eventDate)}`,
           [
             {
-              text: "Cancel",
+              text: "ביטול",
               style: "cancel",
-              onPress: () => resolve("cancel") },
+              onPress: () => resolve("cancel"),
+            },
             {
-              text: "No, not completed yet",
-              onPress: () => resolve("no") },
+              text: "לא, עדיין לא בוצעה",
+              onPress: () => resolve("no"),
+            },
             {
-              text: "Yes, completed",
+              text: "כן, בוצעה",
               style: "destructive",
-              onPress: () => resolve("yes") },
+              onPress: () => resolve("yes"),
+            },
           ]
         );
       });

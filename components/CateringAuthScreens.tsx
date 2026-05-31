@@ -13,7 +13,8 @@ import {
   TextStyle,
   useWindowDimensions,
   View,
-  ViewStyle } from "react-native";
+  ViewStyle,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 /**
@@ -34,12 +35,12 @@ import { LinearGradient } from "expo-linear-gradient";
  * Notes for RTL:
  * - These screens are built for Hebrew / RTL.
  * - In the app entry, keep RTL enabled if the whole app is Hebrew:
- *     I18nManager.allowRTL(false);
- *     I18nManager.forceRTL(false);
+ *     I18nManager.allowRTL(true);
+ *     I18nManager.forceRTL(true);
  */
 
 export const APP_BRAND = {
-  appName: "Catering Manager Pro",
+  appName: "ניהול קייטרינג Pro",
   colors: {
     bg: "#020708",
     bg2: "#061214",
@@ -56,13 +57,16 @@ export const APP_BRAND = {
     muted: "#AAB6BB",
     muted2: "#77868B",
     danger: "#FF7B7B",
-    disabled: "rgba(255,255,255,0.18)" },
+    disabled: "rgba(255,255,255,0.18)",
+  },
   radius: {
     sm: 12,
     md: 18,
     lg: 26,
     xl: 34,
-    pill: 999 } };
+    pill: 999,
+  },
+};
 
 type ButtonProps = {
   title: string;
@@ -244,7 +248,7 @@ function LoadingLine() {
   return (
     <View style={styles.loadingLineWrap}>
       <View style={styles.loadingLine} />
-      <Text style={styles.loadingButtonText}>Loading…</Text>
+      <Text style={styles.loadingButtonText}>טוען…</Text>
     </View>
   );
 }
@@ -259,7 +263,8 @@ function InputField({
   showSecureToggle,
   keyboardType = "default",
   error,
-  autoCapitalize = "none" }: FieldProps) {
+  autoCapitalize = "none",
+}: FieldProps) {
   const [focused, setFocused] = useState(false);
 
   return (
@@ -279,7 +284,7 @@ function InputField({
           secureTextEntry={secureTextEntry}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
-          textAlign="left"
+          textAlign="right"
           style={[styles.input, showSecureToggle && styles.inputWithEye]}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
@@ -300,9 +305,9 @@ function HeroPanel() {
       <View style={styles.heroPanel}>
         <View style={styles.heroTopRow}>
           <View style={styles.chartBox}>
-            <Text style={styles.heroSmallTitle}>spaces</Text>
-            <Text style={styles.heroNumber}>$ 12,450</Text>
-            <Text style={styles.heroCaption}>Gross profit</Text>
+            <Text style={styles.heroSmallTitle}>רווחים</Text>
+            <Text style={styles.heroNumber}>₪ 12,450</Text>
+            <Text style={styles.heroCaption}>רווח גולמי</Text>
             <View style={styles.fakeChart}>
               {[18, 28, 24, 36, 52, 48, 70].map((h, i) => (
                 <View key={i} style={[styles.fakeBar, { height: h }]} />
@@ -310,7 +315,7 @@ function HeroPanel() {
             </View>
           </View>
           <View style={styles.ordersBox}>
-            <Text style={styles.heroSmallTitle}>Orders</Text>
+            <Text style={styles.heroSmallTitle}>הזמנות</Text>
             {[0, 1, 2, 3].map((_, i) => (
               <View key={i} style={styles.orderRow}>
                 <Text style={styles.checkIcon}>{i === 3 ? "◌" : "✓"}</Text>
@@ -330,17 +335,17 @@ function HeroPanel() {
       </View>
       <View style={[styles.miniCard, styles.miniCardLeft]}>
         <Text style={styles.miniIcon}>🛒</Text>
-        <Text style={styles.miniText}>Smart shopping</Text>
+        <Text style={styles.miniText}>קניות חכמות</Text>
       </View>
       <View style={[styles.miniCard, styles.miniCardRight]}>
         <Text style={styles.miniIcon}>☑</Text>
-        <Text style={styles.miniText}>Order tracking</Text>
+        <Text style={styles.miniText}>מעקב הזמנות</Text>
       </View>
     </View>
   );
 }
 
-export function SplashScreen({ loadingText = "Loading your management environment…" }: SplashScreenProps) {
+export function SplashScreen({ loadingText = "טוענים את סביבת הניהול שלך…" }: SplashScreenProps) {
   return (
     <SafeAreaView style={styles.root}>
       <BrandBackground>
@@ -348,10 +353,10 @@ export function SplashScreen({ loadingText = "Loading your management environmen
           <LogoMark size={104} />
           <View style={styles.spacer24} />
           <Text style={styles.appName}>
-            Catering Manager <Highlight style={styles.proHighlight}>Pro</Highlight>
+            ניהול קייטרינג <Highlight style={styles.proHighlight}>Pro</Highlight>
           </Text>
           <DecorativeDivider />
-          <Text style={styles.subtitle}>Order management, shopping, and more — all in one place</Text>
+          <Text style={styles.subtitle}>ניהול הזמנות, קניות ורווחים — במקום אחד</Text>
           <HeroPanel />
           <View style={styles.loadingArcWrap}>
             <View style={styles.loadingArc} />
@@ -377,7 +382,8 @@ export function LoginScreen({
   onChangePassword,
   onLogin,
   onForgotPassword,
-  onGoToRegister }: LoginScreenProps) {
+  onGoToRegister,
+}: LoginScreenProps) {
   const [localEmail, setLocalEmail] = useState("");
   const [localPassword, setLocalPassword] = useState("");
   const [secure, setSecure] = useState(true);
@@ -393,23 +399,23 @@ export function LoginScreen({
             <LogoMark size={86} />
             <View style={styles.spacer24} />
             <BrandTitle>
-              Welcome back <Highlight>Back</Highlight>
+              ברוך הבא <Highlight>חזרה</Highlight>
             </BrandTitle>
             <DecorativeDivider />
-            <Text style={styles.subtitle}>Sign in to continue managing your orders, shopping, and business</Text>
+            <Text style={styles.subtitle}>התחבר כדי להמשיך לנהל את ההזמנות, הקניות והרווחים שלך</Text>
 
             <GlassCard style={styles.authCard}>
               <InputField
-                label="Email"
-                placeholder="Email"
+                label="אימייל"
+                placeholder="אימייל"
                 value={email}
                 onChangeText={onChangeEmail ?? setLocalEmail}
                 keyboardType="email-address"
                 error={errors?.email}
               />
               <InputField
-                label="Password"
-                placeholder="Password"
+                label="סיסמה"
+                placeholder="סיסמה"
                 value={password}
                 onChangeText={onChangePassword ?? setLocalPassword}
                 secureTextEntry={secure}
@@ -418,16 +424,16 @@ export function LoginScreen({
                 error={errors?.password}
               />
               <Pressable onPress={onForgotPassword} hitSlop={10} style={styles.linkRightWrap}>
-                <Text style={styles.linkText}>Forgot password?</Text>
+                <Text style={styles.linkText}>שכחת סיסמה?</Text>
               </Pressable>
             </GlassCard>
 
-            <AppButton title="Sign in" loading={loading} disabled={loading} onPress={onLogin} style={styles.fullButton} />
+            <AppButton title="התחברות" loading={loading} disabled={loading} onPress={onLogin} style={styles.fullButton} />
 
             <View style={styles.inlineLinkRow}>
-              <Text style={styles.inlineMuted}>Don't have an account? </Text>
+              <Text style={styles.inlineMuted}>אין לך חשבון? </Text>
               <Pressable onPress={onGoToRegister} hitSlop={10}>
-                <Text style={styles.linkText}>Sign up</Text>
+                <Text style={styles.linkText}>הרשמה</Text>
               </Pressable>
             </View>
           </View>
@@ -453,7 +459,8 @@ export function RegisterScreen({
   onRegister,
   onGoToLogin,
   onTerms,
-  onPrivacy }: RegisterScreenProps) {
+  onPrivacy,
+}: RegisterScreenProps) {
   const [localFullName, setLocalFullName] = useState("");
   const [localBusinessName, setLocalBusinessName] = useState("");
   const [localEmail, setLocalEmail] = useState("");
@@ -470,33 +477,33 @@ export function RegisterScreen({
             <LogoMark size={82} />
             <View style={styles.spacer18} />
             <BrandTitle>
-              Create a <Highlight>new</Highlight> account
+              יצירת חשבון <Highlight>חדש</Highlight>
             </BrandTitle>
             <DecorativeDivider />
-            <Text style={styles.subtitle}>Start managing your catering business in an organized, smart, and profitable way</Text>
+            <Text style={styles.subtitle}>התחל לנהל את הקייטרינג שלך בצורה מסודרת, חכמה ורווחית יותר</Text>
 
             <GlassCard style={styles.registerCard}>
               <InputField
-                placeholder="Full name"
+                placeholder="שם מלא"
                 value={fullNameProp ?? localFullName}
                 onChangeText={onChangeFullName ?? setLocalFullName}
                 error={errors?.fullName}
               />
               <InputField
-                placeholder="Business name"
+                placeholder="שם העסק"
                 value={businessNameProp ?? localBusinessName}
                 onChangeText={onChangeBusinessName ?? setLocalBusinessName}
                 error={errors?.businessName}
               />
               <InputField
-                placeholder="Email"
+                placeholder="אימייל"
                 value={emailProp ?? localEmail}
                 onChangeText={onChangeEmail ?? setLocalEmail}
                 keyboardType="email-address"
                 error={errors?.email}
               />
               <InputField
-                placeholder="Password"
+                placeholder="סיסמה"
                 value={passwordProp ?? localPassword}
                 onChangeText={onChangePassword ?? setLocalPassword}
                 secureTextEntry={securePassword}
@@ -505,7 +512,7 @@ export function RegisterScreen({
                 error={errors?.password}
               />
               <InputField
-                placeholder="Confirm password"
+                placeholder="אישור סיסמה"
                 value={confirmPasswordProp ?? localConfirmPassword}
                 onChangeText={onChangeConfirmPassword ?? setLocalConfirmPassword}
                 secureTextEntry={secureConfirm}
@@ -514,23 +521,23 @@ export function RegisterScreen({
                 error={errors?.confirmPassword}
               />
 
-              <AppButton title="Create account" loading={loading} disabled={loading} onPress={onRegister} style={styles.cardButton} />
+              <AppButton title="יצירת חשבון" loading={loading} disabled={loading} onPress={onRegister} style={styles.cardButton} />
 
               <View style={styles.legalRow}>
-                <Text style={styles.legalText}>By signing up you agree to the </Text>
+                <Text style={styles.legalText}>בהרשמה אתה מאשר את </Text>
                 <Pressable onPress={onTerms} hitSlop={8}>
-                  <Text style={styles.legalLink}>Terms of use</Text>
+                  <Text style={styles.legalLink}>תנאי השימוש</Text>
                 </Pressable>
-                <Text style={styles.legalText}> and </Text>
+                <Text style={styles.legalText}> ו</Text>
                 <Pressable onPress={onPrivacy} hitSlop={8}>
-                  <Text style={styles.legalLink}>Privacy Policy</Text>
+                  <Text style={styles.legalLink}>מדיניות הפרטיות</Text>
                 </Pressable>
               </View>
 
               <View style={styles.inlineLinkRow}>
-                <Text style={styles.inlineMuted}>Already have an account? </Text>
+                <Text style={styles.inlineMuted}>כבר יש לך חשבון? </Text>
                 <Pressable onPress={onGoToLogin} hitSlop={10}>
-                  <Text style={styles.linkText}>Sign in</Text>
+                  <Text style={styles.linkText}>התחברות</Text>
                 </Pressable>
               </View>
             </GlassCard>
@@ -544,10 +551,10 @@ export function RegisterScreen({
 export function EarlyAccessScreen({ onFeedback, onContinueToApp }: EarlyAccessScreenProps) {
   const items = useMemo(
     () => [
-      { icon: "▣", text: "Create products and ingredients" },
-      { icon: "▦", text: "Manage orders in an organized way" },
-      { icon: "🛒", text: "Generate an automatic shopping list from the order" },
-      { icon: "◌", text: "Send feedback to help improve the user experience" },
+      { icon: "▣", text: "ליצור מוצרים ומרכיבים" },
+      { icon: "▦", text: "לנהל הזמנות בצורה מסודרת" },
+      { icon: "🛒", text: "להפיק רשימת קניות אוטומטית מההזמנה" },
+      { icon: "◌", text: "לשלוח משוב שיעזור לדייק את חוויית השימוש" },
     ],
     []
   );
@@ -559,18 +566,18 @@ export function EarlyAccessScreen({ onFeedback, onContinueToApp }: EarlyAccessSc
           <LogoMark size={64} />
           <View style={styles.spacer20} />
           <BrandTitle large>
-            You got <Highlight>early</Highlight> access
+            קיבלת גישה <Highlight>מוקדמת</Highlight>
           </BrandTitle>
           <DecorativeDivider />
 
           <Text style={styles.earlyBody}>
-            We are glad you chose to join the first wave of Catering Manager Pro.{"\n"}
-            This is early access to a system built especially for you — to help manage orders, products, shopping, and profitability in an organized, smart, and clear way.{"\n\n"}
-            In this wave, you join the first group of users who get everything first and can help refine the experience through real-world use.
+            שמחים שבחרת להצטרף לשלב הראשון של ניהול קייטרינג פרו.{"\n"}
+            זו גישה מוקדמת למערכת שנבנתה במיוחד עבורך — כדי לעזור לנהל הזמנות, מוצרים, קניות ורווחיות בצורה מסודרת, חכמה וברורה יותר.{"\n\n"}
+            בשלב הזה אתה נכנס לקבוצה הראשונה של משתמשים שמקבלים את הכלי לפני כולם, ויכולים לעזור לדייק את חוויית השימוש מתוך עבודה אמיתית בשטח.
           </Text>
 
           <GlassCard style={styles.earlyCard}>
-            <Text style={styles.earlyCardTitle}>What can you do now?</Text>
+            <Text style={styles.earlyCardTitle}>מה אפשר לעשות עכשיו?</Text>
             <View style={styles.earlyCardDividerWrap}>
               <DecorativeDivider />
             </View>
@@ -583,7 +590,7 @@ export function EarlyAccessScreen({ onFeedback, onContinueToApp }: EarlyAccessSc
             ))}
           </GlassCard>
 
-          <AppButton title="Continue to app" onPress={onContinueToApp} style={styles.fullButton} />
+          <AppButton title="המשך לאפליקציה" onPress={onContinueToApp} style={styles.fullButton} />
         </View>
       </BrandBackground>
     </SafeAreaView>
@@ -1193,7 +1200,7 @@ const styles = StyleSheet.create({
   bulletRow: {
     minHeight: 42,
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     gap: 12,
     paddingVertical: 6,
@@ -1240,4 +1247,5 @@ export default {
   SplashScreen,
   LoginScreen,
   RegisterScreen,
-  EarlyAccessScreen };
+  EarlyAccessScreen,
+};

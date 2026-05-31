@@ -26,7 +26,9 @@ export const FLAG_SAFE_DEFAULTS: Readonly<FeatureFlags> = Object.freeze({
   remote_campaigns: false,
   feedback_popup: false,
   global_message: false,
-  external_urls: false });
+  external_urls: false,
+  dynamic_onboarding: false,
+});
 
 const CACHE_KEY = "feature_flags";
 
@@ -77,4 +79,5 @@ export const FeatureFlagService = {
   async isFlagEnabled(flagName: string): Promise<boolean> {
     const flags = await FeatureFlagService.getFlags();
     return flags[flagName] === true;
-  } };
+  },
+};

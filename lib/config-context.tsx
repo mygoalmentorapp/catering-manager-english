@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "./supabase";
-import type { AppConfig, FeatureFlag } from "./supabase-types";
+import type { FeatureFlag } from "./supabase-types";
 import { RemoteConfigService, type RemoteConfig, SAFE_DEFAULTS as RC_SAFE_DEFAULTS } from "./services/remote-config-service";
 import { FeatureFlagService, type FeatureFlags, FLAG_SAFE_DEFAULTS } from "./services/feature-flag-service";
 import { FeatureService, type FeatureName } from "./services/feature-service";
@@ -20,8 +20,6 @@ interface TrialState {
 }
 
 interface ConfigState {
-  /** Legacy app_config from Supabase — still fetched for global_message fields etc. */
-  appConfig: AppConfig | null;
   /** Legacy feature_flags map — still fetched for backward compat */
   featureFlags: Record<string, boolean>;
   trial: TrialState;
@@ -29,7 +27,7 @@ interface ConfigState {
   isMaintenanceMode: boolean;
 
   // ── Session 1.5: new remote config state ──
-  /** Remote config master switches (from remote_config table) */
+  /** Remote config master switches (from remote_config table via tRPC) */
   remoteConfig: RemoteConfig;
   /** Feature flags from the new FeatureFlagService (cache-first) */
   serviceFlags: FeatureFlags;
@@ -56,9 +54,8 @@ type ConfigContextType = ConfigState & ConfigActions;
 
 const ConfigContext = createContext<ConfigContextType | null>(null);
 
-// ============ CACHE KEYS (legacy) ============
+// ============ CACHE KEYS ============
 
-const CACHE_APP_CONFIG = "cache_app_config";
 const CACHE_FEATURE_FLAGS = "cache_feature_flags";
 const CACHE_TRIAL_STATE = "cache_trial_state";
 
@@ -70,20 +67,22 @@ const SAFE_FEATURE_STATES: Record<FeatureName, boolean> = {
   remote_campaigns: false,
   feedback_popup: false,
   global_message: false,
-  external_urls: false };
+  external_urls: false,
+  dynamic_onboarding: false,
+};
 
 // ============ PROVIDER ============
 
 export function ConfigProvider({ children }: { children: React.ReactNode }) {
-  // ── Legacy state (preserved for backward compat) ──
-  const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
+  // ── State ──
   const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
   const [trial, setTrial] = useState<TrialState>({
     trialStartedAt: null,
     trialEndsAt: null,
     daysRemaining: 14,
     isExpired: false,
-    shouldBlock: false });
+    shouldBlock: false,
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   // ── Session 1.5: new state ──
@@ -95,18 +94,14 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   // Track whether user is authenticated for gating Supabase fetches
   const isAuthenticatedRef = useRef(false);
 
-  // ── Legacy: Load cached data first ──
+  // ── Load cached data first ──
   const loadCachedData = useCallback(async () => {
     try {
-      const [cachedConfig, cachedFlags, cachedTrial] = await Promise.all([
-        AsyncStorage.getItem(CACHE_APP_CONFIG),
+      const [cachedFlags, cachedTrial] = await Promise.all([
         AsyncStorage.getItem(CACHE_FEATURE_FLAGS),
         AsyncStorage.getItem(CACHE_TRIAL_STATE),
       ]);
 
-      if (cachedConfig) {
-        setAppConfig(JSON.parse(cachedConfig));
-      }
       if (cachedFlags) {
         setFeatureFlags(JSON.parse(cachedFlags));
       }
@@ -118,22 +113,9 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // ── Legacy: Fetch fresh config from Supabase (app_config + feature_flags) ──
-  const fetchLegacyConfig = useCallback(async () => {
+  // ── Fetch feature flags from Supabase (authenticated-only) ──
+  const fetchFeatureFlags = useCallback(async () => {
     try {
-      // Fetch app_config (public table — no auth needed)
-      const { data: configData, error: configError } = await supabase
-        .from("app_config")
-        .select("*")
-        .eq("id", 1)
-        .single();
-
-      if (configData && !configError) {
-        setAppConfig(configData as AppConfig);
-        await AsyncStorage.setItem(CACHE_APP_CONFIG, JSON.stringify(configData));
-      }
-
-      // Fetch legacy feature flags — only if authenticated (RLS: authenticated-only)
       if (isAuthenticatedRef.current) {
         const { data: flagsData, error: flagsError } = await supabase
           .from("feature_flags")
@@ -149,7 +131,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (err) {
-      warnLog("Config", "Legacy fetch error:", err);
+      warnLog("Config", "Feature flags fetch error:", err);
     }
   }, []);
 
@@ -159,7 +141,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
       devLog("Config", "Loading remote config services...");
 
       // These services use cache-first strategy internally.
-      // If user is not authenticated, Supabase will fail but cache/safe defaults kick in.
+      // RemoteConfigService now uses tRPC (server-side service_role) to bypass RLS.
       const [config, flags] = await Promise.all([
         RemoteConfigService.getConfig(),
         FeatureFlagService.getFlags(),
@@ -176,7 +158,9 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
         remote_campaigns: { masterKey: "remote_campaigns_enabled", flagName: "remote_campaigns" },
         feedback_popup: { masterKey: "feedback_popup_enabled", flagName: "feedback_popup" },
         global_message: { masterKey: "global_message_enabled", flagName: "global_message" },
-        external_urls: { masterKey: "external_urls_enabled", flagName: "external_urls" } };
+        external_urls: { masterKey: "external_urls_enabled", flagName: "external_urls" },
+        dynamic_onboarding: { masterKey: "dynamic_onboarding_enabled", flagName: "dynamic_onboarding" },
+      };
 
       for (const [feature, mapping] of Object.entries(FEATURE_MAP)) {
         states[feature] = config[mapping.masterKey] === true && flags[mapping.flagName] === true;
@@ -188,7 +172,8 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
       console.log("[Config] Remote config loaded:", {
         configKeys: Object.keys(config),
         activeFeatures: Object.entries(states).filter(([, v]) => v).map(([k]) => k),
-        allStates: states });
+        allStates: states,
+      });
     } catch (err) {
       warnLog("Config", "Remote services load error (using safe defaults):", err);
       // Safe defaults are already set in initial state
@@ -249,11 +234,11 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
       await loadCachedData();
 
       // 2. Load remote services (cache-first, non-blocking)
-      //    This will use safe defaults if not authenticated yet
+      //    RemoteConfigService now uses tRPC → server → service_role → Supabase
       await loadRemoteServices();
 
-      // 3. Fetch legacy config (app_config is public, feature_flags needs auth)
-      await fetchLegacyConfig();
+      // 3. Fetch feature flags (needs auth for RLS)
+      await fetchFeatureFlags();
 
       if (mounted) setIsLoading(false);
     };
@@ -261,7 +246,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
     init();
 
     return () => { mounted = false; };
-  }, [loadCachedData, fetchLegacyConfig, loadRemoteServices]);
+  }, [loadCachedData, fetchFeatureFlags, loadRemoteServices]);
 
   // ── Listen for auth changes ──
   useEffect(() => {
@@ -283,33 +268,32 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
         // (now we have auth to read authenticated-only tables)
         if (!wasAuthenticated) {
           devLog("Config", "User authenticated — refreshing remote config");
-          // Refresh services to get fresh data from Supabase (now authenticated)
           await refreshRemoteConfig();
-          // Also refresh legacy feature flags
-          await fetchLegacyConfig();
+          await fetchFeatureFlags();
         }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [updateTrialFromProfile, refreshRemoteConfig, fetchLegacyConfig]);
+  }, [updateTrialFromProfile, refreshRemoteConfig, fetchFeatureFlags]);
 
-  // ── Legacy: refreshConfig ──
+  // ── refreshConfig ──
   const refreshConfig = useCallback(async () => {
-    await fetchLegacyConfig();
+    await fetchFeatureFlags();
     await refreshRemoteConfig();
-  }, [fetchLegacyConfig, refreshRemoteConfig]);
+  }, [fetchFeatureFlags, refreshRemoteConfig]);
 
-  // ── Legacy: isFeatureEnabled ──
+  // ── isFeatureEnabled (legacy feature_flags) ──
   const isFeatureEnabled = useCallback((flagName: string): boolean => {
     return featureFlags[flagName] ?? false;
   }, [featureFlags]);
 
-  const isMaintenanceMode = appConfig?.maintenance_enabled ?? false;
+  // Maintenance mode reads from remote_config (not legacy app_config).
+  // Safe default: false (maintenance_enabled=false in SAFE_DEFAULTS).
+  const isMaintenanceMode = remoteConfig.maintenance_enabled ?? false;
 
   const value: ConfigContextType = {
-    // Legacy state
-    appConfig,
+    // State
     featureFlags,
     trial,
     isLoading,
@@ -321,14 +305,15 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
     featureStates,
     remoteConfigReady,
 
-    // Legacy actions
+    // Actions
     refreshConfig,
     isFeatureEnabled,
 
     // Session 1.5 actions
     isFeatureActive,
     isExternalUrlAllowed,
-    refreshRemoteConfig };
+    refreshRemoteConfig,
+  };
 
   return <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>;
 }

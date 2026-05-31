@@ -12,7 +12,8 @@ import {
   Modal,
   ScrollView,
   BackHandler,
-  ActivityIndicator } from "react-native";
+  ActivityIndicator,
+} from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -26,7 +27,8 @@ import {
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
-  DS_SHADOW } from "@/lib/design-system";
+  DS_SHADOW,
+} from "@/lib/design-system";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 // useEditGuard removed — offline editing is seamless now
 // OfflineInfoBanner removed — smooth UX, toast on save only
@@ -47,17 +49,22 @@ function UnitPickerModal({
   selectedUnit,
   onSelect,
   onClose,
-  onAddUnit }: {
+  onAddUnit,
+  onDeleteUnit,
+}: {
   visible: boolean;
   units: UnitDef[];
   selectedUnit: string;
   onSelect: (unit: string) => void;
   onClose: () => void;
   onAddUnit: (unit: UnitDef) => Promise<void>;
+  onDeleteUnit: (singular: string) => Promise<void>;
 }) {
   const { colorScheme } = useThemeContext();
   const es = React.useMemo(() => _make_es(), [DS_COLORS.accent, colorScheme]);
   const ms = React.useMemo(() => _make_ms(), [DS_COLORS.accent, colorScheme]);
+
+  const DEFAULT_UNIT_SINGULARS = ["קילו", "גרם", "ליטר", 'מ"ל', "יחידה", "כוס", "כף", "קופסא"];
 
   const [newSingular, setNewSingular] = useState("");
   const [newPlural, setNewPlural] = useState("");
@@ -66,7 +73,15 @@ function UnitPickerModal({
   const handleAddUnit = async () => {
     if (!newSingular.trim()) return;
     if (!newPlural.trim()) {
-      Alert.alert("Error", "Please also enter the plural form");
+      Alert.alert("שגיאה", "יש למלא גם צורת רבים");
+      return;
+    }
+    // Check for duplicates client-side
+    const exists = units.some(
+      (u) => u.singular.trim() === newSingular.trim()
+    );
+    if (exists) {
+      Alert.alert("שגיאה", "יחידת מידה זו כבר קיימת");
       return;
     }
     setAdding(true);
@@ -76,10 +91,25 @@ function UnitPickerModal({
       setNewSingular("");
       setNewPlural("");
     } catch (e: any) {
-      Alert.alert("Error", e.message);
+      Alert.alert("שגיאה", e.message);
     } finally {
       setAdding(false);
     }
+  };
+
+  const handleDeleteUnit = (unitDef: UnitDef) => {
+    Alert.alert(
+      "מחיקת יחידת מידה",
+      `האם למחוק את "${unitDef.singular}/${unitDef.plural}"?`,
+      [
+        { text: "ביטול", style: "cancel" },
+        {
+          text: "מחיקה",
+          style: "destructive",
+          onPress: () => onDeleteUnit(unitDef.singular),
+        },
+      ]
+    );
   };
 
   return (
@@ -88,27 +118,40 @@ function UnitPickerModal({
         <TouchableOpacity activeOpacity={1} style={ms.unitModalContent}>
           <View style={ms.unitModalHeader}>
             <View style={{ width: 40 }} />
-            <Text style={ms.unitModalTitle}>Select measurement unit</Text>
+            <Text style={ms.unitModalTitle}>בחירת יחידת מידה</Text>
             <TouchableOpacity onPress={onClose} style={es.headerBtn} activeOpacity={0.7}>
               <MaterialIcons name="close" size={22} color={DS_COLORS.textPrimary} />
             </TouchableOpacity>
           </View>
           <ScrollView style={{ maxHeight: 300 }} contentContainerStyle={{ padding: DS_SPACING.lg }}>
-            {units.map((unitDef) => (
-              <TouchableOpacity
-                key={unitDef.singular}
-                onPress={() => { onSelect(unitDef.singular); onClose(); }}
-                style={[ms.unitOption, selectedUnit === unitDef.singular && ms.unitOptionSelected]}
-                activeOpacity={0.7}
-              >
-                <Text style={[ms.unitOptionText, selectedUnit === unitDef.singular && ms.unitOptionTextSelected]}>
-                  {unitDef.singular}/{unitDef.plural}
-                </Text>
-                {selectedUnit === unitDef.singular && (
-                  <MaterialIcons name="check" size={20} color={DS_COLORS.accent} />
-                )}
-              </TouchableOpacity>
-            ))}
+            {units.map((unitDef) => {
+              const isDefault = DEFAULT_UNIT_SINGULARS.includes(unitDef.singular);
+              return (
+                <View key={unitDef.singular} style={[ms.unitOption, selectedUnit === unitDef.singular && ms.unitOptionSelected, { flexDirection: "row", direction: "rtl", alignItems: "center" }]}>
+                  <TouchableOpacity
+                    onPress={() => { onSelect(unitDef.singular); onClose(); }}
+                    style={{ flex: 1 }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[ms.unitOptionText, selectedUnit === unitDef.singular && ms.unitOptionTextSelected]}>
+                      {unitDef.singular}/{unitDef.plural}
+                    </Text>
+                  </TouchableOpacity>
+                  {selectedUnit === unitDef.singular && (
+                    <MaterialIcons name="check" size={20} color={DS_COLORS.accent} />
+                  )}
+                  {!isDefault && (
+                    <TouchableOpacity
+                      onPress={() => handleDeleteUnit(unitDef)}
+                      style={ms.removeBtn}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialIcons name="delete-outline" size={18} color={DS_COLORS.error} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })}
           </ScrollView>
           <View style={ms.addUnitSection}>
             <View style={ms.addUnitRow}>
@@ -116,18 +159,18 @@ function UnitPickerModal({
                 style={[ms.addUnitInput, { flex: 1 }]}
                 value={newSingular}
                 onChangeText={setNewSingular}
-                placeholder="Singular (e.g., kg)"
+                placeholder="יחיד (למשל: קילו)"
                 placeholderTextColor={DS_COLORS.textSecondary}
-                textAlign="left"
+                textAlign="right"
                 returnKeyType="next"
               />
               <TextInput
                 style={[ms.addUnitInput, { flex: 1 }]}
                 value={newPlural}
                 onChangeText={setNewPlural}
-                placeholder="Plural (e.g., kg)"
+                placeholder="רבים (למשל: קילו)"
                 placeholderTextColor={DS_COLORS.textSecondary}
-                textAlign="left"
+                textAlign="right"
                 returnKeyType="done"
                 onSubmitEditing={handleAddUnit}
               />
@@ -139,7 +182,7 @@ function UnitPickerModal({
               disabled={!newSingular.trim() || adding}
             >
               <MaterialIcons name="add" size={18} color={DS_COLORS.white} />
-              <Text style={ms.addUnitBtnText}>Add</Text>
+              <Text style={ms.addUnitBtnText}>הוסף</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -164,7 +207,8 @@ function EditableRow({
   showErrors,
   isManual,
   onOpenUnitPicker,
-  units }: {
+  units,
+}: {
   row: ShoppingListIngredientRow & { _localId: string };
   onUpdate: (localId: string, field: string, value: string | number) => void;
   onDelete?: (localId: string) => void;
@@ -221,9 +265,9 @@ function EditableRow({
             style={[es.nameInput, nameEmpty && es.inputError]}
             value={row.name}
             onChangeText={(text) => onUpdate(row._localId, "name", text)}
-            placeholder="Item name"
+            placeholder="שם פריט"
             placeholderTextColor={nameEmpty ? DS_COLORS.error : DS_COLORS.textSecondary}
-            textAlign="left"
+            textAlign="right"
           />
         ) : (
           <Text style={es.nameDisplay} numberOfLines={1}>
@@ -237,7 +281,7 @@ function EditableRow({
           style={[es.qtyInput, qtyEmpty && es.inputError]}
           value={qtyText}
           onChangeText={handleQtyChange}
-          placeholder="Quantity"
+          placeholder="כמות"
           placeholderTextColor={qtyEmpty ? DS_COLORS.error : DS_COLORS.textSecondary}
           keyboardType="decimal-pad"
           textAlign="center"
@@ -259,7 +303,7 @@ function EditableRow({
               ]}
               numberOfLines={1}
             >
-              {row.unit.trim() ? getDisplayUnit(row.unit, row.finalQty, units) : "Unit"}
+              {row.unit.trim() ? getDisplayUnit(row.unit, row.finalQty, units) : "יחידה"}
             </Text>
             <MaterialIcons name="arrow-drop-down" size={16} color={DS_COLORS.textSecondary} />
           </TouchableOpacity>
@@ -298,7 +342,9 @@ export default function ShoppingListEditScreen() {
     updateSavedShoppingList,
     refreshShoppingLists,
     units,
-    addUnit } = useData();
+    addUnit,
+    deleteUnit,
+  } = useData();
   const { guardMutation } = useMutationGuard();
 
 
@@ -317,7 +363,8 @@ export default function ShoppingListEditScreen() {
       return {
         initialRows: existingList.rows,
         orderIds: existingList.orderIds,
-        orderNames: existingList.orderNames };
+        orderNames: existingList.orderNames,
+      };
     }
 
     // New list from selected order IDs
@@ -327,7 +374,8 @@ export default function ShoppingListEditScreen() {
     return {
       initialRows: rows,
       orderIds: selectedOrders.map((o) => o.id),
-      orderNames: selectedOrders.map((o) => o.customerName) };
+      orderNames: selectedOrders.map((o) => o.customerName),
+    };
   }, [existingList, params.ids, orders, products]);
 
   const [originalRows] = useState<ShoppingListIngredientRow[]>(initialRows);
@@ -395,16 +443,17 @@ export default function ShoppingListEditScreen() {
       totalQty: 0,
       sourceBreakdown: {},
       manualDelta: 0,
-      finalQty: 0 };
+      finalQty: 0,
+    };
     setEditableRows((prev) => [...prev, newRow]);
     setIsDirty(true);
   }, []);
 
   const handleReset = useCallback(() => {
-    Alert.alert("Reset list", "Revert to the original list? All manual changes will be deleted.", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert("איפוס רשימה", "לחזור לרשימה המקורית? כל השינויים הידניים יימחקו.", [
+      { text: "ביטול", style: "cancel" },
       {
-        text: "Reset",
+        text: "איפוס",
         style: "destructive",
         onPress: () => {
           // Reset all rows: clear manualDelta and set finalQty back to totalQty.
@@ -414,11 +463,13 @@ export default function ShoppingListEditScreen() {
             .map((r) => ({
               ...r,
               manualDelta: 0,
-              finalQty: r.totalQty }));
+              finalQty: r.totalQty,
+            }));
           setEditableRows(toEditable(resetRows));
           setIsDirty(false);
           setShowErrors(false);
-        } },
+        },
+      },
     ]);
   }, [originalRows]);
 
@@ -447,7 +498,7 @@ export default function ShoppingListEditScreen() {
     );
 
     if (nonEmptyRows.length === 0) {
-      Alert.alert("Error", "The list is empty — please add at least one item");
+      Alert.alert("שגיאה", "הרשימה ריקה — יש להוסיף לפחות פריט אחד");
       return;
     }
 
@@ -457,7 +508,7 @@ export default function ShoppingListEditScreen() {
 
     if (invalidRows.length > 0) {
       setShowErrors(true);
-      Alert.alert("Missing fields", "Please fill in name, quantity, and unit in all rows");
+      Alert.alert("שדות חסרים", "יש למלא שם, כמות ויחידה בכל השורות");
       return;
     }
 
@@ -468,21 +519,23 @@ export default function ShoppingListEditScreen() {
 
       if (existingList) {
         const updated = await updateSavedShoppingList(existingList.id, {
-          rows: rowsToSave });
+          rows: rowsToSave,
+        });
         savedId = updated.id;
       } else {
         const created = await addSavedShoppingList({
           orderIds,
           orderNames,
           rows: rowsToSave,
-          status: "valid" });
+          status: "valid",
+        });
         savedId = created.id;
       }
 
       setIsDirty(false);
       setShowErrors(false);
-      Alert.alert("Success", existingList ? "List updated successfully" : "List saved successfully", [
-        { text: "Confirm", onPress: () => router.replace({ pathname: "/shopping-list-view", params: { listId: savedId } } as any) },
+      Alert.alert("הצלחה", existingList ? "הרשימה עודכנה בהצלחה" : "הרשימה נשמרה בהצלחה", [
+        { text: "אישור", onPress: () => router.replace({ pathname: "/shopping-list-view", params: { listId: savedId } } as any) },
       ]);
     } catch (e: any) {
       // Network errors: server may have saved the list even though response didn't arrive.
@@ -512,7 +565,7 @@ export default function ShoppingListEditScreen() {
           // Refresh also failed
         }
       }
-      Alert.alert("Error", e.message || "Unable to save");
+      Alert.alert("שגיאה", e.message || "לא ניתן לשמור");
     } finally {
       setSaving(false);
     }
@@ -520,9 +573,9 @@ export default function ShoppingListEditScreen() {
 
   const handleClose = useCallback(() => {
     if (isDirty) {
-      Alert.alert("Unsaved changes", "Exit without saving?", [
-        { text: "Continue Edit", style: "cancel" },
-        { text: "Exit without saving", style: "destructive", onPress: () => router.back() },
+      Alert.alert("שינויים לא נשמרו", "האם לצאת ללא שמירה?", [
+        { text: "המשך עריכה", style: "cancel" },
+        { text: "צא ללא שמירה", style: "destructive", onPress: () => router.back() },
       ]);
     } else {
       router.back();
@@ -576,9 +629,9 @@ export default function ShoppingListEditScreen() {
           <View style={es.header}>
             <TouchableOpacity onPress={handleReset} style={es.resetBtn} activeOpacity={0.7}>
               <MaterialIcons name="refresh" size={18} color={DS_COLORS.accent} />
-              <Text style={es.resetBtnText}>Reset Changes</Text>
+              <Text style={es.resetBtnText}>איפוס שינויים</Text>
             </TouchableOpacity>
-            <Text style={es.headerTitle}>Editing Shopping list</Text>
+            <Text style={es.headerTitle}>עריכת רשימת קניות</Text>
             <TouchableOpacity onPress={handleClose} style={es.headerBtn} activeOpacity={0.7}>
               <MaterialIcons name="arrow-back" size={22} color={DS_COLORS.textPrimary} />
             </TouchableOpacity>
@@ -594,9 +647,9 @@ export default function ShoppingListEditScreen() {
 
           {/* Column headers */}
           <View style={es.columnHeaders}>
-            <Text style={[es.colHeaderText, { flex: 2 }]}>Item name</Text>
-            <Text style={[es.colHeaderText, { flex: 1, textAlign: "center" }]}>Quantity</Text>
-            <Text style={[es.colHeaderText, { flex: 1, textAlign: "center" }]}>Unit</Text>
+            <Text style={[es.colHeaderText, { flex: 2 }]}>שם פריט</Text>
+            <Text style={[es.colHeaderText, { flex: 1, textAlign: "center" }]}>כמות</Text>
+            <Text style={[es.colHeaderText, { flex: 1, textAlign: "center" }]}>יחידה</Text>
           </View>
 
           {/* Editable rows */}
@@ -614,13 +667,13 @@ export default function ShoppingListEditScreen() {
                   activeOpacity={0.7}
                 >
                   <MaterialIcons name="add" size={20} color={DS_COLORS.accent} />
-                  <Text style={es.addRowBtnText}>Add row</Text>
+                  <Text style={es.addRowBtnText}>הוסף שורה</Text>
                 </TouchableOpacity>
 
                 {diffs.length > 0 && (
                   <View style={es.diffSection}>
                     <View style={es.diffDivider} />
-                    <Text style={es.diffTitle}>Changes from the original list</Text>
+                    <Text style={es.diffTitle}>שינויים מהרשימה המקורית</Text>
                     {diffs.map((d, i) => (
                       <View key={`diff-${i}`} style={es.diffRow}>
                         <Text style={es.diffName}>{d.name}</Text>
@@ -656,7 +709,7 @@ export default function ShoppingListEditScreen() {
               ) : (
                 <MaterialIcons name="save" size={22} color={DS_COLORS.white} />
               )}
-              <Text style={es.saveBtnText}>{saving ? "Saving..." : "Save"}</Text>
+              <Text style={es.saveBtnText}>{saving ? "שומר..." : "שמירה"}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -670,6 +723,7 @@ export default function ShoppingListEditScreen() {
         onSelect={handleUnitSelect}
         onClose={() => setUnitPickerTarget(null)}
         onAddUnit={addUnit}
+        onDeleteUnit={deleteUnit}
       />
 
     </ScreenContainer>
@@ -688,7 +742,7 @@ function _make_es() { return StyleSheet.create({
     paddingHorizontal: DS_SPACING.xl,
     paddingVertical: DS_SPACING.md,
     backgroundColor: DS_COLORS.background,
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
   },
   headerBtn: {
     width: 40,
@@ -707,7 +761,7 @@ function _make_es() { return StyleSheet.create({
   },
   resetBtn: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     gap: 4,
     paddingHorizontal: DS_SPACING.md,
@@ -734,7 +788,7 @@ function _make_es() { return StyleSheet.create({
   },
   columnHeaders: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     paddingHorizontal: DS_SPACING.xl,
     paddingVertical: DS_SPACING.xs,
@@ -751,7 +805,7 @@ function _make_es() { return StyleSheet.create({
   },
   row: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     paddingVertical: DS_SPACING.sm,
     gap: DS_SPACING.xs,
@@ -800,7 +854,7 @@ function _make_es() { return StyleSheet.create({
   },
   unitButton: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: DS_SPACING.xs + 2,
@@ -835,7 +889,7 @@ function _make_es() { return StyleSheet.create({
   },
   addRowBtn: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "center",
     gap: DS_SPACING.xs,
@@ -869,7 +923,7 @@ function _make_es() { return StyleSheet.create({
   },
   diffRow: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: DS_SPACING.xs + 2,
@@ -896,7 +950,7 @@ function _make_es() { return StyleSheet.create({
   },
   saveBtn: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: DS_SPACING.lg,
@@ -927,7 +981,7 @@ function _make_ms() { return StyleSheet.create({
   },
   unitModalHeader: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "space-between",
     padding: DS_SPACING.xl,
@@ -941,7 +995,7 @@ function _make_ms() { return StyleSheet.create({
   },
   unitOption: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: DS_SPACING.md + 2,
@@ -968,7 +1022,7 @@ function _make_ms() { return StyleSheet.create({
   },
   addUnitRow: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     gap: DS_SPACING.sm,
   },
@@ -986,7 +1040,7 @@ function _make_ms() { return StyleSheet.create({
   },
   addUnitBtn: {
     flexDirection: "row",
-    writingDirection: "rtl" as const,
+    direction: "rtl" as const,
     alignItems: "center",
     gap: 4,
     backgroundColor: DS_COLORS.accent,
@@ -999,5 +1053,12 @@ function _make_ms() { return StyleSheet.create({
     color: DS_COLORS.white,
     fontSize: DS_FONT.bodySmall,
     fontWeight: DS_WEIGHT.semibold,
+  },
+  removeBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: DS_RADIUS.sm,
+    alignItems: "center",
+    justifyContent: "center",
   },
 }); }

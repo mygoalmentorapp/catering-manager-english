@@ -14,7 +14,9 @@ import { ConnectionErrorScreen } from "./connection-error-screen";
 // ConnectionBanner removed — smooth UX, no network status banners
 import { BridgeRetryScreen } from "./bridge-retry-screen";
 import { ForceUpdateScreen } from "./force-update-screen";
+import { MaintenanceScreen } from "./maintenance-screen";
 import { useConfig } from "@/lib/config-context";
+import { RemoteConfigService } from "@/lib/services/remote-config-service";
 import { DS_COLORS } from "@/lib/design-system";
 
 const ONBOARDING_COMPLETE_KEY = "onboarding_complete";
@@ -42,7 +44,7 @@ function urlHasLoginHint(url: string | null): boolean {
  * - After data loaded, offline → view-only (handled by mutation guards)
  */
 export function AppGate({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading: authLoading, bridgeFailed, bridgeRetrying, retryBridge, signOut: authSignOut, session } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, bridgeFailed, bridgeRetrying, retryBridge, signOut: authSignOut, session, isRecovering } = useAuth();
   const segments = useSegments();
   const [gateReady, setGateReady] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
@@ -157,6 +159,14 @@ export function AppGate({ children }: { children: React.ReactNode }) {
         markInitialRedirectDone();
         return;
       }
+      // FIX 4: If session recovery is in progress (isRecovering=true),
+      // don't redirect to login. The auth context is still trying to restore
+      // the session from getSession/refreshSession/AsyncStorage fallback.
+      // Redirecting to login now would be premature — the user may still be authenticated.
+      if (isRecovering) {
+        markInitialRedirectDone();
+        return;
+      }
       if (!currentRoute.startsWith("auth") && !currentRoute.startsWith("oauth") && currentRoute !== "confirm") {
         if (hasRegisteredBefore || deepLinkLoginHint) {
           if (deepLinkLoginHint && !hasRegisteredBefore) {
@@ -198,7 +208,7 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     }
 
     markInitialRedirectDone();
-  }, [gateReady, authLoading, isAuthenticated, onboardingDone, betaIntroDone, hasRegisteredBefore, deepLinkLoginHint, segments, markInitialRedirectDone, bridgeFailed, session?.user]);
+  }, [gateReady, authLoading, isAuthenticated, onboardingDone, betaIntroDone, hasRegisteredBefore, deepLinkLoginHint, segments, markInitialRedirectDone, bridgeFailed, session?.user, isRecovering]);
 
   // Mark as returning user (used by AuthenticatedGate before signOut)
   const markAsReturningUser = useCallback(async () => {
@@ -220,10 +230,18 @@ export function AppGate({ children }: { children: React.ReactNode }) {
     remoteConfig.force_update_enabled === true &&
     currentVersionCode < remoteConfig.minimum_supported_version_code;
 
+  // ============ MAINTENANCE GATE ============
+  // Blocks entire app when maintenance_enabled=true in remote_config.
+  // Fail-safe: if remoteConfig is unavailable (safe defaults), maintenance_enabled=false → never blocks.
+  const maintenanceRequired =
+    remoteConfigReady && remoteConfig.maintenance_enabled === true;
+
   // Show DataLoadingSplash while gate flags load + auth initializes + initial redirect.
   // This replaces the previous white screen with spinner, giving a smooth branded transition.
+  // FIX 4: Also show splash during session recovery (isRecovering=true).
+  // This prevents the login screen from flashing while initAuth is still trying to restore the session.
   const noopSplashCallback = useCallback(() => {}, []);
-  if (!gateReady || authLoading || !initialRedirectDone) {
+  if (!gateReady || authLoading || !initialRedirectDone || isRecovering) {
     return <DataLoadingSplash onMinTimeComplete={noopSplashCallback} />;
   }
 
@@ -236,6 +254,22 @@ export function AppGate({ children }: { children: React.ReactNode }) {
         message={remoteConfig.force_update_message}
         buttonText={remoteConfig.force_update_button_text}
         googlePlayUrl={remoteConfig.google_play_url}
+      />
+    );
+  }
+
+  // Maintenance mode blocks ALL usage — shown after ForceUpdate but before any other gate.
+  // Does NOT block if remote config is unavailable (fail-safe).
+  if (maintenanceRequired) {
+    return (
+      <MaintenanceScreen
+        title={remoteConfig.maintenance_title}
+        message={remoteConfig.maintenance_message}
+        actionText={remoteConfig.maintenance_action_text}
+        onAction={async () => {
+          // Refresh remote config to check if maintenance is still active
+          await RemoteConfigService.refresh();
+        }}
       />
     );
   }
@@ -289,7 +323,8 @@ export function AppGate({ children }: { children: React.ReactNode }) {
 function AuthenticatedGate({
   children,
   dataLoading,
-  markAsReturningUser }: {
+  markAsReturningUser,
+}: {
   children: React.ReactNode;
   dataLoading: boolean;
   markAsReturningUser: () => Promise<void>;

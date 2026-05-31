@@ -10,7 +10,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   Image,
-  Modal } from "react-native";
+  Modal,
+} from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -92,7 +93,7 @@ export default function SignupScreen() {
         msg.includes("500") ||
         msg.includes("server")
       ) {
-        setError("Error signing up. Check your internet connection and try again");
+        setError("שגיאה בהרשמה. בדוק את החיבור לאינטרנט ונסה שוב");
         setButtonState("error");
         return;
       }
@@ -111,11 +112,11 @@ export default function SignupScreen() {
     setEmailWarning("");
 
     if (!fullName.trim()) {
-      setError("Please enter your full name");
+      setError("נא להזין שם מלא");
       return;
     }
     if (!email.trim()) {
-      setError("Please enter an email address");
+      setError("נא להזין כתובת אימייל");
       return;
     }
 
@@ -131,11 +132,11 @@ export default function SignupScreen() {
 
     // Password checks
     if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError("הסיסמה חייבת להכיל לפחות 6 תווים");
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("הסיסמאות אינן תואמות");
       return;
     }
 
@@ -176,7 +177,7 @@ export default function SignupScreen() {
     setGoogleLoading(false);
 
     if (authError) {
-      setError("Error signing in with Google. Please try again");
+      setError("שגיאה בהתחברות עם Google. נסה שוב");
     }
   }, [signInWithGoogle]);
 
@@ -185,8 +186,8 @@ export default function SignupScreen() {
     if (!emailValidation) return null;
 
     const isSuspicious = emailValidation.isSuspicious;
-    const title = isSuspicious ? "Please check the email address" : "Email address verification";
-    const confirmLabel = isSuspicious ? "The address is correct, continue" : "Confirm and continue";
+    const title = isSuspicious ? "כדאי לבדוק את כתובת המייל" : "אישור כתובת המייל";
+    const confirmLabel = isSuspicious ? "הכתובת נכונה, להמשיך" : "מאשר, להמשיך";
 
     return (
       <Modal
@@ -216,26 +217,26 @@ export default function SignupScreen() {
             {isSuspicious ? (
               <View style={s.modalBody}>
                 <Text style={s.modalText}>
-                  The address looks a bit unusual.
+                  הכתובת נראית קצת לא רגילה.
                 </Text>
                 <Text style={s.modalText}>
-                  There might be a small typo in the domain or email provider name.
+                  ייתכן שיש טעות קטנה בנקודה, בסיומת או בשם ספק המייל.
                 </Text>
                 {emailValidation.suggestion ? (
                   <Text style={s.modalSuggestion}>{emailValidation.suggestion}</Text>
                 ) : null}
                 <Text style={s.modalText}>
-                  If the address is correct — you can continue.{"\n"}
-                  If there is a mistake — fix it now so the verification email reaches you.
+                  אם הכתובת נכונה — אפשר להמשיך.{"\n"}
+                  אם יש טעות — כדאי לתקן עכשיו, כדי שמייל האימות יגיע אליך.
                 </Text>
               </View>
             ) : (
               <View style={s.modalBody}>
                 <Text style={s.modalText}>
-                  A verification email will be sent to this address.
+                  נשלח לכתובת הזו מייל לאימות החשבון.
                 </Text>
                 <Text style={s.modalText}>
-                  Please make sure there are no typos before continuing.
+                  כדאי לוודא שאין טעות לפני שממשיכים.
                 </Text>
               </View>
             )}
@@ -257,7 +258,7 @@ export default function SignupScreen() {
               }}
               activeOpacity={0.7}
             >
-              <Text style={s.modalSecondaryBtnText}>Fix the email</Text>
+              <Text style={s.modalSecondaryBtnText}>לתקן את המייל</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -282,9 +283,9 @@ export default function SignupScreen() {
                 <MaterialIcons name="mark-email-read" size={48} color="#79FFF4" />
               </View>
 
-              <Text style={s.verificationTitle}>Almost done!</Text>
+              <Text style={s.verificationTitle}>כמעט סיימנו!</Text>
               <Text style={s.verificationDescription}>
-                We sent you an email with a link to verify your address
+                שלחנו אליך מייל עם קישור לאישור הכתובת
               </Text>
 
               <Text style={s.verificationEmail}>{email}</Text>
@@ -293,7 +294,7 @@ export default function SignupScreen() {
               <View style={s.hintBox}>
                 <MaterialIcons name="info-outline" size={18} color="#AAB6BB" />
                 <Text style={s.hintText}>
-                  Didn't receive it? Check your spam folder too
+                  לא הגיע? בדוק גם בתיקיית הספאם
                 </Text>
               </View>
 
@@ -308,12 +309,12 @@ export default function SignupScreen() {
                   <ActivityIndicator color="#79FFF4" size="small" />
                 ) : cooldown > 0 ? (
                   <Text style={[s.resendButtonText, { color: "#77868B" }]}>
-                    You can resend in {cooldown} seconds
+                    ניתן לשלוח שוב בעוד {cooldown} שניות
                   </Text>
                 ) : (
                   <>
                     <MaterialIcons name="refresh" size={18} color="#79FFF4" />
-                    <Text style={s.resendButtonText}>Resend verification link</Text>
+                    <Text style={s.resendButtonText}>שלח לי שוב קישור אישור</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -322,7 +323,7 @@ export default function SignupScreen() {
               {resendSuccess && (
                 <View style={s.resendSuccessBox}>
                   <MaterialIcons name="check-circle" size={16} color="#4ADE80" />
-                  <Text style={s.resendSuccessText}>Link resent successfully</Text>
+                  <Text style={s.resendSuccessText}>הקישור נשלח שוב בהצלחה</Text>
                 </View>
               )}
 
@@ -339,7 +340,7 @@ export default function SignupScreen() {
                   style={s.verifyPrimaryGradient}
                 >
                   <View style={s.verifyButtonShine} />
-                  <Text style={s.verifyPrimaryButtonText}>Go to sign in</Text>
+                  <Text style={s.verifyPrimaryButtonText}>עבור להתחברות</Text>
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -353,7 +354,7 @@ export default function SignupScreen() {
                 style={s.backButton}
                 activeOpacity={0.7}
               >
-                <Text style={s.backButtonText}>Back to sign up</Text>
+                <Text style={s.backButtonText}>חזור להרשמה</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -381,23 +382,23 @@ export default function SignupScreen() {
               style={s.logo}
               resizeMode="contain"
             />
-            <Text style={s.title}>Create account</Text>
-            <Text style={s.subtitle}>Sign up to start managing your business</Text>
+            <Text style={s.title}>צור חשבון</Text>
+            <Text style={s.subtitle}>הרשם כדי להתחיל לנהל את העסק שלך</Text>
           </View>
 
           {/* Form */}
           <View style={s.form}>
             {/* Full Name */}
             <View style={s.inputGroup}>
-              <Text style={s.label}>Full name</Text>
+              <Text style={s.label}>שם מלא</Text>
               <View style={s.inputWrapper}>
                 <TextInput
                   style={s.input}
                   value={fullName}
                   onChangeText={setFullName}
-                  placeholder="Enter full name"
+                  placeholder="הזן שם מלא"
                   placeholderTextColor={DS_COLORS.textSecondary}
-                  textAlign="left"
+                  textAlign="right"
                   returnKeyType="next"
                 />
                 <MaterialIcons name="person" size={20} color={DS_COLORS.textSecondary} style={s.inputIcon} />
@@ -406,7 +407,7 @@ export default function SignupScreen() {
 
             {/* Email */}
             <View style={s.inputGroup}>
-              <Text style={s.label}>Email</Text>
+              <Text style={s.label}>אימייל</Text>
               <View style={s.inputWrapper}>
                 <TextInput
                   ref={emailInputRef}
@@ -425,7 +426,7 @@ export default function SignupScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  textAlign="left"
+                  textAlign="right"
                   returnKeyType="next"
                 />
                 <MaterialIcons name="email" size={20} color={DS_COLORS.textSecondary} style={s.inputIcon} />
@@ -440,16 +441,16 @@ export default function SignupScreen() {
 
             {/* Password */}
             <View style={s.inputGroup}>
-              <Text style={s.label}>Password</Text>
+              <Text style={s.label}>סיסמה</Text>
               <View style={s.inputWrapper}>
                 <TextInput
                   style={s.input}
                   value={password}
                   onChangeText={setPassword}
-                  placeholder="At least 6 characters"
+                  placeholder="לפחות 6 תווים"
                   placeholderTextColor={DS_COLORS.textSecondary}
                   secureTextEntry={!showPassword}
-                  textAlign="left"
+                  textAlign="right"
                   returnKeyType="next"
                 />
                 <TouchableOpacity
@@ -468,16 +469,16 @@ export default function SignupScreen() {
 
             {/* Confirm Password */}
             <View style={s.inputGroup}>
-              <Text style={s.label}>Confirm password</Text>
+              <Text style={s.label}>אימות סיסמה</Text>
               <View style={[s.inputWrapper, confirmPassword.length > 0 && password !== confirmPassword && { borderColor: DS_COLORS.error }]}>
                 <TextInput
                   style={s.input}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
-                  placeholder="Enter password again"
+                  placeholder="הזן סיסמה שוב"
                   placeholderTextColor={DS_COLORS.textSecondary}
                   secureTextEntry={!showConfirmPassword}
-                  textAlign="left"
+                  textAlign="right"
                   returnKeyType="done"
                   onSubmitEditing={handleSignup}
                 />
@@ -494,7 +495,7 @@ export default function SignupScreen() {
                 </TouchableOpacity>
               </View>
               {confirmPassword.length > 0 && password !== confirmPassword ? (
-                <Text style={s.mismatchHint}>Passwords do not match</Text>
+                <Text style={s.mismatchHint}>הסיסמאות אינן תואמות</Text>
               ) : null}
             </View>
 
@@ -509,8 +510,8 @@ export default function SignupScreen() {
             {/* Signup Button — Dots Animation */}
             <DotsButton
               state={buttonState}
-              label="Sign up"
-              loadingLabel="Nard"
+              label="הירשם"
+              loadingLabel="נרשם"
               onPress={handleSignup}
             />
 
@@ -519,9 +520,9 @@ export default function SignupScreen() {
 
           {/* Login Link */}
           <View style={s.footer}>
-            <Text style={s.footerText}>Already have an account?</Text>
+            <Text style={s.footerText}>כבר יש לך חשבון?</Text>
             <TouchableOpacity onPress={() => router.replace("/auth/login")}>
-              <Text style={s.footerLink}> Sign in</Text>
+              <Text style={s.footerLink}> התחבר</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -536,57 +537,69 @@ export default function SignupScreen() {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DS_COLORS.background },
+    backgroundColor: DS_COLORS.background,
+  },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: DS_SPACING.xl,
     paddingTop: 40,
     paddingBottom: 30,
-    justifyContent: "center" },
+    justifyContent: "center",
+  },
   header: {
     alignItems: "center",
-    marginBottom: 36 },
+    marginBottom: 36,
+  },
   logo: {
     width: 80,
     height: 80,
     borderRadius: 20,
-    marginBottom: 16 },
+    marginBottom: 16,
+  },
   title: {
     fontSize: 28,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
-    marginBottom: 8 },
+    marginBottom: 8,
+  },
   subtitle: {
     fontSize: DS_FONT.body,
     color: DS_COLORS.textSecondary,
-    textAlign: "center" },
+    textAlign: "center",
+  },
   form: {
-    gap: DS_SPACING.lg },
+    gap: DS_SPACING.lg,
+  },
   inputGroup: {
-    gap: DS_SPACING.xs + 2 },
+    gap: DS_SPACING.xs + 2,
+  },
   label: {
     fontSize: DS_FONT.bodySmall,
     fontWeight: DS_WEIGHT.semibold,
     color: DS_COLORS.textPrimary,
-    textAlign: "left",
-    alignSelf: "flex-start"
+    textAlign: "right",
+    alignSelf: "flex-start",
+    writingDirection: "rtl",
   },
   inputWrapper: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     backgroundColor: DS_COLORS.card,
     borderWidth: 1.5,
     borderColor: DS_COLORS.border,
     borderRadius: DS_RADIUS.md,
-    paddingHorizontal: DS_SPACING.lg },
+    paddingHorizontal: DS_SPACING.lg,
+  },
   input: {
     flex: 1,
     paddingVertical: DS_SPACING.md + 2,
     fontSize: DS_FONT.body,
-    color: DS_COLORS.textPrimary
+    color: DS_COLORS.textPrimary,
+    writingDirection: "rtl",
   },
   inputIcon: {
-    marginRight: DS_SPACING.sm },
+    marginRight: DS_SPACING.sm,
+  },
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -596,26 +609,31 @@ const s = StyleSheet.create({
     borderColor: DS_COLORS.error,
     borderRadius: DS_RADIUS.sm,
     paddingHorizontal: DS_SPACING.md,
-    paddingVertical: DS_SPACING.sm + 2 },
+    paddingVertical: DS_SPACING.sm + 2,
+  },
   errorText: {
     fontSize: DS_FONT.bodySmall,
     color: DS_COLORS.error,
-    textAlign: "left",
-    flex: 1 },
+    textAlign: "right",
+    flex: 1,
+  },
   emailWarningRow: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     gap: DS_SPACING.xs,
-    marginTop: DS_SPACING.xs },
+    marginTop: DS_SPACING.xs,
+  },
   emailWarningText: {
     fontSize: DS_FONT.caption,
     color: DS_COLORS.warning,
-    textAlign: "left" },
+    textAlign: "right",
+  },
   mismatchHint: {
     fontSize: DS_FONT.caption,
     color: DS_COLORS.error,
-    textAlign: "left",
-    marginTop: DS_SPACING.xs },
+    textAlign: "right",
+    marginTop: DS_SPACING.xs,
+  },
   primaryButton: {
     backgroundColor: DS_COLORS.accent,
     borderRadius: DS_RADIUS.md,
@@ -623,27 +641,33 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: DS_SPACING.sm,
-    ...DS_SHADOW.button },
+    ...DS_SHADOW.button,
+  },
   buttonDisabled: {
-    opacity: 0.7 },
+    opacity: 0.7,
+  },
   primaryButtonText: {
     color: DS_COLORS.white,
     fontSize: DS_FONT.body,
-    fontWeight: DS_WEIGHT.bold },
+    fontWeight: DS_WEIGHT.bold,
+  },
   divider: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: DS_SPACING.sm },
+    marginVertical: DS_SPACING.sm,
+  },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: DS_COLORS.border },
+    backgroundColor: DS_COLORS.border,
+  },
   dividerText: {
     marginHorizontal: DS_SPACING.md,
     fontSize: DS_FONT.bodySmall,
-    color: DS_COLORS.textSecondary },
+    color: DS_COLORS.textSecondary,
+  },
   googleButton: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "center",
     gap: DS_SPACING.sm,
@@ -652,30 +676,36 @@ const s = StyleSheet.create({
     borderColor: DS_COLORS.border,
     borderRadius: DS_RADIUS.md,
     paddingVertical: DS_SPACING.md + 2,
-    ...DS_SHADOW.subtle },
+    ...DS_SHADOW.subtle,
+  },
   googleButtonText: {
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.semibold,
-    color: DS_COLORS.textPrimary },
+    color: DS_COLORS.textPrimary,
+  },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 32 },
+    marginTop: 32,
+  },
   footerText: {
     fontSize: DS_FONT.bodySmall,
-    color: DS_COLORS.textSecondary },
+    color: DS_COLORS.textSecondary,
+  },
   footerLink: {
     fontSize: DS_FONT.bodySmall,
     color: DS_COLORS.textPrimary,
-    fontWeight: DS_WEIGHT.bold },
+    fontWeight: DS_WEIGHT.bold,
+  },
   // ============ EMAIL MODAL STYLES ============
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: DS_SPACING.xl },
+    paddingHorizontal: DS_SPACING.xl,
+  },
   modalCard: {
     backgroundColor: DS_COLORS.card,
     borderRadius: DS_RADIUS.lg,
@@ -683,7 +713,8 @@ const s = StyleSheet.create({
     paddingHorizontal: DS_SPACING.lg,
     width: "100%",
     maxWidth: 360,
-    alignItems: "center" },
+    alignItems: "center",
+  },
   modalIconWrap: {
     width: 72,
     height: 72,
@@ -691,36 +722,43 @@ const s = StyleSheet.create({
     backgroundColor: `${DS_COLORS.accent}15`,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: DS_SPACING.lg },
+    marginBottom: DS_SPACING.lg,
+  },
   modalIconWrapWarning: {
-    backgroundColor: `${DS_COLORS.warning}20` },
+    backgroundColor: `${DS_COLORS.warning}20`,
+  },
   modalTitle: {
     fontSize: DS_FONT.titleCard,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
     textAlign: "center",
-    marginBottom: DS_SPACING.sm },
+    marginBottom: DS_SPACING.sm,
+  },
   modalEmail: {
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.accent,
     textAlign: "center",
     marginBottom: DS_SPACING.md,
-    writingDirection: "ltr" as any },
+    direction: "ltr" as any,
+  },
   modalBody: {
     gap: DS_SPACING.sm,
-    marginBottom: DS_SPACING.lg },
+    marginBottom: DS_SPACING.lg,
+  },
   modalText: {
     fontSize: DS_FONT.bodySmall,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
-    lineHeight: 22 },
+    lineHeight: 22,
+  },
   modalSuggestion: {
     fontSize: DS_FONT.bodySmall,
     fontWeight: DS_WEIGHT.semibold,
     color: DS_COLORS.warning,
     textAlign: "center",
-    marginTop: DS_SPACING.xs },
+    marginTop: DS_SPACING.xs,
+  },
   modalPrimaryBtn: {
     backgroundColor: DS_COLORS.accent,
     borderRadius: DS_RADIUS.md,
@@ -728,13 +766,16 @@ const s = StyleSheet.create({
     paddingHorizontal: DS_SPACING.xl,
     width: "100%",
     alignItems: "center",
-    marginBottom: DS_SPACING.sm },
+    marginBottom: DS_SPACING.sm,
+  },
   modalPrimaryBtnWarning: {
-    backgroundColor: DS_COLORS.warning },
+    backgroundColor: DS_COLORS.warning,
+  },
   modalPrimaryBtnText: {
     color: DS_COLORS.white,
     fontSize: DS_FONT.body,
-    fontWeight: DS_WEIGHT.bold },
+    fontWeight: DS_WEIGHT.bold,
+  },
   modalSecondaryBtn: {
     paddingVertical: DS_SPACING.md + 2,
     paddingHorizontal: DS_SPACING.xl,
@@ -743,11 +784,13 @@ const s = StyleSheet.create({
     borderRadius: DS_RADIUS.md,
     borderWidth: 1.5,
     borderColor: DS_COLORS.border,
-    backgroundColor: DS_COLORS.inputBg },
+    backgroundColor: DS_COLORS.inputBg,
+  },
   modalSecondaryBtnText: {
     fontSize: DS_FONT.body,
     color: DS_COLORS.textPrimary,
-    fontWeight: DS_WEIGHT.semibold },
+    fontWeight: DS_WEIGHT.semibold,
+  },
   // ============ UNIFIED CONFIRMATION SCREEN STYLES (Dark Premium) ============
   verifyGlowTop: {
     position: "absolute",
@@ -756,7 +799,8 @@ const s = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: "rgba(53, 233, 221, 0.06)" },
+    backgroundColor: "rgba(53, 233, 221, 0.06)",
+  },
   verifyGlowBottom: {
     position: "absolute",
     bottom: 40,
@@ -764,12 +808,14 @@ const s = StyleSheet.create({
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: "rgba(216, 162, 74, 0.04)" },
+    backgroundColor: "rgba(216, 162, 74, 0.04)",
+  },
   verificationContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: DS_SPACING.xl },
+    paddingHorizontal: DS_SPACING.xl,
+  },
   verificationIconWrap: {
     width: 96,
     height: 96,
@@ -779,20 +825,23 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(53, 233, 221, 0.08)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 28 },
+    marginBottom: 28,
+  },
   verificationTitle: {
     fontSize: 28,
     fontWeight: "800" as any,
     color: "#E7ECEF",
     marginBottom: 12,
-    textAlign: "center"
+    textAlign: "center",
+    writingDirection: "rtl" as any,
   },
   verificationDescription: {
     fontSize: 16,
     color: "#AAB6BB",
     textAlign: "center",
     lineHeight: 26,
-    marginBottom: 8
+    marginBottom: 8,
+    writingDirection: "rtl" as any,
   },
   verificationEmail: {
     fontSize: 17,
@@ -800,7 +849,8 @@ const s = StyleSheet.create({
     color: "#79FFF4",
     textAlign: "center",
     marginBottom: 24,
-    writingDirection: "ltr" as any },
+    direction: "ltr" as any,
+  },
   hintBox: {
     flexDirection: "row" as any,
     alignItems: "center",
@@ -811,11 +861,13 @@ const s = StyleSheet.create({
     borderColor: "rgba(101, 255, 239, 0.15)",
     paddingHorizontal: DS_SPACING.lg,
     paddingVertical: DS_SPACING.md,
-    marginBottom: 20 },
+    marginBottom: 20,
+  },
   hintText: {
     fontSize: DS_FONT.bodySmall,
     color: "#AAB6BB",
-    textAlign: "left" as any
+    textAlign: "right" as any,
+    writingDirection: "rtl" as any,
   },
   resendButton: {
     flexDirection: "row" as any,
@@ -829,21 +881,25 @@ const s = StyleSheet.create({
     borderColor: "rgba(101, 255, 239, 0.4)",
     backgroundColor: "rgba(5, 22, 24, 0.5)",
     marginBottom: 12,
-    minWidth: 240 },
+    minWidth: 240,
+  },
   resendButtonText: {
     fontSize: DS_FONT.bodySmall,
     color: "#79FFF4",
-    fontWeight: "600" as any
+    fontWeight: "600" as any,
+    writingDirection: "rtl" as any,
   },
   resendSuccessBox: {
     flexDirection: "row" as any,
     alignItems: "center",
     gap: DS_SPACING.xs,
-    marginBottom: 16 },
+    marginBottom: 16,
+  },
   resendSuccessText: {
     fontSize: DS_FONT.bodySmall,
     color: "#4ADE80",
-    fontWeight: "600" as any },
+    fontWeight: "600" as any,
+  },
   verifyPrimaryButton: {
     width: "100%" as any,
     maxWidth: 280,
@@ -855,14 +911,16 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
-    elevation: 8 },
+    elevation: 8,
+  },
   verifyPrimaryGradient: {
     paddingVertical: 18,
     paddingHorizontal: 40,
     borderRadius: 18,
     alignItems: "center" as any,
     justifyContent: "center" as any,
-    overflow: "hidden" as any },
+    overflow: "hidden" as any,
+  },
   verifyButtonShine: {
     position: "absolute" as any,
     top: 0,
@@ -871,17 +929,22 @@ const s = StyleSheet.create({
     height: "50%" as any,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderTopLeftRadius: 18,
-    borderTopRightRadius: 18 },
+    borderTopRightRadius: 18,
+  },
   verifyPrimaryButtonText: {
     color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: "700" as any
+    fontWeight: "700" as any,
+    writingDirection: "rtl" as any,
   },
   backButton: {
     marginTop: DS_SPACING.lg,
-    paddingVertical: DS_SPACING.sm },
+    paddingVertical: DS_SPACING.sm,
+  },
   backButtonText: {
     fontSize: DS_FONT.bodySmall,
     color: "#77868B",
-    textAlign: "center" as any
-  } });
+    textAlign: "center" as any,
+    writingDirection: "rtl" as any,
+  },
+});

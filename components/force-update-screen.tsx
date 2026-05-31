@@ -8,11 +8,12 @@ import {
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
-  DS_SHADOW } from "@/lib/design-system";
+  DS_SHADOW,
+} from "@/lib/design-system";
 
 // Fallback Google Play URL based on package name
 const FALLBACK_PLAY_URL =
-  "https://play.google.com/store/apps/details?id=space.manus.catering.manager.en.t20260411205951";
+  "https://play.google.com/store/apps/details?id=space.manus.catering.manager.t20260411205951";
 
 interface ForceUpdateScreenProps {
   /** Title text from remote config */
@@ -36,11 +37,12 @@ export function ForceUpdateScreen({
   title,
   message,
   buttonText,
-  googlePlayUrl }: ForceUpdateScreenProps) {
-  const displayTitle = title || "A mandatory new version is available";
+  googlePlayUrl,
+}: ForceUpdateScreenProps) {
+  const displayTitle = title || "יש גרסה חדשה חובה";
   const displayMessage =
-    message || "To continue using the app, please update to the latest version.";
-  const displayButtonText = buttonText || "Update now";
+    message || "כדי להמשיך להשתמש באפליקציה, נא לעדכן לגרסה האחרונה.";
+  const displayButtonText = buttonText || "עדכון עכשיו";
   const storeUrl = googlePlayUrl?.trim() || FALLBACK_PLAY_URL;
 
   const handleOpenStore = () => {
@@ -87,7 +89,7 @@ export function ForceUpdateScreen({
 
         {/* Subtle version info */}
         <Text style={s.hint}>
-          {"The app will continue to work after the update.\nYour data will not be deleted."}
+          {"האפליקציה תמשיך לעבוד לאחר העדכון.\nהנתונים שלך לא יימחקו."}
         </Text>
       </View>
     </SafeAreaView>
@@ -97,12 +99,14 @@ export function ForceUpdateScreen({
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: DS_COLORS.background },
+    backgroundColor: DS_COLORS.background,
+  },
   content: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: DS_SPACING.xxl },
+    paddingHorizontal: DS_SPACING.xxl,
+  },
   iconCircle: {
     width: 96,
     height: 96,
@@ -110,39 +114,47 @@ const s = StyleSheet.create({
     backgroundColor: DS_COLORS.accentLight,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: DS_SPACING.xxl },
+    marginBottom: DS_SPACING.xxl,
+  },
   title: {
     fontSize: 26,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
     marginBottom: DS_SPACING.md,
-    textAlign: "center" },
+    textAlign: "center",
+  },
   description: {
     fontSize: DS_FONT.body,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
     lineHeight: 24,
     marginBottom: DS_SPACING.xxxl,
-    paddingHorizontal: DS_SPACING.lg },
+    paddingHorizontal: DS_SPACING.lg,
+  },
   button: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "center",
     borderRadius: DS_RADIUS.md,
     paddingVertical: DS_SPACING.lg,
     paddingHorizontal: DS_SPACING.xxxl,
     minWidth: 220,
-    ...DS_SHADOW.button },
+    ...DS_SHADOW.button,
+  },
   buttonIcon: {
     marginLeft: Platform.OS === "web" ? 0 : DS_SPACING.sm,
-    marginRight: Platform.OS === "web" ? DS_SPACING.sm : 0 },
+    marginRight: Platform.OS === "web" ? DS_SPACING.sm : 0,
+  },
   buttonText: {
     color: DS_COLORS.white,
     fontSize: DS_FONT.body,
-    fontWeight: DS_WEIGHT.bold },
+    fontWeight: DS_WEIGHT.bold,
+  },
   hint: {
     marginTop: DS_SPACING.xxl,
     fontSize: DS_FONT.caption,
     color: DS_COLORS.textSecondary,
     textAlign: "center",
-    lineHeight: 20 } });
+    lineHeight: 20,
+  },
+});

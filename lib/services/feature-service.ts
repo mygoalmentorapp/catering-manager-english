@@ -22,7 +22,9 @@ const FEATURE_MAP: Record<string, FeatureMapping> = {
   remote_campaigns: { masterKey: "remote_campaigns_enabled", flagName: "remote_campaigns" },
   feedback_popup: { masterKey: "feedback_popup_enabled", flagName: "feedback_popup" },
   global_message: { masterKey: "global_message_enabled", flagName: "global_message" },
-  external_urls: { masterKey: "external_urls_enabled", flagName: "external_urls" } };
+  external_urls: { masterKey: "external_urls_enabled", flagName: "external_urls" },
+  dynamic_onboarding: { masterKey: "dynamic_onboarding_enabled", flagName: "dynamic_onboarding" },
+};
 
 export type FeatureName = keyof typeof FEATURE_MAP;
 
@@ -87,4 +89,5 @@ export const FeatureService = {
       FeatureFlagService.refresh(),
       AllowedDomainsService.refresh(),
     ]);
-  } };
+  },
+};

@@ -26,14 +26,16 @@ const LIGHT_PALETTE = {
   card: "#FFFFFF",
   textPrimary: "#1E1E2E",
   textSecondary: "#7A7A90",
-  border: "#E8E8F0" };
+  border: "#E8E8F0",
+};
 
 const DARK_PALETTE = {
   background: "#121218",
   card: "#1C1C24",
   textPrimary: "#E8E8F0",
   textSecondary: "#9A9AB0",
-  border: "#2A2A38" };
+  border: "#2A2A38",
+};
 
 // ============ COLOR PALETTE ============
 // accent, accentLight, accentMedium are mutable — updated via updateAccentColor()
@@ -73,7 +75,8 @@ export const DS_COLORS: {
   accentLight: makeAccentLight(DEFAULT_ACCENT).replace("0.08", "0.12"),
   accentMedium: makeAccentMedium(DEFAULT_ACCENT).replace("0.15", "0.22"),
   inputBg: "#22222A",
-  inputFocusBg: "#2A2A34" };
+  inputFocusBg: "#2A2A34",
+};
 
 /**
  * Update the accent color globally. Call this when the user changes their primary color.
@@ -124,13 +127,15 @@ export const DS_FONT = {
   titleCard: 18,
   body: 16,
   bodySmall: 14,
-  caption: 12 } as const;
+  caption: 12,
+} as const;
 
 export const DS_WEIGHT = {
   bold: "700" as const,
   semibold: "600" as const,
   medium: "500" as const,
-  regular: "400" as const };
+  regular: "400" as const,
+};
 
 // ============ SPACING ============
 export const DS_SPACING = {
@@ -140,7 +145,8 @@ export const DS_SPACING = {
   lg: 16,
   xl: 20,
   xxl: 24,
-  xxxl: 32 } as const;
+  xxxl: 32,
+} as const;
 
 // ============ RADIUS ============
 export const DS_RADIUS = {
@@ -148,7 +154,8 @@ export const DS_RADIUS = {
   md: 12,
   lg: 16,
   xl: 20,
-  full: 999 } as const;
+  full: 999,
+} as const;
 
 // ============ SHADOWS ============
 export const DS_SHADOW = {
@@ -157,94 +164,115 @@ export const DS_SHADOW = {
       shadowColor: "#000000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,
-      shadowRadius: 12 },
+      shadowRadius: 12,
+    },
     android: {
-      elevation: 3 },
+      elevation: 3,
+    },
     default: {
       shadowColor: "#000000",
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,
-      shadowRadius: 12 } }),
+      shadowRadius: 12,
+    },
+  }),
   button: Platform.select({
     ios: {
       shadowColor: "#3AAFA9",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
-      shadowRadius: 8 },
+      shadowRadius: 8,
+    },
     android: {
-      elevation: 4 },
+      elevation: 4,
+    },
     default: {
       shadowColor: "#3AAFA9",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
-      shadowRadius: 8 } }),
+      shadowRadius: 8,
+    },
+  }),
   subtle: Platform.select({
     ios: {
       shadowColor: "#000000",
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.04,
-      shadowRadius: 6 },
+      shadowRadius: 6,
+    },
     android: {
-      elevation: 1 },
+      elevation: 1,
+    },
     default: {
       shadowColor: "#000000",
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.04,
-      shadowRadius: 6 } }) } as const;
+      shadowRadius: 6,
+    },
+  }),
+} as const;
 
 // ============ SHARED STYLES ============
 export const DS_STYLES = StyleSheet.create({
   // Screen
   screen: {
     flex: 1,
-    backgroundColor: DS_COLORS.background },
+    backgroundColor: DS_COLORS.background,
+  },
 
   // Card
   card: {
     backgroundColor: DS_COLORS.card,
     borderRadius: DS_RADIUS.lg,
     padding: DS_SPACING.lg,
-    ...DS_SHADOW.card },
+    ...DS_SHADOW.card,
+  },
 
   // Header bar
   headerBar: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: DS_SPACING.xl,
     paddingVertical: DS_SPACING.md,
-    backgroundColor: DS_COLORS.background },
+    backgroundColor: DS_COLORS.background,
+  },
 
   // Title
   titleLarge: {
     fontSize: DS_FONT.titleLarge,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
-    textAlign: "left" },
+    textAlign: "right",
+  },
 
   titleCard: {
     fontSize: DS_FONT.titleCard,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
-    textAlign: "left" },
+    textAlign: "right",
+  },
 
   body: {
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.regular,
     color: DS_COLORS.textPrimary,
-    textAlign: "left" },
+    textAlign: "right",
+  },
 
   bodySecondary: {
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.regular,
     color: DS_COLORS.textSecondary,
-    textAlign: "left" },
+    textAlign: "right",
+  },
 
   bodySmall: {
     fontSize: DS_FONT.bodySmall,
     fontWeight: DS_WEIGHT.regular,
     color: DS_COLORS.textSecondary,
-    textAlign: "left" },
+    textAlign: "right",
+  },
 
   // Primary button — uses accent at create time; override with inline style for dynamic color
   buttonPrimary: {
@@ -254,12 +282,14 @@ export const DS_STYLES = StyleSheet.create({
     paddingHorizontal: DS_SPACING.xxl,
     alignItems: "center",
     justifyContent: "center",
-    ...DS_SHADOW.button },
+    ...DS_SHADOW.button,
+  },
 
   buttonPrimaryText: {
     color: DS_COLORS.white,
     fontSize: DS_FONT.body,
-    fontWeight: DS_WEIGHT.bold },
+    fontWeight: DS_WEIGHT.bold,
+  },
 
   // Outline button
   buttonOutline: {
@@ -269,12 +299,14 @@ export const DS_STYLES = StyleSheet.create({
     paddingVertical: DS_SPACING.md,
     paddingHorizontal: DS_SPACING.xxl,
     alignItems: "center",
-    justifyContent: "center" },
+    justifyContent: "center",
+  },
 
   buttonOutlineText: {
     color: DS_COLORS.accent,
     fontSize: DS_FONT.body,
-    fontWeight: DS_WEIGHT.semibold },
+    fontWeight: DS_WEIGHT.semibold,
+  },
 
   // Text input
   textInput: {
@@ -286,14 +318,16 @@ export const DS_STYLES = StyleSheet.create({
     paddingVertical: DS_SPACING.md + 2,
     fontSize: DS_FONT.body,
     color: DS_COLORS.textPrimary,
-    textAlign: "left" },
+    textAlign: "right",
+  },
 
   // Section title
   sectionTitle: {
     fontSize: DS_FONT.titleCard,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
-    textAlign: "left" },
+    textAlign: "right",
+  },
 
   // Icon button (small circular)
   iconButton: {
@@ -302,4 +336,6 @@ export const DS_STYLES = StyleSheet.create({
     borderRadius: DS_RADIUS.sm + 2,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: DS_COLORS.accentLight } });
+    backgroundColor: DS_COLORS.accentLight,
+  },
+});

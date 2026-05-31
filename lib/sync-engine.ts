@@ -72,7 +72,8 @@ const STORAGE_KEYS = {
   CACHE_SHOPPING_LISTS: "@cache_shopping_lists",
   CACHE_SETTINGS: "@cache_settings",
   /** Maps temp local IDs to server IDs after sync */
-  ID_MAP: "@sync_id_map" } as const;
+  ID_MAP: "@sync_id_map",
+} as const;
 
 export { STORAGE_KEYS };
 
@@ -134,7 +135,8 @@ export function createPendingOp(
     payload,
     tempId,
     createdAt: Date.now(),
-    retryCount: 0 };
+    retryCount: 0,
+  };
 }
 
 // ============ ID MAPPING ============

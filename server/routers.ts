@@ -7,6 +7,10 @@ import { handleSignupAlert } from "./signup-alert";
 import { cloudDataRouter } from "./cloud-data-router";
 import { experienceRouter } from "./experience-router";
 import { deviceRouter } from "./device-router";
+import { configRouter } from "./config-router";
+import { onboardingRouter } from "./onboarding-router";
+import { paywallRouter } from "./paywall-router";
+import { adminRouter } from "./admin-router";
 
 export const appRouter = router({
   // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -30,6 +34,18 @@ export const appRouter = router({
 
   // Device binding: one active device per user, email OTP verification for transfer
   device: deviceRouter,
+
+  // Config: remote_config served via service_role (bypasses RLS)
+  config: configRouter,
+
+  // Onboarding: dynamic onboarding flows served via service_role (bypasses RLS)
+  onboarding: onboardingRouter,
+
+  // Paywall: placements, rules, feature gates (served via service_role)
+  paywall: paywallRouter,
+
+  // Admin: read-only dashboard endpoints (Phase 4A)
+  admin: adminRouter,
 
   // Signup alert: check for verified email re-registration.
   // Returns same response regardless of email status — no leak of email existence.

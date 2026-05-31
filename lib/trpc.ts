@@ -6,6 +6,7 @@ import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
 import { getDeviceId } from "@/lib/device-id";
 import { Platform } from "react-native";
+import { APP_KEY, APP_LANGUAGE } from "@/constants/app-identity";
 
 /**
  * tRPC React client for type-safe API calls.
@@ -30,11 +31,18 @@ function createSharedLink() {
     // tRPC v11: transformer MUST be inside httpBatchLink, not at root
     transformer: superjson,
     async headers() {
+      // Always send app identity headers — needed for public endpoints
+      // (remote_config, onboarding) that filter by app_key + app_language.
+      const headers: Record<string, string> = {
+        "x-app-key": APP_KEY, // Identifies which app product
+        "x-app-language": APP_LANGUAGE, // Identifies which language variant (he/en)
+      };
       const token = await Auth.getSessionToken();
-      if (!token) return {};
-      const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
       // Send device UUID so server can validate device ownership on mutations
-      if (Platform.OS !== "web") {
+      if (token && Platform.OS !== "web") {
         try {
           const deviceUuid = await getDeviceId();
           if (deviceUuid) headers["x-device-uuid"] = deviceUuid;
@@ -52,8 +60,10 @@ function createSharedLink() {
       return fetch(url, {
         ...options,
         signal: controller.signal,
-        credentials: "include" }).finally(() => clearTimeout(timeoutId));
-    } });
+        credentials: "include",
+      }).finally(() => clearTimeout(timeoutId));
+    },
+  });
 }
 
 /**
@@ -62,7 +72,8 @@ function createSharedLink() {
  */
 export function createTRPCClient() {
   return trpc.createClient({
-    links: [createSharedLink()] });
+    links: [createSharedLink()],
+  });
 }
 
 /**
@@ -82,7 +93,8 @@ let _vanillaTrpc: ReturnType<typeof createVanillaClient<AppRouter>> | null = nul
 export function getVanillaTrpc(): ReturnType<typeof createVanillaClient<AppRouter>> {
   if (!_vanillaTrpc) {
     _vanillaTrpc = createVanillaClient<AppRouter>({
-      links: [createSharedLink()] });
+      links: [createSharedLink()],
+    });
   }
   return _vanillaTrpc;
 }
@@ -94,4 +106,5 @@ export function getVanillaTrpc(): ReturnType<typeof createVanillaClient<AppRoute
 export const vanillaTrpc = new Proxy({} as ReturnType<typeof createVanillaClient<AppRouter>>, {
   get(_target, prop) {
     return (getVanillaTrpc() as any)[prop];
-  } });
+  },
+});

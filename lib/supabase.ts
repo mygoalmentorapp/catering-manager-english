@@ -70,11 +70,14 @@ const StorageAdapter = {
     } catch (err) {
       console.warn("[Supabase Storage] removeItem error:", err);
     }
-  } };
+  },
+};
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storage: StorageAdapter,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false } });
+    detectSessionInUrl: false,
+  },
+});

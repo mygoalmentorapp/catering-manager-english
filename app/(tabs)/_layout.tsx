@@ -10,12 +10,14 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: { display: "none" },
-        sceneStyle: { backgroundColor: DS_COLORS.background } }}
+        sceneStyle: { backgroundColor: DS_COLORS.background },
+      }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home" }}
+          title: "ראשי",
+        }}
       />
     </Tabs>
   );

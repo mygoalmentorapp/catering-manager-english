@@ -19,7 +19,9 @@ export const SUPPORTED_SCHEMA_VERSION = 1;
 export const CACHE_TTL = {
   remoteConfig: isDev ? 2 * 60 * 1000 : 30 * 60 * 1000,
   featureFlags: isDev ? 2 * 60 * 1000 : 30 * 60 * 1000,
-  allowedDomains: isDev ? 2 * 60 * 1000 : 60 * 60 * 1000 } as const;
+  allowedDomains: isDev ? 2 * 60 * 1000 : 60 * 60 * 1000,
+  onboarding: isDev ? 2 * 60 * 1000 : 60 * 60 * 1000, // 1 hour in prod, 2 min in dev
+} as const;
 
 export function devLog(tag: string, ...args: unknown[]): void {
   if (isDev) {

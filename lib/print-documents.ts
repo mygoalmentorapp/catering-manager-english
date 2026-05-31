@@ -31,7 +31,7 @@ const commonStyles = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: 'Helvetica Neue', Arial, sans-serif;
-    direction: ltr;
+    direction: rtl;
     text-align: right;
     padding: 30px;
     color: #1E1E2E;
@@ -160,21 +160,21 @@ function buildCustomerInfo(order: Order): string {
   return `
     <div class="info-section">
       <div class="info-row">
-        <span class="info-label">Name Customer:</span>
+        <span class="info-label">שם לקוח:</span>
         <span class="info-value">${order.customerName}</span>
       </div>
       ${order.customerPhone ? `
       <div class="info-row">
-        <span class="info-label">Phone:</span>
+        <span class="info-label">טלפון:</span>
         <span class="info-value">${order.customerPhone}</span>
       </div>` : ""}
       ${order.customerAddress ? `
       <div class="info-row">
-        <span class="info-label">Address:</span>
+        <span class="info-label">כתובת:</span>
         <span class="info-value">${order.customerAddress}</span>
       </div>` : ""}
       <div class="info-row">
-        <span class="info-label">Event date:</span>
+        <span class="info-label">תאריך אירוע:</span>
         <span class="info-value">${formatDate(order.eventDate)}</span>
       </div>
     </div>
@@ -185,14 +185,14 @@ function buildNotes(notes: string): string {
   if (!notes) return "";
   return `
     <div class="notes-section">
-      <div class="notes-title">Notes</div>
+      <div class="notes-title">הערות</div>
       <div class="notes-text">${notes}</div>
     </div>
   `;
 }
 
 /**
- * Generate HTML for a price quote document (Price quote)
+ * Generate HTML for a price quote document (הצעת מחיר)
  * Includes: logo, business name, customer details, products with prices, total, notes
  */
 export function generatePriceQuoteHtml(opts: PrintDocOptions): string {
@@ -210,8 +210,8 @@ export function generatePriceQuoteHtml(opts: PrintDocOptions): string {
         <td>${idx + 1}</td>
 <td>${op.productNameAtAdd}</td>
          <td>${op.quantity}</td>
-         <td>$${formatPrice(unitPrice)}</td>
-        <td>$${formatPrice(lineTotal)}</td>
+         <td>₪${formatPrice(unitPrice)}</td>
+        <td>₪${formatPrice(lineTotal)}</td>
       </tr>
     `;
   });
@@ -225,23 +225,23 @@ export function generatePriceQuoteHtml(opts: PrintDocOptions): string {
   <style>${commonStyles}</style>
 </head>
 <body>
-  ${buildHeader(businessName, "Order with prices", logoBase64)}
+  ${buildHeader(businessName, "הזמנה עם מחירים", logoBase64)}
   ${buildCustomerInfo(order)}
   <table>
     <thead>
       <tr>
         <th>#</th>
-        <th>Product</th>
-        <th>Quantity</th>
-        <th>Price per unit</th>
-        <th>Total</th>
+        <th>מוצר</th>
+        <th>כמות</th>
+        <th>מחיר ליחידה</th>
+        <th>סה"כ</th>
       </tr>
     </thead>
     <tbody>
       ${rows}
       <tr class="total-row">
-        <td colspan="4">Total payment</td>
-        <td>$${formatPrice(total)}</td>
+        <td colspan="4">סה"כ לתשלום</td>
+        <td>₪${formatPrice(total)}</td>
       </tr>
     </tbody>
   </table>
@@ -251,7 +251,7 @@ export function generatePriceQuoteHtml(opts: PrintDocOptions): string {
 }
 
 /**
- * Generate HTML for an execution list document (Execution list)
+ * Generate HTML for an execution list document (רשימת ביצוע)
  * Includes: logo, business name, customer name, event date, products WITHOUT prices, notes
  */
 export function generateExecutionListHtml(opts: PrintDocOptions): string {
@@ -276,14 +276,14 @@ export function generateExecutionListHtml(opts: PrintDocOptions): string {
   <style>${commonStyles}</style>
 </head>
 <body>
-  ${buildHeader(businessName, "Order for execution", logoBase64)}
+  ${buildHeader(businessName, "הזמנה לביצוע", logoBase64)}
   ${buildCustomerInfo(order)}
   <table>
     <thead>
       <tr>
         <th>#</th>
-        <th>Product</th>
-        <th>Quantity</th>
+        <th>מוצר</th>
+        <th>כמות</th>
       </tr>
     </thead>
     <tbody>

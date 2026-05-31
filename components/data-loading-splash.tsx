@@ -180,6 +180,15 @@ export function DataLoadingSplash({ onMinTimeComplete }: DataLoadingSplashProps)
           <LoadingDots />
         </View>
       </View>
+
+      {/* Small debug button in bottom-right corner */}
+      <Pressable
+        onPress={() => setShowDebugLogs(true)}
+        style={s.debugBtn}
+      >
+        <Text style={s.debugBtnText}>LOG</Text>
+      </Pressable>
+
       <DebugLogViewer visible={showDebugLogs} onClose={() => setShowDebugLogs(false)} />
     </SafeAreaView>
   );
@@ -286,5 +295,19 @@ const s = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: DS_COLORS.accent,
+  },
+  debugBtn: {
+    position: "absolute",
+    bottom: 20,
+    right: 20,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  debugBtnText: {
+    fontSize: 10,
+    color: DS_COLORS.textSecondary,
+    fontWeight: "500" as any,
   },
 });

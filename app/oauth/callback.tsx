@@ -27,7 +27,8 @@ export default function OAuthCallback() {
         state: params.state,
         error: params.error,
         sessionToken: params.sessionToken ? "present" : "missing",
-        user: params.user ? "present" : "missing" });
+        user: params.user ? "present" : "missing",
+      });
       try {
         // Check for sessionToken in params first (web OAuth callback from server redirect)
         if (params.sessionToken) {
@@ -49,7 +50,8 @@ export default function OAuthCallback() {
                 name: userData.name,
                 email: userData.email,
                 loginMethod: userData.loginMethod,
-                lastSignedIn: new Date(userData.lastSignedIn || Date.now()) };
+                lastSignedIn: new Date(userData.lastSignedIn || Date.now()),
+              };
               await Auth.setUserInfo(userInfo);
               console.log("[OAuth] User info stored:", userInfo);
             } catch (err) {
@@ -119,7 +121,8 @@ export default function OAuthCallback() {
             console.log("[OAuth] Extracted from URL:", {
               code: code?.substring(0, 20) + "...",
               state: state?.substring(0, 20) + "...",
-              sessionToken: sessionToken ? "present" : "missing" });
+              sessionToken: sessionToken ? "present" : "missing",
+            });
           } catch (e) {
             console.log("[OAuth] Failed to parse as full URL, trying regex:", e);
             // Try parsing as relative URL with query params
@@ -134,7 +137,8 @@ export default function OAuthCallback() {
               console.log("[OAuth] Extracted from regex:", {
                 code: code?.substring(0, 20) + "...",
                 state: state?.substring(0, 20) + "...",
-                sessionToken: sessionToken ? "present" : "missing" });
+                sessionToken: sessionToken ? "present" : "missing",
+              });
             }
           }
         }
@@ -142,7 +146,8 @@ export default function OAuthCallback() {
         console.log("[OAuth] Final extracted values:", {
           hasCode: !!code,
           hasState: !!state,
-          hasSessionToken: !!sessionToken });
+          hasSessionToken: !!sessionToken,
+        });
 
         // If we have sessionToken directly from URL, use it
         if (sessionToken) {
@@ -163,7 +168,8 @@ export default function OAuthCallback() {
         if (!code || !state) {
           console.error("[OAuth] Missing code or state parameter", {
             hasCode: !!code,
-            hasState: !!state });
+            hasState: !!state,
+          });
           setStatus("error");
           setErrorMessage("Missing code or state parameter");
           return;
@@ -172,11 +178,13 @@ export default function OAuthCallback() {
         // Exchange code for session token
         console.log("[OAuth] Exchanging code for session token...", {
           code: code.substring(0, 20) + "...",
-          state: state.substring(0, 20) + "..." });
+          state: state.substring(0, 20) + "...",
+        });
         const result = await Api.exchangeOAuthCode(code, state);
         console.log("[OAuth] Exchange result:", {
           hasSessionToken: !!result.sessionToken,
-          hasUser: !!result.user });
+          hasUser: !!result.user,
+        });
 
         if (result.sessionToken) {
           console.log("[OAuth] Session token received, storing...");
@@ -193,7 +201,8 @@ export default function OAuthCallback() {
               name: result.user.name,
               email: result.user.email,
               loginMethod: result.user.loginMethod,
-              lastSignedIn: new Date(result.user.lastSignedIn || Date.now()) };
+              lastSignedIn: new Date(result.user.lastSignedIn || Date.now()),
+            };
             await Auth.setUserInfo(userInfo);
             console.log("[OAuth] User info stored:", userInfo);
           } else {

@@ -205,4 +205,6 @@ export const SessionTracker = {
       lastKnownState = "active";
       sessionTimeoutMinutes = DEFAULT_SESSION_TIMEOUT_MINUTES;
       appStateSubscription = null;
-    } } };
+    },
+  },
+};

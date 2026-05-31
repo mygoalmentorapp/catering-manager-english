@@ -7,7 +7,8 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  Platform } from "react-native";
+  Platform,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -19,11 +20,13 @@ import {
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
-  DS_SHADOW } from "@/lib/design-system";
+  DS_SHADOW,
+} from "@/lib/design-system";
 import {
   VideoTutorialsService,
   type TopicWithVideos,
-  type VideoTutorial } from "@/lib/services/video-tutorials-service";
+  type VideoTutorial,
+} from "@/lib/services/video-tutorials-service";
 
 export default function VideoTutorialsScreen() {
   const router = useRouter();
@@ -40,9 +43,9 @@ export default function VideoTutorialsScreen() {
     const result = await VideoTutorialsService.getTopicsWithVideos();
     if (result === null) {
       if (!isOnline) {
-        setError("Unable to load tutorial videos right now. Check your internet connection and try again.");
+        setError("לא ניתן לטעון את סרטוני ההדרכה כרגע. בדוק את החיבור לאינטרנט ונסה שוב.");
       } else {
-        setError("Unable to load tutorial videos right now. Please try again later.");
+        setError("לא ניתן לטעון את סרטוני ההדרכה כרגע. נסה שוב מאוחר יותר.");
       }
       setTopics([]);
     } else {
@@ -71,7 +74,9 @@ export default function VideoTutorialsScreen() {
       params: {
         title: video.title,
         description: video.description || "",
-        youtubeUrl: video.youtube_url } } as any);
+        youtubeUrl: video.youtube_url,
+      },
+    } as any);
   };
 
   const renderVideoCard = (video: VideoTutorial) => (
@@ -91,7 +96,7 @@ export default function VideoTutorialsScreen() {
           activeOpacity={0.8}
         >
           <MaterialIcons name="play-circle-outline" size={18} color="#FFFFFF" />
-          <Text style={s.primaryButtonText}>Watch video</Text>
+          <Text style={s.primaryButtonText}>צפה בסרטון</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -120,12 +125,12 @@ export default function VideoTutorialsScreen() {
           >
             <MaterialIcons name="chevron-right" size={28} color={isDark ? DS_COLORS.textPrimary : DS_COLORS.textPrimary} />
           </TouchableOpacity>
-          <Text style={[s.headerTitle, isDark && s.textDark]}>Video tutorials</Text>
+          <Text style={[s.headerTitle, isDark && s.textDark]}>הדרכות וידאו</Text>
           <View style={{ width: 28 }} />
         </View>
         <View style={s.centerContent}>
           <ActivityIndicator size="large" color={DS_COLORS.accent} />
-          <Text style={[s.loadingText, isDark && s.textSecondaryDark]}>Loading Tutorials...</Text>
+          <Text style={[s.loadingText, isDark && s.textSecondaryDark]}>טוען הדרכות...</Text>
         </View>
       </SafeAreaView>
     );
@@ -142,7 +147,7 @@ export default function VideoTutorialsScreen() {
           >
             <MaterialIcons name="chevron-right" size={28} color={DS_COLORS.textPrimary} />
           </TouchableOpacity>
-          <Text style={[s.headerTitle, isDark && s.textDark]}>Video tutorials</Text>
+          <Text style={[s.headerTitle, isDark && s.textDark]}>הדרכות וידאו</Text>
           <View style={{ width: 28 }} />
         </View>
         <View style={s.centerContent}>
@@ -154,7 +159,7 @@ export default function VideoTutorialsScreen() {
             activeOpacity={0.8}
           >
             <MaterialIcons name="refresh" size={18} color="#FFFFFF" />
-            <Text style={s.retryButtonText}>Try again</Text>
+            <Text style={s.retryButtonText}>נסה שוב</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -172,13 +177,13 @@ export default function VideoTutorialsScreen() {
           >
             <MaterialIcons name="chevron-right" size={28} color={DS_COLORS.textPrimary} />
           </TouchableOpacity>
-          <Text style={[s.headerTitle, isDark && s.textDark]}>Video tutorials</Text>
+          <Text style={[s.headerTitle, isDark && s.textDark]}>הדרכות וידאו</Text>
           <View style={{ width: 28 }} />
         </View>
         <View style={s.centerContent}>
           <MaterialIcons name="video-library" size={48} color={DS_COLORS.textSecondary} />
           <Text style={[s.emptyText, isDark && s.textSecondaryDark]}>
-            No tutorial videos are available right now.
+            אין כרגע סרטוני הדרכה זמינים.
           </Text>
         </View>
       </SafeAreaView>
@@ -195,7 +200,7 @@ export default function VideoTutorialsScreen() {
         >
           <MaterialIcons name="chevron-right" size={28} color={DS_COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={[s.headerTitle, isDark && s.textDark]}>Video tutorials</Text>
+        <Text style={[s.headerTitle, isDark && s.textDark]}>הדרכות וידאו</Text>
         <View style={{ width: 28 }} />
       </View>
 
@@ -215,7 +220,7 @@ export default function VideoTutorialsScreen() {
         }
         ListHeaderComponent={
           <Text style={[s.introText, isDark && s.textSecondaryDark]}>
-            Select a topic and get a short tutorial on using the app.
+            בחר נושא וקבל הדרכה קצרה על השימוש באפליקציה.
           </Text>
         }
       />
@@ -284,7 +289,7 @@ const s = StyleSheet.create({
     borderRadius: DS_RADIUS.lg,
     padding: DS_SPACING.lg,
     marginBottom: DS_SPACING.md,
-    writingDirection: "rtl",
+    direction: "rtl",
     ...DS_SHADOW.card,
   },
   videoCardDark: {

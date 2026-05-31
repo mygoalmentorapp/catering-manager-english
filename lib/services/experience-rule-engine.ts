@@ -30,6 +30,9 @@ export interface RemoteCampaign {
   secondary_button_text: string | null;
   secondary_button_action: string | null;
   secondary_button_payload: Record<string, unknown> | null;
+  // ── App identity fields ──
+  app_key: string | null;
+  app_language: string | null; // "he" | "en" | "all"
   is_enabled: boolean;
   is_archived: boolean;
   priority: number;
@@ -84,8 +87,9 @@ export interface RuleContext {
   isInCriticalFlow: boolean;
   isOnline: boolean;
   appVersion: string;
+  appKey: string; // "catering_manager_pro"
   platform: string; // "android" | "ios" | "web"
-  language: string; // "he" | "en" | "ar"
+  language: string; // "he" | "en" — app variant language (from APP_LANGUAGE)
   country: string; // "IL" | "US" etc.
   region: string;
   environment: string; // "dev" | "staging" | "prod"
@@ -150,6 +154,8 @@ const KNOWN_CONDITION_FIELDS = new Set([
   "requires_internet", "dismissible",
   "do_not_show_during_critical_flow",
   "schema_version", "created_at", "updated_at",
+  // App identity fields
+  "app_key", "app_language",
 ]);
 
 // ── Helpers ──
@@ -189,13 +195,22 @@ function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-/** Calculate days between a date string and now. */
+/**
+ * Calculate fractional days between a date string and now.
+ *
+ * BUG FIX: Previously used Math.floor() which meant a cooldown of e.g. 0.003 days
+ * (≈5 minutes) would floor to 0, and `0 < cooldown_days` would always be true,
+ * preventing the campaign from ever re-showing after cooldown expired.
+ *
+ * Now returns fractional days (e.g., 0.5 = 12 hours, 0.003 ≈ 5 minutes)
+ * so that sub-day cooldowns work correctly.
+ */
 function daysSince(dateStr: string | null): number | null {
   if (!dateStr) return null;
   try {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return null;
-    return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
+    return (Date.now() - d.getTime()) / (1000 * 60 * 60 * 24);
   } catch {
     return null;
   }
@@ -283,10 +298,23 @@ export const ExperienceRuleEngine = {
       }
     }
 
-    // 6. Platform / language / country / region
+    // 6. Platform / app_language / app_key / country / region
     if (campaign.platform && campaign.platform !== ctx.platform) {
       return { eligible: false, reason: `platform mismatch: ${campaign.platform} != ${ctx.platform}` };
     }
+    // app_key safety check (server already filters, but double-check)
+    if (campaign.app_key && campaign.app_key !== ctx.appKey) {
+      return { eligible: false, reason: `app_key mismatch: ${campaign.app_key} != ${ctx.appKey}` };
+    }
+    // app_language safety check: must match ctx.language or be "all"
+    if (campaign.app_language && campaign.app_language !== "all" && campaign.app_language !== ctx.language) {
+      return { eligible: false, reason: `app_language mismatch: ${campaign.app_language} != ${ctx.language}` };
+    }
+    // Campaigns without app_language are not shown (safe default)
+    if (!campaign.app_language) {
+      return { eligible: false, reason: `campaign missing app_language — not shown` };
+    }
+    // Legacy language field check (backward compat)
     if (campaign.language && campaign.language !== ctx.language) {
       return { eligible: false, reason: `language mismatch: ${campaign.language} != ${ctx.language}` };
     }
@@ -442,7 +470,8 @@ export const ExperienceRuleEngine = {
 
     // All conditions passed
     return { eligible: true };
-  } };
+  },
+};
 
 // ── Internal helpers ──
 

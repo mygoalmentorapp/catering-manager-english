@@ -58,4 +58,5 @@ export const AllowedDomainsService = {
     } catch {
       return false;
     }
-  } };
+  },
+};

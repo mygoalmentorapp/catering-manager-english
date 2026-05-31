@@ -37,7 +37,8 @@ const DOMAIN_TYPOS: Record<string, string> = {
   "yahooo.com": "yahoo.com",
   "yhaoo.com": "yahoo.com",
   "walla.co": "walla.co.il",
-  "wallla.co.il": "walla.co.il" };
+  "wallla.co.il": "walla.co.il",
+};
 
 // Allowlist of valid TLDs — any TLD not in this list will trigger a warning.
 // This covers the most common TLDs used in Israel and worldwide.
@@ -112,9 +113,10 @@ export function validateEmailForRegistration(email: string): EmailValidationResu
     return {
       isValidFormat: false,
       isSuspicious: false,
-      message: "The email address does not look valid. Make sure it has @, a dot, and no spaces.",
+      message: "כתובת המייל לא נראית תקינה. כדאי לבדוק שיש @, נקודה, וללא רווחים.",
       shouldBlock: true,
-      shouldShowConfirmModal: false };
+      shouldShowConfirmModal: false,
+    };
   }
 
   // Contains spaces
@@ -122,9 +124,10 @@ export function validateEmailForRegistration(email: string): EmailValidationResu
     return {
       isValidFormat: false,
       isSuspicious: false,
-      message: "The email address does not look valid. Make sure it has @, a dot, and no spaces.",
+      message: "כתובת המייל לא נראית תקינה. כדאי לבדוק שיש @, נקודה, וללא רווחים.",
       shouldBlock: true,
-      shouldShowConfirmModal: false };
+      shouldShowConfirmModal: false,
+    };
   }
 
   // Missing @
@@ -132,9 +135,10 @@ export function validateEmailForRegistration(email: string): EmailValidationResu
     return {
       isValidFormat: false,
       isSuspicious: false,
-      message: "The email address does not look valid. Make sure it has @, a dot, and no spaces.",
+      message: "כתובת המייל לא נראית תקינה. כדאי לבדוק שיש @, נקודה, וללא רווחים.",
       shouldBlock: true,
-      shouldShowConfirmModal: false };
+      shouldShowConfirmModal: false,
+    };
   }
 
   const [localPart, ...domainParts] = trimmed.split("@");
@@ -145,9 +149,10 @@ export function validateEmailForRegistration(email: string): EmailValidationResu
     return {
       isValidFormat: false,
       isSuspicious: false,
-      message: "The email address does not look valid. Make sure it has @, a dot, and no spaces.",
+      message: "כתובת המייל לא נראית תקינה. כדאי לבדוק שיש @, נקודה, וללא רווחים.",
       shouldBlock: true,
-      shouldShowConfirmModal: false };
+      shouldShowConfirmModal: false,
+    };
   }
 
   // No domain (after @)
@@ -155,9 +160,10 @@ export function validateEmailForRegistration(email: string): EmailValidationResu
     return {
       isValidFormat: false,
       isSuspicious: false,
-      message: "The email address does not look valid. Make sure it has @, a dot, and no spaces.",
+      message: "כתובת המייל לא נראית תקינה. כדאי לבדוק שיש @, נקודה, וללא רווחים.",
       shouldBlock: true,
-      shouldShowConfirmModal: false };
+      shouldShowConfirmModal: false,
+    };
   }
 
   // Domain has no dot (e.g., yosef@gmail or yosef@gmailcom)
@@ -165,9 +171,10 @@ export function validateEmailForRegistration(email: string): EmailValidationResu
     return {
       isValidFormat: false,
       isSuspicious: false,
-      message: "The email address does not look valid. Make sure it has @, a dot, and no spaces.",
+      message: "כתובת המייל לא נראית תקינה. כדאי לבדוק שיש @, נקודה, וללא רווחים.",
       shouldBlock: true,
-      shouldShowConfirmModal: false };
+      shouldShowConfirmModal: false,
+    };
   }
 
   // Domain starts or ends with dot
@@ -175,9 +182,10 @@ export function validateEmailForRegistration(email: string): EmailValidationResu
     return {
       isValidFormat: false,
       isSuspicious: false,
-      message: "The email address does not look valid. Make sure it has @, a dot, and no spaces.",
+      message: "כתובת המייל לא נראית תקינה. כדאי לבדוק שיש @, נקודה, וללא רווחים.",
       shouldBlock: true,
-      shouldShowConfirmModal: false };
+      shouldShowConfirmModal: false,
+    };
   }
 
   // TLD too short (must be at least 2 chars)
@@ -187,9 +195,10 @@ export function validateEmailForRegistration(email: string): EmailValidationResu
     return {
       isValidFormat: false,
       isSuspicious: false,
-      message: "The email address does not look valid. Make sure it has @, a dot, and no spaces.",
+      message: "כתובת המייל לא נראית תקינה. כדאי לבדוק שיש @, נקודה, וללא רווחים.",
       shouldBlock: true,
-      shouldShowConfirmModal: false };
+      shouldShowConfirmModal: false,
+    };
   }
 
   // === STATE C: Suspicious — WARN ===
@@ -202,10 +211,11 @@ export function validateEmailForRegistration(email: string): EmailValidationResu
     return {
       isValidFormat: true,
       isSuspicious: true,
-      message: `This is the email you entered for registration:\n${trimmed}\n\nThe address looks a bit unusual.\nThere might be a small typo in the domain or extension.\nIf the address is correct — you can continue.\nIf there is a mistake — it is best to fix it now so the verification email reaches you.`,
-      suggestion: `Did you mean ${localPart}@${correctDomain}?`,
+      message: `זה המייל שהזנת להרשמה:\n${trimmed}\n\nהכתובת נראית קצת לא רגילה.\nייתכן שיש טעות קטנה בנקודה, בסיומת או בשם ספק המייל.\nאם הכתובת נכונה — אפשר להמשיך.\nאם יש טעות — כדאי לתקן עכשיו, כדי שמייל האימות יגיע אליך.`,
+      suggestion: `אולי התכוונת ל-${localPart}@${correctDomain}?`,
       shouldBlock: false,
-      shouldShowConfirmModal: true };
+      shouldShowConfirmModal: true,
+    };
   }
 
   // Check TLD against allowlist — any TLD NOT in the list is suspicious
@@ -213,16 +223,18 @@ export function validateEmailForRegistration(email: string): EmailValidationResu
     return {
       isValidFormat: true,
       isSuspicious: true,
-      message: `This is the email you entered for registration:\n${trimmed}\n\nThe email domain extension is not recognized.\nThere might be a typo in the extension (e.g., .coms instead of .com).\nIf the address is correct — you can continue.\nIf there is a mistake — it is best to fix it now so the verification email reaches you.`,
+      message: `זה המייל שהזנת להרשמה:\n${trimmed}\n\nהסיומת של כתובת המייל לא מוכרת לנו.\nייתכן שיש טעות הקלדה בסיומת (למשל .coms במקום .com).\nאם הכתובת נכונה — אפשר להמשיך.\nאם יש טעות — כדאי לתקן עכשיו, כדי שמייל האימות יגיע אליך.`,
       shouldBlock: false,
-      shouldShowConfirmModal: true };
+      shouldShowConfirmModal: true,
+    };
   }
 
   // === STATE B: Valid — CONFIRM ===
   return {
     isValidFormat: true,
     isSuspicious: false,
-    message: `This is the email you entered for registration:\n${trimmed}\n\nA verification email will be sent to this address.\nPlease make sure there are no typos before continuing.`,
+    message: `זה המייל שהזנת להרשמה:\n${trimmed}\n\nנשלח לכתובת הזו מייל לאימות החשבון.\nכדאי לוודא שאין טעות לפני שממשיכים.`,
     shouldBlock: false,
-    shouldShowConfirmModal: true };
+    shouldShowConfirmModal: true,
+  };
 }

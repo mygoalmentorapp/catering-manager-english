@@ -8,18 +8,21 @@ import {
   ActivityIndicator,
   Platform,
   Dimensions,
-  StatusBar } from "react-native";
+  StatusBar,
+} from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withTiming } from "react-native-reanimated";
+  withTiming,
+} from "react-native-reanimated";
 import {
   DS_COLORS,
   DS_FONT,
   DS_WEIGHT,
   DS_SPACING,
-  DS_RADIUS } from "@/lib/design-system";
+  DS_RADIUS,
+} from "@/lib/design-system";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("screen");
 const FRAME_SIZE = SCREEN_W - 64;
@@ -60,7 +63,8 @@ export function ImageCropModal({
   imageHeight,
   onConfirm,
   onCancel,
-  saving }: ImageCropModalProps) {
+  saving,
+}: ImageCropModalProps) {
   // Calculate how to size the image so it covers the FRAME_SIZE square
   const { initW, initH } = useMemo(() => {
     if (!imageWidth || !imageHeight)
@@ -115,7 +119,8 @@ export function ImageCropModal({
               offset.value.y + event.changeY,
               -maxOffsetY,
               maxOffsetY
-            ) };
+            ),
+          };
         }),
     [initW, initH]
   );
@@ -139,7 +144,8 @@ export function ImageCropModal({
           const maxOffsetY = Math.max(0, (initH * newScale - FRAME_SIZE) / 2);
           offset.value = {
             x: clamp(offset.value.x, -maxOffsetX, maxOffsetX),
-            y: clamp(offset.value.y, -maxOffsetY, maxOffsetY) };
+            y: clamp(offset.value.y, -maxOffsetY, maxOffsetY),
+          };
         })
         .onEnd(() => {
           "worklet";
@@ -164,7 +170,8 @@ export function ImageCropModal({
       { translateX: offset.value.x },
       { translateY: offset.value.y },
       { scale: scale.value },
-    ] }));
+    ],
+  }));
 
   /**
    * Calculate crop region in original image coordinates.
@@ -224,9 +231,9 @@ export function ImageCropModal({
             style={cs.headerBtn}
             activeOpacity={0.7}
           >
-            <Text style={cs.cancelText}>Cancel</Text>
+            <Text style={cs.cancelText}>ביטול</Text>
           </TouchableOpacity>
-          <Text style={cs.headerTitle}>Crop image</Text>
+          <Text style={cs.headerTitle}>חיתוך תמונה</Text>
           <TouchableOpacity
             onPress={handleConfirm}
             style={[cs.headerBtn, cs.saveBtn]}
@@ -236,7 +243,7 @@ export function ImageCropModal({
             {saving ? (
               <ActivityIndicator size="small" color={DS_COLORS.white} />
             ) : (
-              <Text style={cs.saveText}>Save</Text>
+              <Text style={cs.saveText}>שמור</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -266,7 +273,8 @@ export function ImageCropModal({
                   cs.overlayBar,
                   {
                     width: (SCREEN_W - FRAME_SIZE) / 2,
-                    height: FRAME_SIZE },
+                    height: FRAME_SIZE,
+                  },
                 ]}
               />
               {/* Transparent frame */}
@@ -277,7 +285,8 @@ export function ImageCropModal({
                   cs.overlayBar,
                   {
                     width: (SCREEN_W - FRAME_SIZE) / 2,
-                    height: FRAME_SIZE },
+                    height: FRAME_SIZE,
+                  },
                 ]}
               />
             </View>
@@ -289,7 +298,7 @@ export function ImageCropModal({
         {/* Footer hint */}
         <View style={cs.footer}>
           <Text style={cs.hintText}>
-            Drag the image and pinch to resize to select the desired area
+            גרור את התמונה ושנה גודל בצביטה כדי לבחור את האזור הרצוי
           </Text>
         </View>
       </View>
@@ -306,65 +315,82 @@ const cs = StyleSheet.create({
     bottom: 0,
     zIndex: 9999,
     elevation: 9999,
-    backgroundColor: "#000" },
+    backgroundColor: "#000",
+  },
   container: {
     flex: 1,
-    backgroundColor: "#000" },
+    backgroundColor: "#000",
+  },
   header: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: DS_SPACING.lg,
     paddingTop: Platform.OS === "ios" ? 56 : 16,
     paddingBottom: 12,
     height: HEADER_H,
-    backgroundColor: "#111" },
+    backgroundColor: "#111",
+  },
   headerBtn: {
     paddingHorizontal: DS_SPACING.md,
     paddingVertical: DS_SPACING.sm,
     borderRadius: DS_RADIUS.md,
     minWidth: 60,
-    alignItems: "center" },
+    alignItems: "center",
+  },
   saveBtn: {
-    backgroundColor: DS_COLORS.accent },
+    backgroundColor: DS_COLORS.accent,
+  },
   headerTitle: {
     fontSize: DS_FONT.titleCard,
     fontWeight: DS_WEIGHT.bold as any,
-    color: "#fff" },
+    color: "#fff",
+  },
   cancelText: {
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.semibold as any,
-    color: "#aaa" },
+    color: "#aaa",
+  },
   saveText: {
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.bold as any,
-    color: "#fff" },
+    color: "#fff",
+  },
   cropArea: {
     flex: 1,
     overflow: "hidden",
     alignItems: "center",
-    justifyContent: "center" },
+    justifyContent: "center",
+  },
   imageWrapper: {
-    position: "absolute" },
+    position: "absolute",
+  },
   overlayContainer: {
-    ...StyleSheet.absoluteFillObject },
+    ...StyleSheet.absoluteFillObject,
+  },
   overlayBar: {
-    backgroundColor: "rgba(0,0,0,0.6)" },
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
   middleRow: {
-    flexDirection: "row" },
+    flexDirection: "row",
+  },
   frame: {
     width: FRAME_SIZE,
     height: FRAME_SIZE,
     borderWidth: 2,
     borderColor: "#fff",
     borderRadius: 4,
-    backgroundColor: "transparent" },
+    backgroundColor: "transparent",
+  },
   footer: {
     height: FOOTER_H,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: DS_SPACING.xl },
+    paddingHorizontal: DS_SPACING.xl,
+  },
   hintText: {
     fontSize: DS_FONT.body,
     color: "#888",
-    textAlign: "left" } });
+    textAlign: "right",
+  },
+});
