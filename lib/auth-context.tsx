@@ -88,6 +88,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Used to gate startAutoRefresh — must not run during any recovery.
   const recoveryActiveRef = useRef(false);
 
+  // FIX: Capture the latest valid session from onAuthStateChange events.
+  // When TOKEN_REFRESHED fires during initAuth (before getSession returns),
+  // the session is stored here so initAuth can use it instead of falling through
+  // to refreshSession/setSession fallbacks that may fail.
+  const latestAuthEventSessionRef = useRef<Session | null>(null);
+
   // Bridge retry state — exposed to UI for BridgeRetryScreen
   const [bridgeFailed, setBridgeFailed] = useState(false);
   const [bridgeRetrying, setBridgeRetrying] = useState(false);
@@ -261,6 +267,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           debugLog("Auth", "Session found:", !!currentSession);
         }
 
+        // FIX: Check if TOKEN_REFRESHED already delivered a valid session while we waited.
+        // This handles the race where getSession hangs/times out but TOKEN_REFRESHED
+        // already fired with a valid session.
+        if (!currentSession?.user && latestAuthEventSessionRef.current?.user) {
+          currentSession = latestAuthEventSessionRef.current;
+          debugLog("Auth", "Using session from auth event (after getSession) — skipping fallbacks");
+        }
+
         // FIX: If getSession() returns null (or timed out), it might be because Supabase's
         // internal auto-refresh already ran and failed (e.g., after warm restart where JS
         // context was killed but AsyncStorage still has the refresh token). In this case,
@@ -284,6 +298,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } catch (refreshErr) {
             debugLog("Auth", "refreshSession error:", refreshErr);
           }
+        }
+
+        // FIX: Check auth event ref again before AsyncStorage fallback
+        if (!currentSession?.user && latestAuthEventSessionRef.current?.user) {
+          currentSession = latestAuthEventSessionRef.current;
+          debugLog("Auth", "Using session from auth event (before AsyncStorage fallback)");
         }
 
         // FALLBACK: If both getSession() and refreshSession() returned null,
@@ -351,11 +371,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
         } else {
-          debugLog("Auth", "No session found after all recovery attempts");
-          // If auth flag was set but we couldn't recover, clear it — user truly has no session
-          if (wasAuthenticated) {
-            debugLog("Auth", "Clearing stale auth flag — all recovery attempts failed");
-            await clearAuthFlag();
+          // Final check: did a valid session arrive via auth event during the entire initAuth flow?
+          const eventSession = latestAuthEventSessionRef.current;
+          if (eventSession?.user) {
+            debugLog("Auth", "Not clearing auth flag — valid auth event session exists, using it");
+            // Use the session from the auth event
+            setSession(eventSession);
+            setUser(eventSession.user);
+            await setAuthFlag();
+            const p = await fetchProfile(eventSession.user.id);
+            if (mountedRef.current) {
+              setProfile(p);
+              debugLog("Auth", "Profile loaded from event session:", !!p);
+            }
+            // Ensure bridge is ready
+            if (Platform.OS !== "web") {
+              const existingToken = await Auth.getSessionToken();
+              if (existingToken) {
+                debugLog("Auth", "Custom JWT already exists in SecureStore (event session path)");
+                if (mountedRef.current) setIsBridgeReady(true);
+              } else {
+                debugLog("Auth", "No custom JWT found — bridging from event session...");
+                await performBridge(eventSession.access_token);
+              }
+            }
+          } else {
+            debugLog("Auth", "No session found after all recovery attempts");
+            // If auth flag was set but we couldn't recover, clear it — user truly has no session
+            if (wasAuthenticated) {
+              debugLog("Auth", "Clearing stale auth flag — all recovery attempts failed");
+              await clearAuthFlag();
+            }
           }
         }
       } catch (err) {
@@ -377,6 +423,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mountedRef.current) return;
       debugLog("Auth", "onAuthStateChange:", event);
+
+      // FIX: Capture any valid session from auth events immediately.
+      // This allows initAuth to use it if getSession/refreshSession fail.
+      if (newSession?.user) {
+        latestAuthEventSessionRef.current = newSession;
+        debugLog("Auth", "Auth event session captured:", {
+          event,
+          hasUser: true,
+          expiresAt: newSession.expires_at,
+        });
+      }
 
       // If signOut is in progress, only allow SIGNED_OUT event through.
       // This prevents TOKEN_REFRESHED or other events from re-setting state

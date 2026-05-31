@@ -639,3 +639,355 @@ describe("End-to-end scenarios", () => {
     // AppGate routing: not authenticated, not recovering → redirect to login
   });
 });
+
+/**
+ * Simulates the updated initAuth flow that checks latestAuthEventSessionRef
+ * at multiple checkpoints during recovery.
+ *
+ * The key insight: TOKEN_REFRESHED can fire during initAuth (while getSession hangs),
+ * delivering a valid session via onAuthStateChange. The fix captures this session in
+ * latestAuthEventSessionRef and checks it at each fallback step.
+ */
+function simulateInitAuthWithEventSession(options: {
+    getSessionResult: "success" | "timeout" | "null";
+    refreshSessionResult: "success" | "null" | "error";
+    asyncStorageFallbackResult: "success" | "null" | "error";
+    authFlagSet: boolean;
+    /** Simulates TOKEN_REFRESHED arriving with a valid session during initAuth */
+    authEventSession: MockSession | null;
+    /** When the auth event session arrives relative to initAuth steps */
+    authEventArrivalPoint: "before_getSession" | "during_getSession" | "after_refreshSession" | "after_asyncStorage" | "never";
+  }): {
+    session: MockSession | null;
+    authFlagCleared: boolean;
+    recoveryPath: string[];
+    usedEventSession: boolean;
+    calledRefreshSession: boolean;
+    calledAsyncStorageFallback: boolean;
+  } {
+    const recoveryPath: string[] = [];
+    let currentSession: MockSession | null = null;
+    let authFlagCleared = false;
+    let usedEventSession = false;
+    let calledRefreshSession = false;
+    let calledAsyncStorageFallback = false;
+
+    // Simulate latestAuthEventSessionRef
+    let latestAuthEventSession: MockSession | null = null;
+
+    if (options.authFlagSet) {
+      recoveryPath.push("auth_flag_set → recovery_mode");
+    }
+
+    // Simulate auth event arriving before getSession
+    if (options.authEventArrivalPoint === "before_getSession" && options.authEventSession?.user) {
+      latestAuthEventSession = options.authEventSession;
+      recoveryPath.push("TOKEN_REFRESHED arrived (before getSession)");
+    }
+
+    // Step 1: getSession
+    if (options.getSessionResult === "success") {
+      currentSession = { user: { id: "123", email: "test@test.com" }, access_token: "token" };
+      recoveryPath.push("getSession → success");
+    } else if (options.getSessionResult === "timeout") {
+      recoveryPath.push("getSession → timeout");
+    } else {
+      recoveryPath.push("getSession → null");
+    }
+
+    // Simulate auth event arriving during getSession (while it was hanging)
+    if (options.authEventArrivalPoint === "during_getSession" && options.authEventSession?.user) {
+      latestAuthEventSession = options.authEventSession;
+      recoveryPath.push("TOKEN_REFRESHED arrived (during getSession)");
+    }
+
+    // FIX checkpoint 1: Check latestAuthEventSessionRef after getSession
+    if (!currentSession?.user && latestAuthEventSession?.user) {
+      currentSession = latestAuthEventSession;
+      usedEventSession = true;
+      recoveryPath.push("Used auth event session (after getSession) — skipping fallbacks");
+    }
+
+    // Step 2: refreshSession (only if no session yet)
+    if (!currentSession?.user) {
+      calledRefreshSession = true;
+      if (options.refreshSessionResult === "success") {
+        currentSession = { user: { id: "123", email: "test@test.com" }, access_token: "refreshed-token" };
+        recoveryPath.push("refreshSession → success");
+      } else if (options.refreshSessionResult === "error") {
+        recoveryPath.push("refreshSession → error");
+      } else {
+        recoveryPath.push("refreshSession → null");
+      }
+    }
+
+    // Simulate auth event arriving after refreshSession
+    if (options.authEventArrivalPoint === "after_refreshSession" && options.authEventSession?.user) {
+      latestAuthEventSession = options.authEventSession;
+      recoveryPath.push("TOKEN_REFRESHED arrived (after refreshSession)");
+    }
+
+    // FIX checkpoint 2: Check latestAuthEventSessionRef before AsyncStorage fallback
+    if (!currentSession?.user && latestAuthEventSession?.user) {
+      currentSession = latestAuthEventSession;
+      usedEventSession = true;
+      recoveryPath.push("Used auth event session (before AsyncStorage fallback)");
+    }
+
+    // Step 3: AsyncStorage fallback (only if no session yet)
+    if (!currentSession?.user) {
+      calledAsyncStorageFallback = true;
+      if (options.asyncStorageFallbackResult === "success") {
+        currentSession = { user: { id: "123", email: "test@test.com" }, access_token: "fallback-token" };
+        recoveryPath.push("asyncStorage → success");
+      } else if (options.asyncStorageFallbackResult === "error") {
+        recoveryPath.push("asyncStorage → error");
+      } else {
+        recoveryPath.push("asyncStorage → null");
+      }
+    }
+
+    // Simulate auth event arriving after AsyncStorage fallback
+    if (options.authEventArrivalPoint === "after_asyncStorage" && options.authEventSession?.user) {
+      latestAuthEventSession = options.authEventSession;
+      recoveryPath.push("TOKEN_REFRESHED arrived (after asyncStorage)");
+    }
+
+    // FIX checkpoint 3 (final guard): Check before clearing auth flag
+    if (!currentSession?.user) {
+      if (latestAuthEventSession?.user) {
+        currentSession = latestAuthEventSession;
+        usedEventSession = true;
+        recoveryPath.push("Used auth event session (final guard — not clearing auth flag)");
+      } else {
+        if (options.authFlagSet) {
+          authFlagCleared = true;
+          recoveryPath.push("auth_flag_cleared — all recovery attempts failed");
+        }
+      }
+    }
+
+    return {
+      session: currentSession,
+      authFlagCleared,
+      recoveryPath,
+      usedEventSession,
+      calledRefreshSession,
+      calledAsyncStorageFallback,
+    };
+  }
+
+describe("FIX: TOKEN_REFRESHED race condition during initAuth (latestAuthEventSessionRef)", () => {
+  // ============ MAIN RACE CONDITION TEST ============
+  it("should use TOKEN_REFRESHED session when getSession times out (main bug scenario)", () => {
+    // This is the exact scenario from the Logcat:
+    // 1. initAuth starts, getSession hangs/times out
+    // 2. TOKEN_REFRESHED fires with valid session during getSession wait
+    // 3. initAuth should use the event session instead of continuing to fallbacks
+    const result = simulateInitAuthWithEventSession({
+      getSessionResult: "timeout",
+      refreshSessionResult: "null",
+      asyncStorageFallbackResult: "null",
+      authFlagSet: true,
+      authEventSession: { user: { id: "123", email: "test@test.com" }, access_token: "event-token" },
+      authEventArrivalPoint: "during_getSession",
+    });
+
+    expect(result.session?.user).toBeTruthy();
+    expect(result.usedEventSession).toBe(true);
+    expect(result.authFlagCleared).toBe(false);
+    expect(result.calledRefreshSession).toBe(false); // Should NOT call refreshSession
+    expect(result.calledAsyncStorageFallback).toBe(false); // Should NOT call AsyncStorage
+  });
+
+  it("should use TOKEN_REFRESHED session when it arrives after refreshSession fails", () => {
+    const result = simulateInitAuthWithEventSession({
+      getSessionResult: "timeout",
+      refreshSessionResult: "null",
+      asyncStorageFallbackResult: "null",
+      authFlagSet: true,
+      authEventSession: { user: { id: "123", email: "test@test.com" }, access_token: "event-token" },
+      authEventArrivalPoint: "after_refreshSession",
+    });
+
+    expect(result.session?.user).toBeTruthy();
+    expect(result.usedEventSession).toBe(true);
+    expect(result.authFlagCleared).toBe(false);
+    expect(result.calledAsyncStorageFallback).toBe(false); // Should NOT call AsyncStorage
+  });
+
+  it("should use TOKEN_REFRESHED session at final guard when all fallbacks fail", () => {
+    const result = simulateInitAuthWithEventSession({
+      getSessionResult: "timeout",
+      refreshSessionResult: "error",
+      asyncStorageFallbackResult: "null",
+      authFlagSet: true,
+      authEventSession: { user: { id: "123", email: "test@test.com" }, access_token: "event-token" },
+      authEventArrivalPoint: "after_asyncStorage",
+    });
+
+    expect(result.session?.user).toBeTruthy();
+    expect(result.usedEventSession).toBe(true);
+    expect(result.authFlagCleared).toBe(false); // Must NOT clear auth flag
+  });
+
+  it("should NOT use event session if getSession already succeeded", () => {
+    const result = simulateInitAuthWithEventSession({
+      getSessionResult: "success",
+      refreshSessionResult: "null",
+      asyncStorageFallbackResult: "null",
+      authFlagSet: true,
+      authEventSession: { user: { id: "456", email: "other@test.com" }, access_token: "event-token" },
+      authEventArrivalPoint: "during_getSession",
+    });
+
+    expect(result.session?.user?.id).toBe("123"); // Uses getSession result, not event
+    expect(result.usedEventSession).toBe(false);
+    expect(result.calledRefreshSession).toBe(false);
+  });
+
+  it("should clear auth flag when NO auth event session and all recovery fails (negative test)", () => {
+    const result = simulateInitAuthWithEventSession({
+      getSessionResult: "timeout",
+      refreshSessionResult: "null",
+      asyncStorageFallbackResult: "null",
+      authFlagSet: true,
+      authEventSession: null,
+      authEventArrivalPoint: "never",
+    });
+
+    expect(result.session).toBeNull();
+    expect(result.authFlagCleared).toBe(true);
+    expect(result.usedEventSession).toBe(false);
+  });
+
+  it("should clear auth flag when auth event session has no user (null user)", () => {
+    const result = simulateInitAuthWithEventSession({
+      getSessionResult: "timeout",
+      refreshSessionResult: "error",
+      asyncStorageFallbackResult: "null",
+      authFlagSet: true,
+      authEventSession: { user: null, access_token: null },
+      authEventArrivalPoint: "during_getSession",
+    });
+
+    expect(result.session).toBeNull();
+    expect(result.authFlagCleared).toBe(true);
+    expect(result.usedEventSession).toBe(false);
+  });
+
+  it("should NOT clear auth flag when auth flag was NOT set (fresh install)", () => {
+    const result = simulateInitAuthWithEventSession({
+      getSessionResult: "null",
+      refreshSessionResult: "null",
+      asyncStorageFallbackResult: "null",
+      authFlagSet: false,
+      authEventSession: null,
+      authEventArrivalPoint: "never",
+    });
+
+    expect(result.session).toBeNull();
+    expect(result.authFlagCleared).toBe(false); // No flag to clear
+  });
+
+  it("should skip refreshSession and AsyncStorage when event session arrives early", () => {
+    const result = simulateInitAuthWithEventSession({
+      getSessionResult: "null",
+      refreshSessionResult: "success", // Would succeed, but should never be called
+      asyncStorageFallbackResult: "success", // Would succeed, but should never be called
+      authFlagSet: true,
+      authEventSession: { user: { id: "123", email: "test@test.com" }, access_token: "event-token" },
+      authEventArrivalPoint: "before_getSession",
+    });
+
+    expect(result.session?.user).toBeTruthy();
+    expect(result.usedEventSession).toBe(true);
+    expect(result.calledRefreshSession).toBe(false);
+    expect(result.calledAsyncStorageFallback).toBe(false);
+  });
+
+  it("should prefer refreshSession result over late-arriving event session", () => {
+    // If refreshSession succeeds, we don't need the event session
+    const result = simulateInitAuthWithEventSession({
+      getSessionResult: "timeout",
+      refreshSessionResult: "success",
+      asyncStorageFallbackResult: "null",
+      authFlagSet: true,
+      authEventSession: { user: { id: "456", email: "event@test.com" }, access_token: "event-token" },
+      authEventArrivalPoint: "after_refreshSession", // Arrives after refreshSession already succeeded
+    });
+
+    expect(result.session?.user?.id).toBe("123"); // Uses refreshSession result
+    expect(result.usedEventSession).toBe(false);
+    expect(result.authFlagCleared).toBe(false);
+  });
+});
+
+describe("End-to-end: TOKEN_REFRESHED race condition scenarios", () => {
+  it("Scenario: App open after 1-2h → getSession timeout → TOKEN_REFRESHED → user stays in app", () => {
+    // Exact production scenario from Logcat:
+    // 1. App opens after 1-2h in background
+    // 2. initAuth starts, auth flag is set
+    // 3. getSession hangs (SecureStore slow) → times out at 6s
+    // 4. TOKEN_REFRESHED fires with valid session (Supabase auto-refresh succeeded)
+    // 5. initAuth checks latestAuthEventSessionRef → finds valid session
+    // 6. User stays authenticated, no login screen
+
+    // Verify the event is captured (processAuthEvent with valid session)
+    const eventAction = processAuthEvent(
+      "TOKEN_REFRESHED",
+      { user: { id: "123", email: "test@test.com" }, access_token: "refreshed" },
+      false,
+      true,
+    );
+    expect(eventAction).toBe("process"); // TOKEN_REFRESHED with valid session is processed
+
+    // Verify initAuth uses the captured session
+    const result = simulateInitAuthWithEventSession({
+      getSessionResult: "timeout",
+      refreshSessionResult: "null",
+      asyncStorageFallbackResult: "null",
+      authFlagSet: true,
+      authEventSession: { user: { id: "123", email: "test@test.com" }, access_token: "refreshed" },
+      authEventArrivalPoint: "during_getSession",
+    });
+    expect(result.session?.user).toBeTruthy();
+    expect(result.authFlagCleared).toBe(false);
+    expect(result.usedEventSession).toBe(true);
+  });
+
+  it("Scenario: Second open after force-close → INITIAL_SESSION → works immediately", () => {
+    // After the first open (which ran TOKEN_REFRESHED and updated storage),
+    // force-closing and reopening gives INITIAL_SESSION with valid session.
+    // getSession succeeds immediately.
+
+    const result = simulateInitAuthWithEventSession({
+      getSessionResult: "success",
+      refreshSessionResult: "null",
+      asyncStorageFallbackResult: "null",
+      authFlagSet: true,
+      authEventSession: null,
+      authEventArrivalPoint: "never",
+    });
+    expect(result.session?.user).toBeTruthy();
+    expect(result.usedEventSession).toBe(false);
+    expect(result.authFlagCleared).toBe(false);
+  });
+
+  it("Scenario: No TOKEN_REFRESHED, all methods fail → legitimate logout", () => {
+    // If no auth event arrives and all recovery methods fail,
+    // the user is legitimately logged out.
+
+    const result = simulateInitAuthWithEventSession({
+      getSessionResult: "timeout",
+      refreshSessionResult: "error",
+      asyncStorageFallbackResult: "null",
+      authFlagSet: true,
+      authEventSession: null,
+      authEventArrivalPoint: "never",
+    });
+    expect(result.session).toBeNull();
+    expect(result.authFlagCleared).toBe(true);
+    expect(result.usedEventSession).toBe(false);
+  });
+});
