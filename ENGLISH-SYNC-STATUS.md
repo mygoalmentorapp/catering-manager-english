@@ -1,6 +1,6 @@
 # English Version Sync Status
 
-**Last updated:** May 31, 2026 (updated again same day)
+**Last updated:** May 31, 2026 (third update — auth race condition fix)
 **Hebrew repo:** `mygoalmentorapp/catering-manager-hebrew`
 **English repo:** `mygoalmentorapp/catering-manager-english`
 
@@ -18,6 +18,9 @@
 5. **Splash screen fixes synced** (May 31, 2026 — second update):
    - `components/data-loading-splash.tsx` — Fixed phrase jump (module-level state persistence) + fixed upward layout jump (replaced SafeAreaView with cached insets View)
    - `app.config.ts` — Synced from Hebrew (native splash reverted to white background)
+6. **Auth race condition fix synced** (May 31, 2026 — third update):
+   - `lib/auth-context.tsx` — Added `latestAuthEventSessionRef` to fix TOKEN_REFRESHED being ignored during initAuth (causes login screen after 1-2h in background)
+   - `__tests__/auth-session-protection.test.ts` — 12 new tests for the race condition fix (61 total pass)
 
 ### What still needs to be done:
 
