@@ -1,6 +1,6 @@
 # English Version Sync Status
 
-**Last updated:** May 31, 2026
+**Last updated:** May 31, 2026 (updated again same day)
 **Hebrew repo:** `mygoalmentorapp/catering-manager-hebrew`
 **English repo:** `mygoalmentorapp/catering-manager-english`
 
@@ -14,7 +14,10 @@
    - `app/`, `components/`, `lib/`, `hooks/`, `server/`, `admin/`, `scripts/`, `__tests__/`, `tests/`
 2. **Dependencies synced** — `package.json` and `pnpm-lock.yaml` are identical to Hebrew (including expo-clipboard removal fix)
 3. **Config files synced** — `tailwind.config.js`, `theme.config.js`, `theme.config.d.ts`, `tsconfig.json`, `global.css`, `vitest.config.ts`, `todo.md`
-4. **English-specific files preserved** — `app.config.ts`, `eas.json`, `design.md`, `GITHUB-README.md` were NOT overwritten (they have English bundle ID, app name, etc.)
+4. **English-specific files preserved** — `eas.json`, `design.md`, `GITHUB-README.md` were NOT overwritten (they have English bundle ID, app name, etc.)
+5. **Splash screen fixes synced** (May 31, 2026 — second update):
+   - `components/data-loading-splash.tsx` — Fixed phrase jump (module-level state persistence) + fixed upward layout jump (replaced SafeAreaView with cached insets View)
+   - `app.config.ts` — Synced from Hebrew (native splash reverted to white background)
 
 ### What still needs to be done:
 
@@ -84,4 +87,14 @@ The Hebrew version (sandbox + GitHub) was at these versions when sync was done:
 - `app.config.ts` version: `1.2.60`
 - `expo`: `~54.0.29` (resolved to 54.0.35)
 - `expo-clipboard`: **REMOVED** (was causing APK crash)
-- Last Hebrew commit: `c420e9d` on `main` branch
+- Last Hebrew commit (initial sync): `c420e9d` on `main` branch
+- Last Hebrew commit (splash fixes): `fbef39d` on `main` branch
+
+## Bug fixes applied (all synced to both repos):
+
+| Fix | Description | Files changed |
+|-----|-------------|---------------|
+| APK crash fix | Removed `expo-clipboard` (NoClassDefFoundError AnyTypeCache) | `package.json`, `pnpm-lock.yaml`, `app/auth/login.tsx`, `components/debug-log-viewer.tsx` |
+| Splash phrase jump | Module-level state persistence across remounts | `components/data-loading-splash.tsx` |
+| Splash upward jump | Replaced SafeAreaView with cached insets View | `components/data-loading-splash.tsx` |
+| Native splash revert | Reverted to white background (was briefly changed to dark) | `app.config.ts` |

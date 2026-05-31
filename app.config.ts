@@ -6,7 +6,7 @@ import type { ExpoConfig } from "expo/config";
 // e.g., "my-app" created at 2024-01-15 10:30:45 -> "space.manus.my.app.t20240115103045"
 // Bundle ID can only contain letters, numbers, and dots
 // Android requires each dot-separated segment to start with a letter
-const rawBundleId = "space.manus.catering.manager.en.t20260411205951";
+const rawBundleId = "space.manus.catering.manager.t20260411205951";
 const bundleId =
   rawBundleId
     .replace(/[-_]/g, ".") // Replace hyphens/underscores with dots
@@ -24,15 +24,15 @@ const bundleId =
 // Extract timestamp from bundle ID and prefix with "manus" for deep link scheme
 // e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
 const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
-const schemeFromBundleId = `manusen${timestamp}`;
+const schemeFromBundleId = `manus${timestamp}`;
 
 const env = {
   // App branding - update these values directly (do not use env vars)
-  appName: "Catering Manager Pro",
+  appName: "ניהול קייטרינג פרו",
   appSlug: "catering-manager",
   // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
   // Leave empty to use the default icon from assets/images/icon.png
-  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663454039920/lLkvgyRgDiRRsnUy.png",
+  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663454039920/GIsiUPqCZXdnejoT.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,
@@ -57,7 +57,7 @@ const config: ExpoConfig = {
   android: {
     versionCode: 1,
     adaptiveIcon: {
-      backgroundColor: "#0c414f",
+      backgroundColor: "#F2F0E6",
       foregroundImage: "./assets/images/android-icon-foreground.png",
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
@@ -90,7 +90,7 @@ const config: ExpoConfig = {
     [
       "expo-image-picker",
       {
-        photosPermission: "This app needs access to your photos to select a business logo."
+        photosPermission: "האפליקציה צריכה גישה לתמונות שלך כדי לבחור לוגו לעסק."
       }
     ],
     [
@@ -129,10 +129,26 @@ const config: ExpoConfig = {
         },
       },
     ],
+    [
+      "react-native-adapty",
+      {
+        ios_idfv_collection_disabled: false,
+      },
+    ],
+    [
+      "onesignal-expo-plugin",
+      {
+        mode: "production",
+      },
+    ],
   ],
   extra: {
     supabaseUrl: process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || "https://szcukdxkbrezhgotwsqd.supabase.co",
     supabaseAnonKey: process.env.SUPABASE_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "",
+    // App language variant: "he" for Hebrew version, "en" for English version.
+    // This identifies WHICH APP is running (not the device language).
+    // The English app repo sets this to "en".
+    appLanguage: "he",
   },
   experiments: {
     typedRoutes: true,
