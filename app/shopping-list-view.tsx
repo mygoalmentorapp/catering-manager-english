@@ -8,7 +8,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
-  Linking,
   Share,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -311,24 +310,6 @@ export default function ShoppingListViewScreen() {
     return text;
   }, [list, linkedOrders, diffs, units]);
 
-  const handleShareWhatsApp = useCallback(async () => {
-    try {
-      const encoded = encodeURIComponent(shareText);
-      const url = `whatsapp://send?text=${encoded}`;
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
-      } else {
-        await Share.share({ message: shareText });
-      }
-    } catch {
-      try {
-        await Share.share({ message: shareText });
-      } catch {
-        Alert.alert("שגיאה", "לא ניתן לשתף כרגע");
-      }
-    }
-  }, [shareText]);
 
   const handleShare = useCallback(async () => {
     try {
@@ -538,26 +519,18 @@ export default function ShoppingListViewScreen() {
 
         {/* Bottom action buttons */}
         <View style={vs.bottomBar}>
-          <TouchableOpacity
-            onPress={handleShareWhatsApp}
-            style={vs.whatsappBtn}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="send" size={20} color={DS_COLORS.white} />
-            <Text style={vs.whatsappBtnText}>שתף ב-WhatsApp</Text>
-          </TouchableOpacity>
           <View style={vs.bottomRow}>
             <TouchableOpacity
               onPress={handleShare}
               style={vs.shareBtn}
               activeOpacity={0.8}
             >
-              <MaterialIcons name="share" size={18} color={DS_COLORS.white} />
-              <Text style={vs.shareBtnText}>שתף</Text>
+              <MaterialIcons name="share" size={20} color={DS_COLORS.white} />
+              <Text style={vs.shareBtnText}>שלח כטקסט</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handlePrint}
-              style={vs.printBtnSmall}
+              style={vs.shareBtn}
               activeOpacity={0.8}
               disabled={printing}
             >
@@ -565,8 +538,8 @@ export default function ShoppingListViewScreen() {
                 <ActivityIndicator color={DS_COLORS.white} size="small" />
               ) : (
                 <>
-                  <MaterialIcons name="picture-as-pdf" size={18} color={DS_COLORS.white} />
-                  <Text style={vs.printBtnSmallText}>שמור PDF</Text>
+                  <MaterialIcons name="description" size={20} color={DS_COLORS.white} />
+                  <Text style={vs.shareBtnText}>שלח כ-PDF</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -787,7 +760,13 @@ function _make_vs() { return StyleSheet.create({
     borderTopColor: DS_COLORS.border,
     gap: DS_SPACING.sm,
   },
-  whatsappBtn: {
+  bottomRow: {
+    flexDirection: "row",
+    direction: "rtl" as const,
+    gap: DS_SPACING.md,
+  },
+  shareBtn: {
+    flex: 1,
     flexDirection: "row",
     direction: "rtl" as const,
     alignItems: "center",
@@ -798,49 +777,10 @@ function _make_vs() { return StyleSheet.create({
     gap: DS_SPACING.sm,
     ...DS_SHADOW.button,
   },
-  whatsappBtnText: {
-    color: DS_COLORS.white,
-    fontSize: DS_FONT.titleCard,
-    fontWeight: DS_WEIGHT.bold,
-  },
-  bottomRow: {
-    flexDirection: "row",
-    direction: "rtl" as const,
-    gap: DS_SPACING.sm,
-  },
-  shareBtn: {
-    flex: 1,
-    flexDirection: "row",
-    direction: "rtl" as const,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: DS_SPACING.md,
-    borderRadius: DS_RADIUS.md,
-    backgroundColor: DS_COLORS.accent,
-    gap: DS_SPACING.xs,
-    ...DS_SHADOW.button,
-  },
   shareBtnText: {
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.semibold,
     color: DS_COLORS.white,
-  },
-  printBtnSmall: {
-    flex: 1,
-    flexDirection: "row",
-    direction: "rtl" as const,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: DS_SPACING.md,
-    borderRadius: DS_RADIUS.md,
-    backgroundColor: DS_COLORS.accent,
-    gap: DS_SPACING.xs,
-    ...DS_SHADOW.button,
-  },
-  printBtnSmallText: {
-    color: DS_COLORS.white,
-    fontSize: DS_FONT.body,
-    fontWeight: DS_WEIGHT.bold,
   },
   lockedBanner: {
     backgroundColor: DS_COLORS.warningBg,

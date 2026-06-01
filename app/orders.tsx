@@ -12,7 +12,6 @@ import {
   ActivityIndicator,
   Platform,
   Modal,
-  Linking,
   Share,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -115,6 +114,7 @@ function OrderDetailView({
   const [dialogChecked, setDialogChecked] = useState(false);
   const [noButtonLoading, setNoButtonLoading] = useState(false);
   const [dotCount, setDotCount] = useState(0);
+  const [shareSheet, setShareSheet] = useState<{ action: "text" | "pdf" } | null>(null);
   const router = useRouter();
 
   // Animated dots for "no" button loading state
@@ -269,14 +269,13 @@ function OrderDetailView({
     }
   }, [order, products, businessName, businessLogo]);
 
-  // ── WhatsApp Handler ──
-  const handleWhatsApp = useCallback(async (type: "quote" | "execution") => {
+  // ── Text Share Handler (system share sheet) ──
+  const handleShareText = useCallback(async (type: "quote" | "execution") => {
     const displayName = businessName.trim() || "שם העסק שלך";
     const dateStr = order.eventDate ? formatDate(order.eventDate) : "";
     let text = "";
 
     if (type === "quote") {
-      // Price quote format
       const lines: string[] = [];
       lines.push(`📋 *הזמנה עם מחירים*`);
       lines.push(`🏢 ${displayName}`);
@@ -304,7 +303,6 @@ function OrderDetailView({
       }
       text = lines.join("\n");
     } else {
-      // Execution list format (no prices)
       const lines: string[] = [];
       lines.push(`📋 *הזמנה לביצוע*`);
       lines.push(`🏢 ${displayName}`);
@@ -324,20 +322,9 @@ function OrderDetailView({
     }
 
     try {
-      const encoded = encodeURIComponent(text);
-      const url = `whatsapp://send?text=${encoded}`;
-      const canOpen = await Linking.canOpenURL(url);
-      if (canOpen) {
-        await Linking.openURL(url);
-      } else {
-        await Share.share({ message: text });
-      }
+      await Share.share({ message: text });
     } catch {
-      try {
-        await Share.share({ message: text });
-      } catch {
-        Alert.alert("שגיאה", "לא ניתן לשתף כרגע");
-      }
+      Alert.alert("שגיאה", "לא ניתן לשתף כרגע");
     }
   }, [order, products, businessName]);
 
@@ -525,14 +512,21 @@ function OrderDetailView({
             </View>
           ) : null}
 
-          {/* Print & WhatsApp Buttons — always available */}
+          {/* Share Buttons — unified 2-button layout */}
           <View style={s.printSection}>
-            <Text style={s.printSectionTitle}>הפקת מסמכים</Text>
-            {/* PDF Buttons Row */}
+            <Text style={s.printSectionTitle}>שיתוף הזמנה</Text>
             <View style={s.printBtnRow}>
               <TouchableOpacity
-                onPress={() => handlePrint("quote")}
-                style={s.printBtn}
+                onPress={() => setShareSheet({ action: "text" })}
+                style={s.shareBtn}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="share" size={20} color={DS_COLORS.white} />
+                <Text style={s.shareBtnText}>שלח כטקסט</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShareSheet({ action: "pdf" })}
+                style={s.shareBtn}
                 activeOpacity={0.8}
                 disabled={printing}
               >
@@ -541,43 +535,9 @@ function OrderDetailView({
                 ) : (
                   <>
                     <MaterialIcons name="picture-as-pdf" size={20} color={DS_COLORS.white} />
-                    <Text style={s.printBtnText}>הזמנה עם מחירים</Text>
+                    <Text style={s.shareBtnText}>שלח כ-PDF</Text>
                   </>
                 )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handlePrint("execution")}
-                style={s.printBtn}
-                activeOpacity={0.8}
-                disabled={printing}
-              >
-                {printing ? (
-                  <ActivityIndicator size="small" color={DS_COLORS.white} />
-                ) : (
-                  <>
-                    <MaterialIcons name="picture-as-pdf" size={20} color={DS_COLORS.white} />
-                    <Text style={s.printBtnText}>הזמנה לביצוע</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-            {/* WhatsApp Buttons Row */}
-            <View style={s.whatsappBtnRow}>
-              <TouchableOpacity
-                onPress={() => handleWhatsApp("quote")}
-                style={s.whatsappBtn}
-                activeOpacity={0.8}
-              >
-                <MaterialIcons name="send" size={20} color={DS_COLORS.white} />
-                <Text style={s.whatsappBtnText}>הזמנה עם מחירים</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleWhatsApp("execution")}
-                style={s.whatsappBtn}
-                activeOpacity={0.8}
-              >
-                <MaterialIcons name="send" size={20} color={DS_COLORS.white} />
-                <Text style={s.whatsappBtnText}>הזמנה לביצוע</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -642,6 +602,49 @@ function OrderDetailView({
         </View>
       </Modal>
 
+      {/* Share Sheet Bottom Modal */}
+      <Modal visible={shareSheet !== null} transparent animationType="slide">
+        <TouchableOpacity
+          style={s.shareSheetOverlay}
+          activeOpacity={1}
+          onPress={() => setShareSheet(null)}
+        >
+          <View style={s.shareSheetCard}>
+            <Text style={s.modalTitle}>בחר פורמט</Text>
+            <View style={s.modalBtnCol}>
+              <TouchableOpacity
+                style={s.modalBtnPrimary}
+                onPress={() => {
+                  if (shareSheet?.action === "pdf") handlePrint("quote");
+                  else handleShareText("quote");
+                  setShareSheet(null);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={s.modalBtnPrimaryText}>עם מחירים</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.modalBtnOutline}
+                onPress={() => {
+                  if (shareSheet?.action === "pdf") handlePrint("execution");
+                  else handleShareText("execution");
+                  setShareSheet(null);
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={s.modalBtnOutlineText}>בלי מחירים</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.modalBtnGhost}
+                onPress={() => setShareSheet(null)}
+                activeOpacity={0.8}
+              >
+                <Text style={s.modalBtnGhostText}>ביטול</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
     </ScreenContainer>
   );
@@ -1702,12 +1705,7 @@ function _make_s() { return StyleSheet.create({
     fontWeight: DS_WEIGHT.semibold as any,
     color: DS_COLORS.white,
   },
-  whatsappBtnRow: {
-    flexDirection: "row" as const,
-    direction: "rtl" as const,
-    gap: DS_SPACING.md,
-  },
-  whatsappBtn: {
+  shareBtn: {
     flex: 1,
     flexDirection: "row" as const,
     direction: "rtl" as const,
@@ -1719,10 +1717,23 @@ function _make_s() { return StyleSheet.create({
     backgroundColor: DS_COLORS.accent,
     ...DS_SHADOW.button,
   },
-  whatsappBtnText: {
+  shareBtnText: {
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.semibold as any,
     color: DS_COLORS.white,
+  },
+  shareSheetOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end" as const,
+  },
+  shareSheetCard: {
+    backgroundColor: DS_COLORS.card,
+    borderTopLeftRadius: DS_RADIUS.xl,
+    borderTopRightRadius: DS_RADIUS.xl,
+    padding: DS_SPACING.xl,
+    paddingBottom: DS_SPACING.xxl + 16,
+    gap: DS_SPACING.lg,
   },
 
   // ── Modal Dialogs ──

@@ -6,9 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Linking,
-  Alert,
   Share,
+  Alert,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
@@ -110,24 +109,6 @@ export default function ShoppingListScreen() {
     [shoppingList]
   );
 
-  const handleShareWhatsApp = async () => {
-    try {
-      const encodedText = encodeURIComponent(formattedText);
-      const whatsappUrl = `whatsapp://send?text=${encodedText}`;
-      const canOpen = await Linking.canOpenURL(whatsappUrl);
-      if (canOpen) {
-        await Linking.openURL(whatsappUrl);
-      } else {
-        await Share.share({ message: formattedText });
-      }
-    } catch {
-      try {
-        await Share.share({ message: formattedText });
-      } catch {
-        Alert.alert("שגיאה", "לא ניתן לשתף כרגע");
-      }
-    }
-  };
 
   const handleShare = async () => {
     try {
@@ -210,22 +191,24 @@ export default function ShoppingListScreen() {
         {/* Share Buttons */}
         {hasContent && (
           <View style={s.bottomBar}>
-            <TouchableOpacity
-              onPress={handleShareWhatsApp}
-              style={s.whatsappBtn}
-              activeOpacity={0.8}
-            >
-              <MaterialIcons name="send" size={20} color={DS_COLORS.white} />
-              <Text style={s.whatsappBtnText}>שתף ב-WhatsApp</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleShare}
-              style={s.shareBtn}
-              activeOpacity={0.8}
-            >
-              <MaterialIcons name="share" size={20} color={DS_COLORS.accent} />
-              <Text style={s.shareBtnText}>שתף</Text>
-            </TouchableOpacity>
+            <View style={s.bottomRow}>
+              <TouchableOpacity
+                onPress={handleShare}
+                style={s.shareBtn}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="share" size={20} color={DS_COLORS.white} />
+                <Text style={s.shareBtnText}>שלח כטקסט</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleShare}
+                style={s.shareBtn}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="description" size={20} color={DS_COLORS.white} />
+                <Text style={s.shareBtnText}>שלח כ-PDF</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </View>
@@ -366,7 +349,13 @@ function _make_s() { return StyleSheet.create({
     borderTopColor: DS_COLORS.border,
     gap: DS_SPACING.sm,
   },
-  whatsappBtn: {
+  bottomRow: {
+    flexDirection: "row",
+    direction: "rtl" as const,
+    gap: DS_SPACING.md,
+  },
+  shareBtn: {
+    flex: 1,
     flexDirection: "row",
     direction: "rtl" as const,
     alignItems: "center",
@@ -377,25 +366,9 @@ function _make_s() { return StyleSheet.create({
     gap: DS_SPACING.sm,
     ...DS_SHADOW.button,
   },
-  whatsappBtnText: {
-    color: DS_COLORS.white,
-    fontSize: DS_FONT.titleCard,
-    fontWeight: DS_WEIGHT.bold,
-  },
-  shareBtn: {
-    flexDirection: "row",
-    direction: "rtl" as const,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: DS_SPACING.md,
-    borderRadius: DS_RADIUS.md,
-    borderWidth: 1.5,
-    borderColor: DS_COLORS.accent,
-    gap: DS_SPACING.sm,
-  },
   shareBtnText: {
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.semibold,
-    color: DS_COLORS.accent,
+    color: DS_COLORS.white,
   },
 }); }

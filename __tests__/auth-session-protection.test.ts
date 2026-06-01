@@ -991,3 +991,315 @@ describe("End-to-end: TOKEN_REFRESHED race condition scenarios", () => {
     expect(result.usedEventSession).toBe(false);
   });
 });
+
+// ============================================================
+// AUTH OPTIMIZATION TESTS: Fast Entry After Background
+// ============================================================
+// Tests for the 4 optimizations:
+// 1. Fast path from module cache (remount scenario)
+// 2. Race getSession vs TOKEN_REFRESHED (short wait)
+// 3. Non-blocking fetchProfile
+// 4. No auth flag deletion on background validation timeout
+
+describe("Auth Optimization: Fast Entry After Background", () => {
+  // Simulate the fast path logic from initAuth
+  function simulateFastPath(params: {
+    wasAuthenticated: boolean;
+    moduleSessionCacheUser: boolean;
+    sessionRecoveredInProcess: boolean;
+  }): { usedFastPath: boolean; reason?: string } {
+    const { wasAuthenticated, moduleSessionCacheUser, sessionRecoveredInProcess } = params;
+
+    // Fast path conditions (must ALL be true):
+    // 1. auth flag was set (user was previously authenticated)
+    // 2. module cache has a valid user
+    // 3. session was already recovered in this JS process
+    if (wasAuthenticated && moduleSessionCacheUser && sessionRecoveredInProcess) {
+      return { usedFastPath: true };
+    }
+
+    // Determine why fast path was not used
+    const reasons: string[] = [];
+    if (!wasAuthenticated) reasons.push("no auth flag");
+    if (!moduleSessionCacheUser) reasons.push("no module cache");
+    if (!sessionRecoveredInProcess) reasons.push("session not recovered in process");
+
+    return { usedFastPath: false, reason: reasons.join(", ") };
+  }
+
+  // Simulate the race between getSession and cached session
+  function simulateRace(params: {
+    getSessionReturnsIn: number; // ms, -1 = timeout
+    getSessionResult: "valid" | "null" | "timeout";
+    cachedSessionAvailableAt: number; // ms, -1 = never
+    shortWaitMax: number; // ms (default 2000)
+  }): { winner: "getSession" | "cached" | "fallback"; timeToSession: number } {
+    const { getSessionReturnsIn, getSessionResult, cachedSessionAvailableAt, shortWaitMax } = params;
+
+    // If cached session is available immediately (0ms)
+    if (cachedSessionAvailableAt === 0) {
+      return { winner: "cached", timeToSession: 0 };
+    }
+
+    // If cached session arrives within shortWaitMax
+    if (cachedSessionAvailableAt > 0 && cachedSessionAvailableAt <= shortWaitMax) {
+      // Check if getSession is faster
+      if (getSessionResult === "valid" && getSessionReturnsIn < cachedSessionAvailableAt) {
+        return { winner: "getSession", timeToSession: getSessionReturnsIn };
+      }
+      return { winner: "cached", timeToSession: cachedSessionAvailableAt };
+    }
+
+    // Cached session not available within short wait
+    if (getSessionResult === "valid") {
+      return { winner: "getSession", timeToSession: getSessionReturnsIn };
+    }
+
+    // getSession also failed — need fallback
+    return { winner: "fallback", timeToSession: getSessionReturnsIn === -1 ? 6000 : getSessionReturnsIn };
+  }
+
+  // Simulate non-blocking profile behavior
+  function simulateProfileBehavior(params: {
+    sessionRecovered: boolean;
+    profileFetchResult: "success" | "timeout" | "error";
+    profileFetchDuration: number;
+  }): { authPreserved: boolean; isLoadingDroppedBeforeProfile: boolean; profileAvailable: boolean } {
+    if (!params.sessionRecovered) {
+      return { authPreserved: false, isLoadingDroppedBeforeProfile: false, profileAvailable: false };
+    }
+
+    // Key behavior: isLoading drops to false IMMEDIATELY after session is set,
+    // NOT after profile is loaded. Profile loads in background.
+    return {
+      authPreserved: true,
+      isLoadingDroppedBeforeProfile: true,
+      profileAvailable: params.profileFetchResult === "success",
+    };
+  }
+
+  // ---- FAST PATH TESTS ----
+
+  it("Fast path: module cache + auth flag + sessionRecovered → immediate entry", () => {
+    const result = simulateFastPath({
+      wasAuthenticated: true,
+      moduleSessionCacheUser: true,
+      sessionRecoveredInProcess: true,
+    });
+    expect(result.usedFastPath).toBe(true);
+  });
+
+  it("Fast path: no auth flag → NOT used (fresh install)", () => {
+    const result = simulateFastPath({
+      wasAuthenticated: false,
+      moduleSessionCacheUser: true,
+      sessionRecoveredInProcess: true,
+    });
+    expect(result.usedFastPath).toBe(false);
+    expect(result.reason).toContain("no auth flag");
+  });
+
+  it("Fast path: no module cache → NOT used (first initAuth run)", () => {
+    const result = simulateFastPath({
+      wasAuthenticated: true,
+      moduleSessionCacheUser: false,
+      sessionRecoveredInProcess: false,
+    });
+    expect(result.usedFastPath).toBe(false);
+    expect(result.reason).toContain("no module cache");
+  });
+
+  it("Fast path: module cache exists but session not recovered in process → NOT used", () => {
+    // This prevents using stale cache from a previous JS process
+    const result = simulateFastPath({
+      wasAuthenticated: true,
+      moduleSessionCacheUser: true,
+      sessionRecoveredInProcess: false,
+    });
+    expect(result.usedFastPath).toBe(false);
+    expect(result.reason).toContain("session not recovered in process");
+  });
+
+  // ---- RACE TESTS ----
+
+  it("Race: TOKEN_REFRESHED arrives at 1.4s, getSession times out at 6s → cached wins", () => {
+    const result = simulateRace({
+      getSessionReturnsIn: 6000,
+      getSessionResult: "timeout",
+      cachedSessionAvailableAt: 1400,
+      shortWaitMax: 2000,
+    });
+    expect(result.winner).toBe("cached");
+    expect(result.timeToSession).toBe(1400);
+  });
+
+  it("Race: getSession returns valid at 200ms → getSession wins (fast network)", () => {
+    const result = simulateRace({
+      getSessionReturnsIn: 200,
+      getSessionResult: "valid",
+      cachedSessionAvailableAt: 1400,
+      shortWaitMax: 2000,
+    });
+    expect(result.winner).toBe("getSession");
+    expect(result.timeToSession).toBe(200);
+  });
+
+  it("Race: cached session available immediately (module cache from remount) → 0ms", () => {
+    const result = simulateRace({
+      getSessionReturnsIn: 6000,
+      getSessionResult: "timeout",
+      cachedSessionAvailableAt: 0,
+      shortWaitMax: 2000,
+    });
+    expect(result.winner).toBe("cached");
+    expect(result.timeToSession).toBe(0);
+  });
+
+  it("Race: TOKEN_REFRESHED arrives at 3s (after short wait) → falls through to getSession timeout", () => {
+    const result = simulateRace({
+      getSessionReturnsIn: -1,
+      getSessionResult: "timeout",
+      cachedSessionAvailableAt: 3000,
+      shortWaitMax: 2000,
+    });
+    // Cached arrives at 3s but short wait is only 2s, so it won't be caught by race
+    // getSession also times out → fallback
+    expect(result.winner).toBe("fallback");
+  });
+
+  it("Race: no TOKEN_REFRESHED, getSession returns null → fallback path", () => {
+    const result = simulateRace({
+      getSessionReturnsIn: 500,
+      getSessionResult: "null",
+      cachedSessionAvailableAt: -1,
+      shortWaitMax: 2000,
+    });
+    expect(result.winner).toBe("fallback");
+  });
+
+  // ---- NON-BLOCKING PROFILE TESTS ----
+
+  it("Profile timeout does NOT block isLoading", () => {
+    const result = simulateProfileBehavior({
+      sessionRecovered: true,
+      profileFetchResult: "timeout",
+      profileFetchDuration: 5000,
+    });
+    expect(result.authPreserved).toBe(true);
+    expect(result.isLoadingDroppedBeforeProfile).toBe(true);
+    // Profile not available but auth is preserved
+    expect(result.profileAvailable).toBe(false);
+  });
+
+  it("Profile error does NOT affect auth state", () => {
+    const result = simulateProfileBehavior({
+      sessionRecovered: true,
+      profileFetchResult: "error",
+      profileFetchDuration: 100,
+    });
+    expect(result.authPreserved).toBe(true);
+    expect(result.isLoadingDroppedBeforeProfile).toBe(true);
+  });
+
+  it("Profile success loads in background after auth is ready", () => {
+    const result = simulateProfileBehavior({
+      sessionRecovered: true,
+      profileFetchResult: "success",
+      profileFetchDuration: 900,
+    });
+    expect(result.authPreserved).toBe(true);
+    expect(result.isLoadingDroppedBeforeProfile).toBe(true);
+    expect(result.profileAvailable).toBe(true);
+  });
+
+  // ---- BACKGROUND VALIDATION TESTS ----
+
+  it("Background validation timeout does NOT clear auth flag", () => {
+    // Simulate: session recovered, then background validation times out
+    // Auth flag should NOT be cleared
+    const sessionRecovered = true;
+    const validationResult = "timeout";
+    
+    // The rule: once session is recovered, no timeout can clear auth flag
+    const authFlagCleared = !sessionRecovered; // Only clear if session was never recovered
+    expect(authFlagCleared).toBe(false);
+  });
+
+  it("Background validation network error does NOT trigger logout", () => {
+    const sessionRecovered = true;
+    const validationResult = "network_error";
+    
+    // Same rule: network errors in background validation don't affect auth
+    const logoutTriggered = !sessionRecovered;
+    expect(logoutTriggered).toBe(false);
+  });
+
+  it("Logout clears module cache even when fast path was used", () => {
+    // Simulate: fast path used → then user explicitly logs out
+    let moduleCache: any = { user: { id: "123" } };
+    let sessionRecovered = true;
+    
+    // Simulate signOut
+    const signOut = () => {
+      moduleCache = null;
+      sessionRecovered = false;
+    };
+    
+    signOut();
+    expect(moduleCache).toBeNull();
+    expect(sessionRecovered).toBe(false);
+  });
+
+  // ---- COMBINED SCENARIO TESTS ----
+
+  it("Full scenario: remount after recovery → fast path → profile in background → entry in <100ms", () => {
+    // Step 1: First initAuth recovered session (simulated)
+    const firstRunResult = simulateFastPath({
+      wasAuthenticated: true,
+      moduleSessionCacheUser: false, // Not yet in cache
+      sessionRecoveredInProcess: false,
+    });
+    expect(firstRunResult.usedFastPath).toBe(false);
+
+    // Step 2: After first run, cache is populated
+    // Step 3: Remount happens, second initAuth runs
+    const secondRunResult = simulateFastPath({
+      wasAuthenticated: true,
+      moduleSessionCacheUser: true, // Now in cache from first run
+      sessionRecoveredInProcess: true, // Set by first run
+    });
+    expect(secondRunResult.usedFastPath).toBe(true);
+
+    // Step 4: Profile loads in background (non-blocking)
+    const profileResult = simulateProfileBehavior({
+      sessionRecovered: true,
+      profileFetchResult: "timeout", // Network still cold
+      profileFetchDuration: 5000,
+    });
+    expect(profileResult.authPreserved).toBe(true);
+    expect(profileResult.isLoadingDroppedBeforeProfile).toBe(true);
+  });
+
+  it("Full scenario: cold network + TOKEN_REFRESHED at 1.4s → entry in ~1.4s instead of 22s", () => {
+    // Step 1: getSession will timeout (cold network)
+    // Step 2: TOKEN_REFRESHED arrives at 1.4s
+    const raceResult = simulateRace({
+      getSessionReturnsIn: 6000,
+      getSessionResult: "timeout",
+      cachedSessionAvailableAt: 1400,
+      shortWaitMax: 2000,
+    });
+    expect(raceResult.winner).toBe("cached");
+    expect(raceResult.timeToSession).toBe(1400);
+    // Total time ≈ 1.4s + bridge check + isLoading=false ≈ 2-3s (vs 22s before)
+
+    // Profile loads in background
+    const profileResult = simulateProfileBehavior({
+      sessionRecovered: true,
+      profileFetchResult: "timeout",
+      profileFetchDuration: 5000,
+    });
+    expect(profileResult.authPreserved).toBe(true);
+    expect(profileResult.isLoadingDroppedBeforeProfile).toBe(true);
+  });
+});

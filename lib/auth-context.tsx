@@ -267,24 +267,108 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsRecovering(true);
         }
 
-        // Race getSession against a 6s timeout — SecureStore/AsyncStorage can hang
-        const sessionResult = await raceTimeout(
-          supabase.auth.getSession(),
-          6000
-        );
+        // ============ FAST PATH: Module cache available ============
+        // If a previous initAuth run (before remount) already recovered the session,
+        // the module cache has a valid session. Use it immediately without waiting
+        // for getSession/refreshSession (which will timeout on cold network).
+        // Conditions: auth flag set + module cache has user + session already recovered in this process
+        if (wasAuthenticated && moduleSessionCache?.user && sessionRecoveredInProcess) {
+          debugLog("Auth", "FAST PATH: Using module cache immediately (no network wait)", {
+            instance: instanceIdRef.current,
+          });
+          const cachedSession = moduleSessionCache;
+          setSession(cachedSession);
+          setUser(cachedSession.user);
+          await setAuthFlag();
+          latestAuthEventSessionRef.current = cachedSession;
+
+          // Check bridge readiness (fast — SecureStore read only)
+          if (Platform.OS !== "web") {
+            const existingToken = await Auth.getSessionToken();
+            if (existingToken) {
+              if (mountedRef.current) setIsBridgeReady(true);
+            } else {
+              debugLog("Auth", "FAST PATH: No custom JWT — bridging...");
+              performBridge(cachedSession.access_token).catch((err) => {
+                console.warn("[Auth] FAST PATH bridge failed:", err);
+              });
+            }
+          }
+
+          // Profile: fire-and-forget (non-blocking)
+          debugLog("Auth", "FAST PATH: Loading profile in background");
+          fetchProfile(cachedSession.user.id).then((p) => {
+            if (mountedRef.current) {
+              setProfile(p);
+              debugLog("Auth", "FAST PATH: Profile loaded in background:", !!p);
+            }
+          }).catch(() => {});
+
+          // Done — exit initAuth early
+          return;
+        }
+
+        // ============ SHORT WAIT: Race getSession vs cached session ============
+        // Instead of waiting the full 6s getSession timeout, race against
+        // TOKEN_REFRESHED arriving (which populates latestAuthEventSessionRef/moduleSessionCache).
+        // If a cached session appears within 2s, use it immediately.
+        let currentSession: Session | null = null;
+
+        // Start getSession (may hang on cold network)
+        const getSessionPromise = supabase.auth.getSession();
+
+        // Helper: wait up to maxMs for a cached session to appear (from TOKEN_REFRESHED)
+        const waitForCachedSession = (maxMs: number): Promise<Session | null> => {
+          return new Promise((resolve) => {
+            // Check immediately
+            const immediate = latestAuthEventSessionRef.current ?? moduleSessionCache;
+            if (immediate?.user) { resolve(immediate); return; }
+            // Poll every 100ms
+            let elapsed = 0;
+            const interval = setInterval(() => {
+              elapsed += 100;
+              const cached = latestAuthEventSessionRef.current ?? moduleSessionCache;
+              if (cached?.user) {
+                clearInterval(interval);
+                resolve(cached);
+              } else if (elapsed >= maxMs) {
+                clearInterval(interval);
+                resolve(null);
+              }
+            }, 100);
+          });
+        };
+
+        // Race: getSession (6s timeout) vs cached session (2s short wait)
+        const raceResult = await Promise.race([
+          raceTimeout(getSessionPromise, 6000).then(r => ({ type: "getSession" as const, result: r })),
+          waitForCachedSession(2000).then(s => s ? { type: "cached" as const, session: s } : null),
+        ]);
 
         if (!mountedRef.current) return;
 
-        let currentSession: Session | null = null;
-
-        if (!sessionResult) {
-          debugLog("Auth", "getSession timed out — will continue to refreshSession/fallback");
-          // DO NOT return here! Continue to refreshSession and AsyncStorage fallback.
-          // On Android after 1-2h in background, getSession() can hang due to slow
-          // storage or stale Supabase internal state. The fallbacks below can still recover.
+        if (raceResult && raceResult.type === "cached") {
+          currentSession = raceResult.session;
+          debugLog("Auth", "Using cached session (won race vs getSession, within 2s)", {
+            source: latestAuthEventSessionRef.current?.user ? "instanceRef" : "moduleCache",
+          });
+        } else if (raceResult && raceResult.type === "getSession") {
+          if (!raceResult.result) {
+            debugLog("Auth", "getSession timed out — will continue to refreshSession/fallback");
+          } else {
+            currentSession = raceResult.result.data?.session ?? null;
+            debugLog("Auth", "Session found from getSession:", !!currentSession);
+          }
         } else {
-          currentSession = sessionResult.data?.session ?? null;
-          debugLog("Auth", "Session found:", !!currentSession);
+          // Both returned null/falsy within their timeouts — continue with fallbacks
+          // But first, wait for getSession to finish (it may still be running)
+          const sessionResult = await raceTimeout(getSessionPromise, 4000);
+          if (sessionResult?.data?.session?.user) {
+            currentSession = sessionResult.data.session;
+            debugLog("Auth", "Session found from getSession (after short wait):", true);
+          } else {
+            debugLog("Auth", "getSession returned no session after full wait");
+          }
         }
 
         // MODULE CACHE CHECKPOINT 1: Check module cache AND instance ref.
@@ -328,9 +412,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // MODULE CACHE CHECKPOINT 2: Check again before AsyncStorage fallback.
         // A TOKEN_REFRESHED event may have fired while refreshSession was timing out.
         if (!currentSession?.user) {
-          const cachedSession = latestAuthEventSessionRef.current ?? moduleSessionCache;
-          if (cachedSession?.user) {
-            currentSession = cachedSession;
+          const cachedSession2 = latestAuthEventSessionRef.current ?? moduleSessionCache;
+          if (cachedSession2?.user) {
+            currentSession = cachedSession2;
             debugLog("Auth", "Using cached session (checkpoint 2, before AsyncStorage fallback)", {
               source: latestAuthEventSessionRef.current ? "instanceRef" : "moduleCache",
             });
@@ -394,11 +478,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Update module-level cache — survives remounts
           moduleSessionCache = currentSession;
           sessionRecoveredInProcess = true;
-          const p = await fetchProfile(currentSession.user.id);
-          if (mountedRef.current) {
-            setProfile(p);
-            debugLog("Auth", "Profile loaded:", !!p);
-          }
+
+          // OPTIMIZATION: fetchProfile is non-blocking (fire-and-forget).
+          // profile=null does NOT block entry — user sees app immediately.
+          // Profile loads in background when network becomes available.
+          debugLog("Auth", "Loading profile in background (non-blocking)");
+          fetchProfile(currentSession.user.id).then((p) => {
+            if (mountedRef.current) {
+              setProfile(p);
+              debugLog("Auth", "Profile loaded in background:", !!p);
+            }
+          }).catch(() => {
+            debugLog("Auth", "Background profile fetch failed — auth preserved");
+          });
 
           // Ensure custom JWT exists in SecureStore for tRPC auth.
           // On app restart with existing Supabase session, the custom token
@@ -427,11 +519,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await setAuthFlag();
             moduleSessionCache = finalCachedSession;
             sessionRecoveredInProcess = true;
-            const p = await fetchProfile(finalCachedSession.user.id);
-            if (mountedRef.current) {
-              setProfile(p);
-              debugLog("Auth", "Profile loaded (from cache guard):", !!p);
-            }
+            // Non-blocking profile fetch
+            debugLog("Auth", "Loading profile in background (checkpoint 3)");
+            fetchProfile(finalCachedSession.user.id).then((p) => {
+              if (mountedRef.current) {
+                setProfile(p);
+                debugLog("Auth", "Profile loaded in background (checkpoint 3):", !!p);
+              }
+            }).catch(() => {
+              debugLog("Auth", "Background profile fetch failed (checkpoint 3) — auth preserved");
+            });
             if (Platform.OS !== "web") {
               const existingToken = await Auth.getSessionToken();
               if (existingToken) {
