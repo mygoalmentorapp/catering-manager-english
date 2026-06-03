@@ -212,7 +212,7 @@ const LOGO_SIZE = 80;
 function _make_styles() { return StyleSheet.create({
   scrollContent: {
     gap: DS_SPACING.xxl,
-    paddingBottom: DS_SPACING.xxl + 32,
+    paddingBottom: DS_SPACING.lg,
   },
   header: {
     alignItems: "center",
