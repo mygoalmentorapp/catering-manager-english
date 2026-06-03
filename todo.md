@@ -2621,3 +2621,4 @@
 
 ## Feedback Simplification
 - [x] Remove star rating from feedback screen — return to simple text-only feedback form
+- [x] Fix home screen bottom spacing — use useSafeAreaInsets().bottom + DS_SPACING.lg so settings card clears Android navigation buttons

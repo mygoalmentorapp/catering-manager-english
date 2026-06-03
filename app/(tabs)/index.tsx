@@ -1,5 +1,6 @@
 import React, { useRef, useCallback, useEffect } from "react";
 import { Text, View, TouchableOpacity, StyleSheet, Animated, Image, ScrollView } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -115,6 +116,7 @@ const DEFAULT_BUSINESS_NAME = "שם העסק שלך";
 
 export default function HomeScreen() {
   const { colorScheme } = useThemeContext();
+  const insets = useSafeAreaInsets();
   const styles = React.useMemo(() => _make_styles(), [DS_COLORS.accent, colorScheme]);
 
 
@@ -148,7 +150,7 @@ export default function HomeScreen() {
       className="px-5 pt-8"
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: DS_SPACING.lg + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         bounces={true}
       >
@@ -212,7 +214,7 @@ const LOGO_SIZE = 80;
 function _make_styles() { return StyleSheet.create({
   scrollContent: {
     gap: DS_SPACING.xxl,
-    paddingBottom: DS_SPACING.lg,
+    // paddingBottom set dynamically via insets.bottom in contentContainerStyle
   },
   header: {
     alignItems: "center",
