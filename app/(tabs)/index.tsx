@@ -152,7 +152,8 @@ export default function HomeScreen() {
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: DS_SPACING.lg + insets.bottom }]}
         showsVerticalScrollIndicator={false}
-        bounces={true}
+        bounces={false}
+        overScrollMode="never"
       >
         {/* Global Message Banner */}
         <GlobalMessageBanner />
