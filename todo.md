@@ -2548,3 +2548,74 @@
 - [x] No infinite loading if recovery fails
 - [x] No loop between Login / Recovery / App
 - [x] Fix APK crash on startup: NoClassDefFoundError AnyTypeCache from expo-clipboard - removed expo-clipboard and replaced with React Native Share API
+- [x] Fix splash screen layout jump: unified DataLoadingSplash to single layout (no more two-state rendering), reverted native splash to white background
+
+## Auth Race Condition Fix: TOKEN_REFRESHED ignored during initAuth
+- [x] Add latestAuthEventSessionRef to capture valid sessions from onAuthStateChange events
+- [x] Capture session immediately in onAuthStateChange handler (before other logic)
+- [x] Check ref after getSession timeout/null — use event session if available
+- [x] Check ref before AsyncStorage fallback — skip if event session available
+- [x] Final fallback guard: if auth event delivered valid session but all methods failed, use it instead of clearing auth flag
+- [x] TypeScript compiles with 0 errors
+- [x] Write tests for TOKEN_REFRESHED race condition fix (12 new tests, 61 total pass)
+- [x] Push fix to Hebrew GitHub repo
+- [x] Push fix to English GitHub repo + updated ENGLISH-SYNC-STATUS.md
+
+## Auth Race Condition Cleanup: Clear ref on logout + improve logging
+- [x] Clear latestAuthEventSessionRef in signOut() function
+- [x] Clear latestAuthEventSessionRef when SIGNED_OUT is processed (after failed recovery or intentional logout)
+- [x] Do NOT clear ref when SIGNED_OUT recovery succeeds (before return) — verified: recovery path returns before reaching SIGNED_OUT processing
+- [x] Improve setSession error logging (name, message, status — no secrets)
+- [x] TypeScript compiles with 0 errors
+- [x] All tests pass (61 tests)
+- [ ] Push to Hebrew GitHub repo
+- [ ] Push to English GitHub repo
+
+## Auth Optimization: Fast Entry After Background (target: 2-5s instead of 22s)
+- [x] Fast path at start of initAuth when moduleSessionCache + sessionRecoveredInProcess + authFlag are all set
+- [x] Race/short-wait for TOKEN_REFRESHED instead of waiting full 6s getSession timeout
+- [x] Make fetchProfile non-blocking (fire-and-forget, profile=null doesn't block entry)
+- [x] Fast remount path: instance #2 uses module cache immediately
+- [x] Background validation doesn't trigger logout on timeout
+- [x] TypeScript compiles with 0 errors
+- [x] All tests pass (78 total, 17 new optimization tests)
+- [x] Write tests: fast path from module cache (no getSession wait)
+- [x] Write tests: TOKEN_REFRESHED arrives during short wait → used immediately
+- [x] Write tests: fetchProfile timeout doesn't block isLoading=false
+- [x] Write tests: remount uses module cache immediately
+- [x] Write tests: background validation timeout doesn't clear auth flag
+- [x] Write tests: intentional logout still clears cache immediately
+- [ ] Push to Hebrew GitHub repo
+- [ ] Push to English GitHub repo
+
+## Share Buttons Unification
+- [x] Shopping List: Replace existing share buttons with unified "שלח כטקסט" (Share icon) + "שלח כ-PDF" (FileText icon)
+- [x] Shopping List: Remove old "שתף בוואטסאפ" button and its separate logic completely
+- [x] Order Details: Replace existing share buttons with unified "שלח כטקסט" (Share icon) + "שלח כ-PDF" (FileText icon)
+- [x] Order Details: Add bottom sheet with "עם מחירים" / "בלי מחירים" options on button press
+- [x] Both screens: Same layout, same icons, same button names
+- [x] No changes to PDF/text generation logic or content
+- [x] TypeScript 0 errors
+- [ ] Push to Hebrew GitHub repo
+- [ ] Push to English GitHub repo
+
+## Beta Intro: "אל תראה שוב" Checkbox
+- [x] Add "אל תראה שוב" checkbox to EarlyAccessScreen
+- [x] When checkbox is checked and user taps "המשך לאפליקציה", persist BETA_INTRO_SEEN_KEY to AsyncStorage
+- [x] AppGate reads BETA_INTRO_SEEN_KEY and skips beta-intro if set
+
+## Video Tutorials Screen Rebuild
+- [x] Delete old video-tutorials.tsx content and rebuild from scratch
+- [x] Clean, simple screen with title "הדרכת וידאו"
+- [x] VIDEO_GUIDE_URL constant ready for Bunny CDN link
+- [x] Placeholder in place of video player
+- [x] "פתח את הסרטון בדפדפן" button (disabled until URL is set)
+- [x] Internet filtering note about video.cateringmanager.app
+- [x] RTL, mobile-friendly, no clutter
+
+## Home Screen: Premium Look + Bottom Spacing Fix
+- [x] Increase bottom padding so settings card doesn't overlap Android nav buttons
+- [x] Add premium gradient background (like early access screen)
+- [x] Add glowing teal borders on cards
+- [x] Make card titles/icons more vibrant with teal accent
+- [x] Keep it clean without the large decorative circles
