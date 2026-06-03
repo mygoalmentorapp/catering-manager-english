@@ -128,6 +128,8 @@ export type RegisterScreenProps = {
 export type EarlyAccessScreenProps = {
   onFeedback?: () => void;
   onContinueToApp?: () => void;
+  dontShowAgain?: boolean;
+  onToggleDontShowAgain?: () => void;
 };
 
 function BrandBackground({ children, scroll = false }: { children: React.ReactNode; scroll?: boolean }) {
@@ -548,7 +550,7 @@ export function RegisterScreen({
   );
 }
 
-export function EarlyAccessScreen({ onFeedback, onContinueToApp }: EarlyAccessScreenProps) {
+export function EarlyAccessScreen({ onFeedback, onContinueToApp, dontShowAgain, onToggleDontShowAgain }: EarlyAccessScreenProps) {
   const items = useMemo(
     () => [
       { icon: "▣", text: "ליצור מוצרים ומרכיבים" },
@@ -589,6 +591,21 @@ export function EarlyAccessScreen({ onFeedback, onContinueToApp }: EarlyAccessSc
               </View>
             ))}
           </GlassCard>
+
+          {onToggleDontShowAgain && (
+            <Pressable
+              onPress={onToggleDontShowAgain}
+              style={({ pressed }) => [
+                styles.dontShowRow,
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <View style={[styles.dontShowCheckbox, dontShowAgain && styles.dontShowCheckboxChecked]}>
+                {dontShowAgain && <Text style={styles.dontShowCheckmark}>✓</Text>}
+              </View>
+              <Text style={styles.dontShowText}>אל תראה שוב</Text>
+            </Pressable>
+          )}
 
           <AppButton title="המשך לאפליקציה" onPress={onContinueToApp} style={styles.fullButton} />
         </View>
@@ -1239,6 +1256,39 @@ const styles = StyleSheet.create({
     color: APP_BRAND.colors.text,
     fontSize: 16,
     textAlign: "center",
+    writingDirection: "rtl",
+  },
+  dontShowRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 18,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  dontShowCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: APP_BRAND.colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  dontShowCheckboxChecked: {
+    backgroundColor: APP_BRAND.colors.teal,
+    borderColor: APP_BRAND.colors.teal,
+  },
+  dontShowCheckmark: {
+    color: APP_BRAND.colors.bg,
+    fontSize: 14,
+    fontWeight: "800",
+    lineHeight: 18,
+  },
+  dontShowText: {
+    color: APP_BRAND.colors.muted,
+    fontSize: 14,
     writingDirection: "rtl",
   },
 });

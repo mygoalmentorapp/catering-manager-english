@@ -102,13 +102,17 @@ export function AppGate({ children }: { children: React.ReactNode }) {
   // Load/reload local flags
   const loadFlags = useCallback(async () => {
     try {
-      const [ob, hr] = await Promise.all([
+      const [ob, hr, betaSeen] = await Promise.all([
         AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY),
         AsyncStorage.getItem(HAS_REGISTERED_KEY),
+        AsyncStorage.getItem(BETA_INTRO_SEEN_KEY),
       ]);
       setOnboardingDone(ob === "true");
-      // Beta screen shows on EVERY app open, but once dismissed this session, stay dismissed
-      if (!betaDismissedThisSession.current) {
+      // If user checked "don't show again", skip beta intro permanently
+      if (betaSeen === "true") {
+        betaDismissedThisSession.current = true;
+        setBetaIntroDone(true);
+      } else if (!betaDismissedThisSession.current) {
         setBetaIntroDone(false);
       }
       setHasRegisteredBefore(hr === "true");
