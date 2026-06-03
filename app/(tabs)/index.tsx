@@ -219,7 +219,7 @@ function _make_styles() { return StyleSheet.create({
   header: {
     alignItems: "center",
     gap: DS_SPACING.sm,
-    paddingTop: DS_SPACING.md,
+    paddingTop: DS_SPACING.xxl,
   },
   logoWrap: {
     marginBottom: DS_SPACING.sm,

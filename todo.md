@@ -2623,3 +2623,4 @@
 - [x] Remove star rating from feedback screen — return to simple text-only feedback form
 - [x] Fix home screen bottom spacing — use useSafeAreaInsets().bottom + DS_SPACING.lg so settings card clears Android navigation buttons
 - [x] Make PDF truly black-and-white — replace all gray (#333, #999, #CCC, #F5F5F5) with pure black (#000) or white (#FFF) in both shopping list and order PDFs
+- [x] Move logo down on home screen (increase header paddingTop to DS_SPACING.xxl=24) so it stays visible when scrolling up slightly
