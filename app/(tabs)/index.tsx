@@ -187,7 +187,7 @@ export default function HomeScreen() {
           >
             <Text style={styles.headerTitle}>{displayName}</Text>
             {!businessName.trim() && (
-              <Text style={styles.headerTitleHint}>לחץ לעדכון שם העסק</Text>
+              <Text style={styles.headerTitleHint}>לחץ לעדכון שם העסק והלוגו</Text>
             )}
           </TouchableOpacity>
           <Text style={styles.headerSubtitle}>
