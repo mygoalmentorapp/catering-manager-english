@@ -1,37 +1,22 @@
 import React, { useRef, useCallback, useEffect } from "react";
-import { Text, View, TouchableOpacity, StyleSheet, Animated, Image, ScrollView, Platform } from "react-native";
+import { Text, View, TouchableOpacity, StyleSheet, Animated, Image, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScreenContainer } from "@/components/screen-container";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useData } from "@/lib/data-context";
 import {
+  DS_COLORS,
   DS_FONT,
   DS_WEIGHT,
   DS_SPACING,
   DS_RADIUS,
+  DS_SHADOW,
 } from "@/lib/design-system";
 import { usePastDueCheck } from "@/hooks/use-past-due-check";
 import { GlobalMessageBanner } from "@/components/global-message-banner";
 import { useThemeContext } from "@/lib/theme-provider";
 import { setOneSignalScreenTrigger } from "@/lib/onesignal-bootstrap";
 
-// ─── Premium palette (from APP_BRAND in CateringAuthScreens) ────────────────
-const PREMIUM = {
-  bg: "#020708",
-  bg2: "#061214",
-  card: "rgba(5, 22, 24, 0.76)",
-  border: "rgba(101, 255, 239, 0.28)",
-  borderStrong: "rgba(101, 255, 239, 0.72)",
-  teal: "#35E9DD",
-  tealSoft: "#79FFF4",
-  text: "#E7ECEF",
-  muted: "#AAB6BB",
-  muted2: "#77868B",
-  iconBg: "rgba(53, 233, 221, 0.10)",
-  chevron: "rgba(101, 255, 239, 0.4)",
-} as const;
 
 const menuItems = [
   {
@@ -73,6 +58,9 @@ function MenuCard({
   item: (typeof menuItems)[0];
   onPress: () => void;
 }) {
+  const { colorScheme } = useThemeContext();
+  const styles = React.useMemo(() => _make_styles(), [DS_COLORS.accent, colorScheme]);
+
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = useCallback(() => {
@@ -105,7 +93,7 @@ function MenuCard({
             <MaterialIcons
               name={item.icon}
               size={26}
-              color={PREMIUM.teal}
+              color={DS_COLORS.accent}
             />
           </View>
           <View style={styles.textContainer}>
@@ -115,7 +103,7 @@ function MenuCard({
           <MaterialIcons
             name="chevron-left"
             size={22}
-            color={PREMIUM.chevron}
+            color={DS_COLORS.border}
           />
         </View>
       </TouchableOpacity>
@@ -126,7 +114,10 @@ function MenuCard({
 const DEFAULT_BUSINESS_NAME = "שם העסק שלך";
 
 export default function HomeScreen() {
-  const insets = useSafeAreaInsets();
+  const { colorScheme } = useThemeContext();
+  const styles = React.useMemo(() => _make_styles(), [DS_COLORS.accent, colorScheme]);
+
+
   const router = useRouter();
   const {
     businessName,
@@ -151,89 +142,77 @@ export default function HomeScreen() {
 
   const displayName = businessName.trim() || DEFAULT_BUSINESS_NAME;
 
-  // Bottom padding: same gap as between cards (DS_SPACING.lg = 16) + safe area bottom
-  const bottomPadding = Math.max(DS_SPACING.xxl, insets.bottom + DS_SPACING.lg);
-
   return (
-    <LinearGradient
-      colors={[PREMIUM.bg, PREMIUM.bg2, PREMIUM.bg] as const}
-      style={styles.gradient}
+    <ScreenContainer
+      containerClassName="bg-background"
+      className="px-5 pt-8"
     >
-      <SafeAreaView edges={["top", "left", "right"]} style={styles.safeArea}>
-        <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
-          showsVerticalScrollIndicator={false}
-          bounces={true}
-        >
-          {/* Global Message Banner */}
-          <GlobalMessageBanner />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+      >
+        {/* Global Message Banner */}
+        <GlobalMessageBanner />
 
-          {/* Header with Logo */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => router.push("/settings" as any)}
-              activeOpacity={0.7}
-              style={styles.logoWrap}
-            >
-              <View style={styles.logoCircle}>
-                {businessLogo ? (
-                  <Image
-                    source={{ uri: businessLogo }}
-                    style={styles.logoImage}
-                  />
-                ) : (
-                  <Image
-                    source={require("@/assets/images/icon.png")}
-                    style={styles.logoImage}
-                  />
-                )}
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => router.push("/settings" as any)}
-              activeOpacity={0.7}
-              style={styles.headerTitleWrap}
-            >
-              <Text style={styles.headerTitle}>{displayName}</Text>
-              {!businessName.trim() && (
-                <Text style={styles.headerTitleHint}>לחץ לעדכון שם העסק</Text>
+        {/* Header with Logo */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.push("/settings" as any)}
+            activeOpacity={0.7}
+            style={styles.logoWrap}
+          >
+            <View style={styles.logoCircle}>
+              {businessLogo ? (
+                <Image
+                  source={{ uri: businessLogo }}
+                  style={styles.logoImage}
+                />
+              ) : (
+                <Image
+                  source={require("@/assets/images/icon.png")}
+                  style={styles.logoImage}
+                />
               )}
-            </TouchableOpacity>
-            <Text style={styles.headerSubtitle}>
-              ניהול מוצרים, הזמנות ורשימות קניות
-            </Text>
-          </View>
+            </View>
+          </TouchableOpacity>
 
-          {/* Menu Cards */}
-          <View style={styles.cardsContainer}>
-            {menuItems.map((item) => (
-              <MenuCard
-                key={item.route}
-                item={item}
-                onPress={() => router.push(item.route as any)}
-              />
-            ))}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+          <TouchableOpacity
+            onPress={() => router.push("/settings" as any)}
+            activeOpacity={0.7}
+            style={styles.headerTitleWrap}
+          >
+            <Text style={styles.headerTitle}>{displayName}</Text>
+            {!businessName.trim() && (
+              <Text style={styles.headerTitleHint}>לחץ לעדכון שם העסק</Text>
+            )}
+          </TouchableOpacity>
+          <Text style={styles.headerSubtitle}>
+            ניהול מוצרים, הזמנות ורשימות קניות
+          </Text>
+        </View>
+
+        {/* Menu Cards */}
+        <View style={styles.cardsContainer}>
+          {menuItems.map((item) => (
+            <MenuCard
+              key={item.route}
+              item={item}
+              onPress={() => router.push(item.route as any)}
+            />
+          ))}
+        </View>
+      </ScrollView>
+    </ScreenContainer>
   );
 }
 
 const LOGO_SIZE = 80;
 
-const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
+function _make_styles() { return StyleSheet.create({
   scrollContent: {
     gap: DS_SPACING.xxl,
-    paddingHorizontal: 20,
-    paddingTop: DS_SPACING.md,
+    paddingBottom: DS_SPACING.xxl + 32,
   },
   header: {
     alignItems: "center",
@@ -248,33 +227,17 @@ const styles = StyleSheet.create({
     height: LOGO_SIZE,
     borderRadius: LOGO_SIZE / 2,
     overflow: "hidden",
-    backgroundColor: PREMIUM.card,
-    borderWidth: 1.5,
-    borderColor: PREMIUM.borderStrong,
+    backgroundColor: DS_COLORS.card,
+    borderWidth: 2.5,
+    borderColor: DS_COLORS.accent,
     alignItems: "center",
     justifyContent: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: PREMIUM.teal,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.5,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 8,
-      },
-      default: {
-        shadowColor: PREMIUM.teal,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.5,
-        shadowRadius: 16,
-      },
-    }),
+    ...DS_SHADOW.card,
   },
   logoImage: {
-    width: LOGO_SIZE - 3,
-    height: LOGO_SIZE - 3,
-    borderRadius: (LOGO_SIZE - 3) / 2,
+    width: LOGO_SIZE - 5,
+    height: LOGO_SIZE - 5,
+    borderRadius: (LOGO_SIZE - 5) / 2,
   },
   headerTitleWrap: {
     alignItems: "center",
@@ -282,12 +245,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: DS_WEIGHT.bold,
-    color: PREMIUM.text,
+    color: DS_COLORS.textPrimary,
     textAlign: "center",
   },
   headerTitleHint: {
     fontSize: DS_FONT.caption,
-    color: PREMIUM.teal,
+    color: DS_COLORS.accent,
     fontWeight: DS_WEIGHT.bold,
     textAlign: "center",
     marginTop: 2,
@@ -295,35 +258,17 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.regular,
-    color: PREMIUM.muted,
+    color: DS_COLORS.textSecondary,
     textAlign: "center",
   },
   cardsContainer: {
     gap: DS_SPACING.lg,
   },
   card: {
-    backgroundColor: PREMIUM.card,
+    backgroundColor: DS_COLORS.card,
     borderRadius: DS_RADIUS.lg,
-    borderWidth: 1,
-    borderColor: PREMIUM.border,
     padding: DS_SPACING.xl,
-    ...Platform.select({
-      ios: {
-        shadowColor: PREMIUM.teal,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-      default: {
-        shadowColor: PREMIUM.teal,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-      },
-    }),
+    ...DS_SHADOW.card,
   },
   cardContent: {
     flexDirection: "row",
@@ -335,9 +280,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: DS_RADIUS.md,
-    backgroundColor: PREMIUM.iconBg,
-    borderWidth: 1,
-    borderColor: PREMIUM.border,
+    backgroundColor: DS_COLORS.accentLight,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -349,13 +292,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: DS_FONT.titleCard,
     fontWeight: DS_WEIGHT.bold,
-    color: PREMIUM.tealSoft,
+    color: DS_COLORS.textPrimary,
     textAlign: "right",
   },
   cardSubtitle: {
     fontSize: DS_FONT.bodySmall,
     fontWeight: DS_WEIGHT.regular,
-    color: PREMIUM.muted,
+    color: DS_COLORS.textSecondary,
     textAlign: "right",
   },
-});
+}); }
