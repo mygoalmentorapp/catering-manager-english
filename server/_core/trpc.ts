@@ -93,6 +93,12 @@ const requireActiveDevice = t.middleware(async (opts) => {
     throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
   }
 
+  // Owner/master user always bypasses device check
+  const { isOwnerUser } = await import("./env");
+  if (isOwnerUser(ctx.user.openId)) {
+    return next({ ctx });
+  }
+
   const deviceUuid = ctx.req.headers["x-device-uuid"] as string | undefined;
 
   // Web clients don't send device UUID — skip check

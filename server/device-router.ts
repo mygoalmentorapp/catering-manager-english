@@ -156,6 +156,14 @@ export const deviceRouter = router({
     .mutation(async ({ ctx, input }) => {
       const userId = getUserId(ctx);
       console.log(`[device-register] userId=${userId}, deviceUuid=${input.deviceUuid.substring(0, 8)}...`);
+
+      // Owner/master user always gets active status — no device binding
+      const { isOwnerUser } = await import("./_core/env");
+      if (isOwnerUser(userId)) {
+        console.log(`[device-register] Owner/master user bypass — always active`);
+        return { status: "active" as const };
+      }
+
       const admin = getAdminClient();
 
       // Check if there's any active device for this user
