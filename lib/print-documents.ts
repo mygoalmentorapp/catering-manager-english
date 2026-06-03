@@ -68,11 +68,12 @@ const commonStyles = `
   .doc-title {
     font-size: 18px;
     font-weight: 600;
-    color: #333333;
+    color: #000000;
   }
   .info-section {
     margin-bottom: 20px;
-    background: #F5F5F5;
+    background: #FFFFFF;
+    border: 1px solid #000000;
     border-radius: 10px;
     padding: 16px;
   }
@@ -85,7 +86,7 @@ const commonStyles = `
   .info-label {
     font-weight: 600;
     min-width: 100px;
-    color: #333333;
+    color: #000000;
   }
   .info-value {
     color: #000000;
@@ -96,7 +97,7 @@ const commonStyles = `
     margin-bottom: 20px;
   }
   th {
-    background: #333333;
+    background: #000000;
     color: white;
     padding: 10px 14px;
     text-align: right;
@@ -105,13 +106,13 @@ const commonStyles = `
   }
   td {
     padding: 10px 14px;
-    border-bottom: 1px solid #CCCCCC;
+    border-bottom: 1px solid #000000;
     text-align: right;
     font-size: 14px;
     color: #000000;
   }
   tr:nth-child(even) td {
-    background: #F5F5F5;
+    background: #FFFFFF;
   }
   .total-row {
     background: #000000 !important;
@@ -126,7 +127,8 @@ const commonStyles = `
   }
   .notes-section {
     margin-top: 20px;
-    background: #F5F5F5;
+    background: #FFFFFF;
+    border: 1px solid #000000;
     border-radius: 10px;
     padding: 16px;
   }

@@ -158,11 +158,11 @@ function generateShoppingListHtml(
   .logo { width: 50px; height: 50px; border-radius: 50%; margin-bottom: 6px; }
   .biz-name { font-size: 18px; font-weight: bold; margin-bottom: 2px; color: #000000; }
   .doc-title { font-size: 15px; color: #000000; font-weight: 600; margin-bottom: 2px; }
-  .orders-label { font-size: 12px; color: #333333; }
+  .orders-label { font-size: 12px; color: #000000; }
   .items-content {
     column-count: 2;
     column-gap: 24px;
-    column-rule: 1.5px solid #999999;
+    column-rule: 1.5px solid #000000;
     column-fill: balance;
   }
   .section-title {
@@ -171,7 +171,7 @@ function generateShoppingListHtml(
     margin-top: 12px;
     margin-bottom: 6px;
     padding-bottom: 3px;
-    border-bottom: 1px solid #999999;
+    border-bottom: 1px solid #000000;
     color: #000000;
     break-inside: avoid;
     break-after: avoid;
@@ -182,14 +182,14 @@ function generateShoppingListHtml(
     align-items: baseline;
     gap: 12px;
     padding: 4px 0;
-    border-bottom: 0.5px solid #CCCCCC;
+    border-bottom: 0.5px solid #000000;
     font-size: 13px;
     break-inside: avoid;
   }
   .item-name { text-align: right; color: #000000; }
   .item-qty { color: #000000; font-weight: 600; white-space: nowrap; }
   .diff-section { margin-top: 24px; padding-top: 16px; break-inside: avoid; }
-  .diff-divider { height: 2px; background: #000000; opacity: 0.25; margin-bottom: 12px; }
+  .diff-divider { height: 2px; background: #000000; margin-bottom: 12px; }
   .diff-title { font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #000000; }
   .diff-row {
     display: flex;
