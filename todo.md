@@ -2613,9 +2613,8 @@
 - [x] Internet filtering note about video.cateringmanager.app
 - [x] RTL, mobile-friendly, no clutter
 
-## Home Screen: Premium Look + Bottom Spacing Fix
-- [x] Increase bottom padding so settings card doesn't overlap Android nav buttons
-- [x] Add premium gradient background (like early access screen)
-- [x] Add glowing teal borders on cards
-- [x] Make card titles/icons more vibrant with teal accent
-- [x] Keep it clean without the large decorative circles
+## PDF Print Fixes
+- [x] Fix right-side clipping in shopping list PDF (reduce padding, fix @page margins)
+- [x] Fix right-side clipping in order PDF (reduce padding, fix @page margins)
+- [x] Make shopping list PDF black-and-white (all text black, no colored elements)
+- [x] Make order PDF black-and-white (all text black, no colored backgrounds)

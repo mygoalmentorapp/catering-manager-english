@@ -28,13 +28,14 @@ interface PrintDocOptions {
 }
 
 const commonStyles = `
+  @page { margin: 10mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: 'Helvetica Neue', Arial, sans-serif;
     direction: rtl;
     text-align: right;
-    padding: 30px;
-    color: #1E1E2E;
+    padding: 10px 14px;
+    color: #000000;
     font-size: 14px;
     line-height: 1.6;
   }
@@ -45,7 +46,7 @@ const commonStyles = `
     justify-content: space-between;
     margin-bottom: 24px;
     padding-bottom: 16px;
-    border-bottom: 2px solid #3AAFA9;
+    border-bottom: 2px solid #000000;
   }
   .header-right {
     display: flex;
@@ -62,16 +63,16 @@ const commonStyles = `
   .business-name {
     font-size: 22px;
     font-weight: 700;
-    color: #3AAFA9;
+    color: #000000;
   }
   .doc-title {
     font-size: 18px;
     font-weight: 600;
-    color: #7A7A90;
+    color: #333333;
   }
   .info-section {
     margin-bottom: 20px;
-    background: #F8F8FC;
+    background: #F5F5F5;
     border-radius: 10px;
     padding: 16px;
   }
@@ -84,10 +85,10 @@ const commonStyles = `
   .info-label {
     font-weight: 600;
     min-width: 100px;
-    color: #7A7A90;
+    color: #333333;
   }
   .info-value {
-    color: #1E1E2E;
+    color: #000000;
   }
   table {
     width: 100%;
@@ -95,7 +96,7 @@ const commonStyles = `
     margin-bottom: 20px;
   }
   th {
-    background: #3AAFA9;
+    background: #333333;
     color: white;
     padding: 10px 14px;
     text-align: right;
@@ -104,15 +105,16 @@ const commonStyles = `
   }
   td {
     padding: 10px 14px;
-    border-bottom: 1px solid #E8E8F0;
+    border-bottom: 1px solid #CCCCCC;
     text-align: right;
     font-size: 14px;
+    color: #000000;
   }
   tr:nth-child(even) td {
-    background: #F8F8FC;
+    background: #F5F5F5;
   }
   .total-row {
-    background: #3AAFA9 !important;
+    background: #000000 !important;
     color: white;
     font-weight: 700;
     font-size: 16px;
@@ -120,25 +122,24 @@ const commonStyles = `
   .total-row td {
     border-bottom: none;
     color: white;
-    background: #3AAFA9 !important;
+    background: #000000 !important;
   }
   .notes-section {
     margin-top: 20px;
-    background: #F8F8FC;
+    background: #F5F5F5;
     border-radius: 10px;
     padding: 16px;
   }
   .notes-title {
     font-weight: 600;
-    color: #3AAFA9;
+    color: #000000;
     margin-bottom: 8px;
     font-size: 15px;
   }
   .notes-text {
-    color: #1E1E2E;
+    color: #000000;
     white-space: pre-wrap;
   }
-  @page { margin: 20px; }
 `;
 
 function buildHeader(businessName: string, docTitle: string, logoBase64?: string): string {

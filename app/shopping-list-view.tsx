@@ -136,7 +136,7 @@ function generateShoppingListHtml(
       <div class="diff-title">שינויים מהרשימה המקורית</div>`;
     for (const d of diffs) {
       const sign = d.diff > 0 ? "+" : "";
-      const color = d.diff > 0 ? "#22C55E" : "#EF4444";
+      const color = "#000000";
       diffHtml += `<div class="diff-row"><span class="diff-name">${d.name}</span><span class="diff-value" style="color:${color}">${sign}${formatQty(d.diff)} ${getPluralUnit(d.unit, Math.abs(d.diff), unitDefs)}</span></div>`;
     }
     diffHtml += `</div>`;
@@ -151,17 +151,18 @@ function generateShoppingListHtml(
 <head>
 <meta charset="UTF-8">
 <style>
+  @page { margin: 10mm; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, Helvetica, sans-serif; direction: rtl; padding: 20px 30px; color: #1E1E2E; }
+  body { font-family: Arial, Helvetica, sans-serif; direction: rtl; padding: 10px 14px; color: #000000; }
   .header { text-align: center; margin-bottom: 16px; }
   .logo { width: 50px; height: 50px; border-radius: 50%; margin-bottom: 6px; }
-  .biz-name { font-size: 18px; font-weight: bold; margin-bottom: 2px; }
-  .doc-title { font-size: 15px; color: #3AAFA9; margin-bottom: 2px; }
-  .orders-label { font-size: 12px; color: #7A7A90; }
+  .biz-name { font-size: 18px; font-weight: bold; margin-bottom: 2px; color: #000000; }
+  .doc-title { font-size: 15px; color: #000000; font-weight: 600; margin-bottom: 2px; }
+  .orders-label { font-size: 12px; color: #333333; }
   .items-content {
     column-count: 2;
     column-gap: 24px;
-    column-rule: 1.5px solid #D0D0E0;
+    column-rule: 1.5px solid #999999;
     column-fill: balance;
   }
   .section-title {
@@ -170,7 +171,8 @@ function generateShoppingListHtml(
     margin-top: 12px;
     margin-bottom: 6px;
     padding-bottom: 3px;
-    border-bottom: 1px solid #E8E8F0;
+    border-bottom: 1px solid #999999;
+    color: #000000;
     break-inside: avoid;
     break-after: avoid;
   }
@@ -180,15 +182,15 @@ function generateShoppingListHtml(
     align-items: baseline;
     gap: 12px;
     padding: 4px 0;
-    border-bottom: 0.5px solid #F0F0F4;
+    border-bottom: 0.5px solid #CCCCCC;
     font-size: 13px;
     break-inside: avoid;
   }
-  .item-name { text-align: right; }
-  .item-qty { color: #3AAFA9; font-weight: 600; white-space: nowrap; }
+  .item-name { text-align: right; color: #000000; }
+  .item-qty { color: #000000; font-weight: 600; white-space: nowrap; }
   .diff-section { margin-top: 24px; padding-top: 16px; break-inside: avoid; }
-  .diff-divider { height: 2px; background: #1E1E2E; opacity: 0.25; margin-bottom: 12px; }
-  .diff-title { font-size: 14px; font-weight: bold; margin-bottom: 8px; }
+  .diff-divider { height: 2px; background: #000000; opacity: 0.25; margin-bottom: 12px; }
+  .diff-title { font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #000000; }
   .diff-row {
     display: flex;
     flex-direction: row;
@@ -200,7 +202,7 @@ function generateShoppingListHtml(
   .diff-name { text-align: right; }
   .diff-value { font-weight: bold; white-space: nowrap; }
   @media print {
-    body { padding: 12px 20px; }
+    body { padding: 8px 10px; }
   }
 </style>
 </head>
