@@ -2618,3 +2618,6 @@
 - [x] Fix right-side clipping in order PDF (reduce padding, fix @page margins)
 - [x] Make shopping list PDF black-and-white (all text black, no colored elements)
 - [x] Make order PDF black-and-white (all text black, no colored backgrounds)
+
+## Feedback Simplification
+- [x] Remove star rating from feedback screen — return to simple text-only feedback form

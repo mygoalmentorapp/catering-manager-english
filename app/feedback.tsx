@@ -20,71 +20,23 @@ import { UserExperienceStateService } from "@/lib/services/user-experience-state
 import { DS_COLORS, DS_FONT, DS_WEIGHT, DS_SPACING, DS_RADIUS, DS_SHADOW } from "@/lib/design-system";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 
-type FeedbackStep = "rating" | "text" | "success";
-
 export default function FeedbackScreen() {
   const { user } = useAuth();
   const { guardMutation } = useMutationGuard();
   const params = useLocalSearchParams<{ context?: string }>();
 
-  const [step, setStep] = useState<FeedbackStep>("rating");
-  const [rating, setRating] = useState(0);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
 
-  // ── Step 1: Star Rating ──
-  const handleRatingSelect = useCallback((stars: number) => {
-    setRating(stars);
-    // Auto-advance to text step after a short delay for visual feedback
-    setTimeout(() => {
-      setStep("text");
-    }, 300);
-  }, []);
-
-  // ── Step 2: Submit text feedback ──
   const handleSubmit = useCallback(async () => {
     setError("");
 
-    if (!user) {
-      setError("נדרשת התחברות כדי לשלוח משוב");
+    if (!message.trim()) {
+      setError("נא לכתוב משוב לפני שליחה");
       return;
     }
-
-    const allowed = await guardMutation();
-    if (!allowed) return;
-
-    setLoading(true);
-
-    try {
-      const { error: insertError } = await supabase.from("feedback").insert({
-        user_id: user.id,
-        rating,
-        message: message.trim() || null,
-        screen_context: params.context || "general",
-      });
-
-      if (insertError) {
-        setError("שגיאה בשליחת המשוב. נסה שוב");
-        setLoading(false);
-        return;
-      }
-
-      setStep("success");
-
-      // Session 2: Log feedback events (fire-and-forget)
-      ExperienceEventService.logFeedbackSubmitted(params.context || "general").catch(() => {});
-      UserExperienceStateService.onFeedbackSubmitted().catch(() => {});
-    } catch {
-      setError("שגיאה בשליחת המשוב. נסה שוב");
-    } finally {
-      setLoading(false);
-    }
-  }, [message, rating, user, params.context]);
-
-  // ── Skip text and submit rating only ──
-  const handleSkipText = useCallback(async () => {
-    setError("");
 
     if (!user) {
       setError("נדרשת התחברות כדי לשלוח משוב");
@@ -99,8 +51,7 @@ export default function FeedbackScreen() {
     try {
       const { error: insertError } = await supabase.from("feedback").insert({
         user_id: user.id,
-        rating,
-        message: null,
+        message: message.trim(),
         screen_context: params.context || "general",
       });
 
@@ -110,7 +61,9 @@ export default function FeedbackScreen() {
         return;
       }
 
-      setStep("success");
+      setSent(true);
+
+      // Log feedback events (fire-and-forget)
       ExperienceEventService.logFeedbackSubmitted(params.context || "general").catch(() => {});
       UserExperienceStateService.onFeedbackSubmitted().catch(() => {});
     } catch {
@@ -118,10 +71,10 @@ export default function FeedbackScreen() {
     } finally {
       setLoading(false);
     }
-  }, [rating, user, params.context]);
+  }, [message, user, params.context]);
 
   // ── Success Screen ──
-  if (step === "success") {
+  if (sent) {
     return (
       <SafeAreaView style={s.container}>
         <View style={s.successContainer}>
@@ -145,64 +98,7 @@ export default function FeedbackScreen() {
     );
   }
 
-  // ── Rating Screen (Step 1) ──
-  if (step === "rating") {
-    return (
-      <SafeAreaView style={s.container}>
-        <View style={s.ratingContainer}>
-          {/* Header with back button */}
-          <View style={s.headerRow}>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <MaterialIcons name="chevron-right" size={28} color={DS_COLORS.textPrimary} />
-            </TouchableOpacity>
-            <Text style={s.headerTitle}>שלח משוב</Text>
-            <View style={{ width: 28 }} />
-          </View>
-
-          {/* Rating Content */}
-          <View style={s.ratingContent}>
-            <View style={s.iconCircle}>
-              <MaterialIcons name="star" size={36} color={DS_COLORS.accent} />
-            </View>
-
-            <Text style={s.ratingTitle}>איך הייתה החוויה שלך?</Text>
-            <Text style={s.ratingSubtitle}>
-              דרג את האפליקציה כדי לעזור לנו להשתפר
-            </Text>
-
-            {/* Star Rating */}
-            <View style={s.starsRow}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity
-                  key={star}
-                  onPress={() => handleRatingSelect(star)}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                >
-                  <MaterialIcons
-                    name={star <= rating ? "star" : "star-border"}
-                    size={48}
-                    color={star <= rating ? "#FFC107" : DS_COLORS.border}
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Rating labels */}
-            <View style={s.ratingLabels}>
-              <Text style={s.ratingLabel}>מצוין</Text>
-              <Text style={s.ratingLabel}>גרוע</Text>
-            </View>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // ── Text Feedback Screen (Step 2) ──
+  // ── Feedback Form ──
   return (
     <SafeAreaView style={s.container}>
       <KeyboardAvoidingView
@@ -217,36 +113,24 @@ export default function FeedbackScreen() {
           {/* Header with back button */}
           <View style={s.headerRow}>
             <TouchableOpacity
-              onPress={() => setStep("rating")}
+              onPress={() => router.back()}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <MaterialIcons name="chevron-right" size={28} color={DS_COLORS.textPrimary} />
             </TouchableOpacity>
-            <Text style={s.headerTitle}>ספר לנו עוד</Text>
+            <Text style={s.headerTitle}>שלח משוב</Text>
             <View style={{ width: 28 }} />
           </View>
 
           {/* Content */}
           <View style={s.content}>
-            {/* Show selected rating */}
-            <View style={s.selectedRatingRow}>
-              <Text style={s.selectedRatingLabel}>הדירוג שלך:</Text>
-              <View style={s.miniStarsRow}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <MaterialIcons
-                    key={star}
-                    name={star <= rating ? "star" : "star-border"}
-                    size={20}
-                    color={star <= rating ? "#FFC107" : DS_COLORS.border}
-                  />
-                ))}
-              </View>
+            <View style={s.iconCircle}>
+              <MaterialIcons name="chat-bubble-outline" size={36} color={DS_COLORS.accent} />
             </View>
 
+            <Text style={s.title}>יש לך מה לשתף?</Text>
             <Text style={s.description}>
-              {rating <= 3
-                ? "נשמח לשמוע מה אפשר לשפר. ספר לנו על בעיות או רעיונות."
-                : "שמחים שנהנית! יש משהו שעוד אפשר לשפר?"}
+              נשמח לשמוע ממך — רעיונות, בעיות, או כל דבר שיעזור לנו להשתפר
             </Text>
 
             {/* Text Input */}
@@ -255,7 +139,7 @@ export default function FeedbackScreen() {
                 style={s.textArea}
                 value={message}
                 onChangeText={setMessage}
-                placeholder="כתוב כאן את המשוב שלך (אופציונלי)..."
+                placeholder="כתוב כאן את המשוב שלך..."
                 placeholderTextColor={DS_COLORS.textSecondary}
                 multiline
                 numberOfLines={6}
@@ -291,16 +175,6 @@ export default function FeedbackScreen() {
                 </>
               )}
             </TouchableOpacity>
-
-            {/* Skip text button */}
-            <TouchableOpacity
-              style={s.skipButton}
-              onPress={handleSkipText}
-              disabled={loading}
-              activeOpacity={0.7}
-            >
-              <Text style={s.skipButtonText}>שלח רק דירוג</Text>
-            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -330,16 +204,11 @@ const s = StyleSheet.create({
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
   },
-  // ── Rating Step ──
-  ratingContainer: {
-    flex: 1,
-  },
-  ratingContent: {
+  content: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: DS_SPACING.xxl,
     gap: DS_SPACING.lg,
+    paddingTop: DS_SPACING.xxl,
   },
   iconCircle: {
     width: 72,
@@ -350,59 +219,11 @@ const s = StyleSheet.create({
     justifyContent: "center",
     marginBottom: DS_SPACING.sm,
   },
-  ratingTitle: {
+  title: {
     fontSize: 22,
     fontWeight: DS_WEIGHT.bold,
     color: DS_COLORS.textPrimary,
     textAlign: "center",
-  },
-  ratingSubtitle: {
-    fontSize: DS_FONT.body,
-    color: DS_COLORS.textSecondary,
-    textAlign: "center",
-  },
-  starsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: DS_SPACING.md,
-    paddingVertical: DS_SPACING.xl,
-  },
-  ratingLabels: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: 260,
-    paddingHorizontal: DS_SPACING.sm,
-  },
-  ratingLabel: {
-    fontSize: DS_FONT.bodySmall,
-    color: DS_COLORS.textSecondary,
-  },
-  // ── Text Step ──
-  content: {
-    flex: 1,
-    alignItems: "center",
-    gap: DS_SPACING.lg,
-    paddingTop: DS_SPACING.lg,
-  },
-  selectedRatingRow: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    gap: DS_SPACING.sm,
-    backgroundColor: DS_COLORS.card,
-    paddingHorizontal: DS_SPACING.lg,
-    paddingVertical: DS_SPACING.sm + 2,
-    borderRadius: DS_RADIUS.full,
-    borderWidth: 1,
-    borderColor: DS_COLORS.border,
-  },
-  selectedRatingLabel: {
-    fontSize: DS_FONT.bodySmall,
-    color: DS_COLORS.textSecondary,
-  },
-  miniStarsRow: {
-    flexDirection: "row",
-    gap: 2,
   },
   description: {
     fontSize: DS_FONT.body,
@@ -468,14 +289,6 @@ const s = StyleSheet.create({
     color: DS_COLORS.white,
     fontSize: DS_FONT.body,
     fontWeight: DS_WEIGHT.bold,
-  },
-  skipButton: {
-    paddingVertical: DS_SPACING.md,
-  },
-  skipButtonText: {
-    fontSize: DS_FONT.body,
-    color: DS_COLORS.textSecondary,
-    textDecorationLine: "underline",
   },
   // ── Success ──
   successContainer: {
